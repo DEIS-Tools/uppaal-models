@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**
+The model has been presented at ATVA 2014 for the following publication:
+On Time with Minimal Expected Cost! 
+Alexandre David, Peter Gjøl Jensen, Kim Guldstrand Larsen, Acel Legay, Didier Lime, Mathias Grund Sørensen and Jakob Haahr Taankvist.
+12th International Symposium on Automated Technology for Verification and Analysis (ATVA), 2014.
+
+@incollection{learning,
+    year={2014},
+    isbn={978-3-319-11935-9},
+    booktitle={Automated Technology for Verification and Analysis},
+    volume={8837},
+    series={Lecture Notes in Computer Science},
+    editor={Cassez, Franck and Raskin, Jean-FranÃ§ois},
+    doi={10.1007/978-3-319-11936-6_10},
+    title={On Time with Minimal Expected Cost!},
+    url={http://dx.doi.org/10.1007/978-3-319-11936-6_10},
+    publisher={Springer International Publishing},
+    author={David, Alexandre and Jensen, Peter Gj{\o}l and Larsen, Kim Guldstrand and Legay, Axel and Lime, Didier and S{\o}rensen, Mathias Grund and Taankvist, Jakob Haahr},
+    pages={129-145},
+    language={English}
+}
+
+Since publication the model has been improved with explicit prob. branches with weights rather than non-deterministic edges.
+
+*/
+
+clock time; // global time reference in minutes
+clock T;    // clock to track the transportation.
+hybrid clock trip; // stop-watch to measure trip time:
+/*
+Hybrid clocks are treated as cost monitors:
+ 1) cannot be used in guards and invariants,
+    cannot be used in symbolic queries.
+ 2) can be used in updates and ODEs,
+    can be used in statistical queries.
+*/
+
+bool retry = false; // remember if the train
+</declaration>
+	<template>
+		<name x="9" y="9">Kim</name>
+		<declaration>// Place local declarations here.
+</declaration>
+		<location id="id0" x="-127" y="170">
+			<name x="-119" y="144">GoBack</name>
+			<urgent/>
+		</location>
+		<location id="id1" x="68" y="42">
+			<name x="34" y="8">Go</name>
+			<label kind="invariant" x="0" y="25">T&lt;=35</label>
+		</location>
+		<location id="id2" x="68" y="-25">
+			<name x="90" y="-34">Heavy</name>
+			<label kind="invariant" x="81" y="-17">T&lt;=140</label>
+		</location>
+		<location id="id3" x="68" y="-110">
+			<name x="86" y="-142">Easy</name>
+			<label kind="invariant" x="86" y="-125">T&lt;=20</label>
+		</location>
+		<location id="id4" x="161" y="-68">
+			<name x="178" y="-93">Sydney</name>
+			<label kind="invariant" x="178" y="-76">trip'==0</label>
+		</location>
+		<location id="id5" x="68" y="136">
+			<name x="85" y="119">Wait</name>
+			<label kind="invariant" x="85" y="136">T&lt;=2</label>
+		</location>
+		<location id="id6" x="-42" y="-187">
+			<name x="-110" y="-204">Bike</name>
+			<label kind="invariant" x="-110" y="-187">T&lt;=45</label>
+		</location>
+		<location id="id7" x="-42" y="85">
+			<name x="-93" y="76">Train</name>
+			<label kind="invariant" x="-93" y="93">T&lt;=6</label>
+		</location>
+		<location id="id8" x="-42" y="-68">
+			<name x="-56" y="-97">Car</name>
+			<urgent/>
+		</location>
+		<location id="id9" x="-127" y="-34">
+			<name x="-170" y="-85">Aalborg</name>
+			<label kind="invariant" x="-170" y="-68">T&lt;=2</label>
+		</location>
+		<branchpoint id="id10" x="25" y="85">
+		</branchpoint>
+		<branchpoint id="id11" x="17" y="-68">
+		</branchpoint>
+		<init ref="id9"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id9"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id1"/>
+			<label kind="probability" x="51" y="59">10</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id5"/>
+			<label kind="probability" x="51" y="102">1</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id7"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-25" y="68">T&gt;3</label>
+			<label kind="assignment" x="-25" y="85">T=0</label>
+			<label kind="comments" x="144" y="68">The guard "T&gt;3" is very important:
+without it there exists a Zeno loop 
+between Train and Wait, and hence 
+the execution of fully permissive safety
+strategies are not guaranteed to be safe.</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id8"/>
+			<target ref="id11"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id2"/>
+			<label kind="probability" x="51" y="-59">1</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id3"/>
+			<label kind="probability" x="42" y="-93">10</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<nail x="162" y="43"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id2"/>
+			<target ref="id4"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id3"/>
+			<target ref="id4"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-76" y="170">T=0, retry=1</label>
+			<nail x="34" y="170"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id7"/>
+			<label kind="assignment" x="-42" y="136">T=0</label>
+			<nail x="-42" y="136"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id6"/>
+			<target ref="id4"/>
+			<label kind="guard" x="25" y="-204">T&gt;=42</label>
+			<nail x="-17" y="-187"/>
+			<nail x="162" y="-187"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id7"/>
+			<label kind="assignment" x="-93" y="0">T=0</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id6"/>
+			<label kind="assignment" x="-102" y="-144">T=0</label>
+			<nail x="-119" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="assignment" x="-93" y="-51">T=0</label>
+		</transition>
+	</template>
+	<system>
+system Kim;</system>
+	<queries>
+		<query>
+			<formula>//  VALIDATION queries</formula>
+			<comment> VALIDATION queries</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] {
+    Kim.Aalborg + 2*Kim.Bike +  4*Kim.Easy +  6*Kim.Heavy + 
+  8*Kim.Train   + 10*Kim.Go  + 12*Kim.Wait + 14*Kim.Sydney
+}</formula>
+			<comment>Compute sample trajectories where the location is encoded as a trip level over time.
+Select the query, click "Check", then right-click the query and choose "Simulations (1)".
+To hide the legend: right-click on the plot and untick Show -&gt; Legend.</comment>
+		</query>
+		<query>
+			<formula>simulate 100 [&lt;=100] {
+  14+Kim.Aalborg, 12+Kim.Bike, 10+Kim.Easy, 8+Kim.Heavy,
+   6+Kim.Train,    4+Kim.Go,    2+Kim.Wait, Kim.Sydney
+}</formula>
+			<comment>Show an overview of when and where most of the time is being spent.
+			</comment>
+		</query>
+		<query>
+			<formula>A&lt;&gt; Kim.Sydney &amp;&amp; time&lt;=60</formula>
+			<comment>Is it possible that we can always reach Sydney within 60 minutes?
+Answer is no (not satisfied), thus not safe.
+Note that only regular clocks (non-hybrid) can be accessed by symbolic queries.
+			</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=60](&lt;&gt; Kim.Sydney)</formula>
+			<comment>What is the probability of reaching Sydney within 60 minutes?
+Answer is about 0.975 (very likely)</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=200](&lt;&gt; Kim.Sydney)</formula>
+			<comment>Estimate the average trip time to Sydney by inspecting the probability distribution over time 
+(click "Check", then right-click on query and select "Cumulative probability distribution")
+Answer: about 28 minutes.</comment>
+		</query>
+		<query>
+			<formula>E[&lt;=200 ; 500] (max: trip)</formula>
+			<comment>Estimate the maximum time (needed to reach Sydney, where the clock time is stopped in Sydney).
+Answer is about 28 minutes (similar to the query above)
+Note that SMC queries may use hybrid clocks.</comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>//  SAFE STRATEGY</formula>
+			<comment> SAFE STRATEGY</comment>
+		</query>
+		<query>
+			<formula>control: A&lt;&gt; Kim.Sydney &amp;&amp; time&lt;=60</formula>
+			<comment>Is it possible to choose means of transport so that we reach Sydnay within 60 minutes no matter what traffic conditions are?
+Answer: possible (satisfied).</comment>
+		</query>
+		<query>
+			<formula>strategy GoSafe = control: A&lt;&gt; Kim.Sydney &amp;&amp; time&lt;=60</formula>
+			<comment>Is it possible to choose means of transport so that we reach Sydnay within 60 minutes no matter what traffic conditions are?
+Answer: possible (satisfied) and the tool computes fully permissive strategy named "GoSafe".</comment>
+		</query>
+		<query>
+			<formula>A&lt;&gt; (Kim.Sydney &amp;&amp; time&lt;=60) under GoSafe</formula>
+			<comment>Is it possible to reach Sydney within 60 minutes under decisions of GoSafe strategy?
+Answer: yes (satisfied).</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=60](&lt;&gt; Kim.Sydney) under GoSafe</formula>
+			<comment>What is the probability of reaching Sydney within 60 minutes under the GoSafe strategy?
+Answer: &gt;0.99 (almost certain: there was no counterexample found)</comment>
+		</query>
+		<query>
+			<formula>E[&lt;=200; 500] (max: trip) under GoSafe</formula>
+			<comment>Estimate the time (needed to reach Sydney, where the clock time is stopped).
+Answer is about 33 minutes.
+Notice that it is longer than a trip average without a strategy (about 28 minutes).</comment>
+		</query>
+		<query>
+			<formula>simulate 100 [&lt;=100] {
+  14+Kim.Aalborg, 12+Kim.Bike, 10+Kim.Easy, 8+Kim.Heavy, 6+Kim.Train,
+   4+Kim.Go,       2+Kim.Wait,    Kim.Sydney
+} under GoSafe</formula>
+			<comment>Generate an overview where and when the time is being spent under GoSafe strategy.
+Result: most of the time is spent in Bike and Sydney.</comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>//   FAST STRATEGY</formula>
+			<comment>FAST STRATEGY</comment>
+		</query>
+		<query>
+			<formula>strategy GoFast = minE (trip) [&lt;=200] : &lt;&gt; Kim.Sydney</formula>
+			<comment>Learn a strategy which minimizes the time to get to Sydney.
+The strategy is generated and stored under the name "GoFast".</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=60](&lt;&gt; Kim.Sydney) under GoFast</formula>
+			<comment>What is the probability of reaching Sydney within 60 minutes using GoFast strategy?
+Answer is ~0.94 (smaller then probability without any strategy, i.e. rushing is risky)</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=200](&lt;&gt; Kim.Sydney) under GoFast</formula>
+			<comment>What is the probability of reaching Sydney within 200 time units using GoFast strategy?
+Answer is &gt;0.99 (eventuall all runs reach Sydney, no counterexample found)</comment>
+		</query>
+		<query>
+			<formula>E[&lt;=200; 500] (max: trip) under GoFast</formula>
+			<comment>Estimate the maximum time (needed to reach Sydney, where the clock time is stopped).
+Answer is about 15.4 minutes.
+Notice that it is much shorter/faster than GoSafe (33 minutes) or without any strategy (28 minutes).</comment>
+		</query>
+		<query>
+			<formula>simulate 100 [&lt;=100] {
+    14+Kim.Aalborg, 12+Kim.Bike, 10+Kim.Easy, 8+Kim.Heavy, 
+     6+Kim.Train,    4+Kim.Go,    2+Kim.Wait, Kim.Sydney
+} under GoFast</formula>
+			<comment>Generate an overview where and when the time is being spent under GoFast strategy.
+Result: most of the time is spent in Easy and Heavy traffic and Sydney (using Car option).</comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>// SAFE &amp; FAST STRATEGY</formula>
+			<comment>SAFE &amp; FAST STRATEGY
+			</comment>
+		</query>
+		<query>
+			<formula>strategy GoFastSafe = minE (trip) [&lt;=200] : &lt;&gt; Kim.Sydney under GoSafe</formula>
+			<comment>Optimize by learning the GoSafe strategy to shorten the time to Sydney.
+The result is a new strategy stored under name GoFastSafe.</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=60](&lt;&gt; Kim.Sydney) under GoFastSafe</formula>
+			<comment>Evaluate the GoFastSafe by estimating a probability of reaching Sydney within 60 minutes.
+Answer is almost certain: with probability &gt;0.99</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=200](&lt;&gt; Kim.Sydney) under GoFastSafe</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E[&lt;=200 ; 500] (max: trip) under GoFastSafe</formula>
+			<comment>Estimate the time (needed to reach Sydney, where the clock time is stopped).
+Answer is about 22.4 minutes 
+The result is better than GoSafe (33 minutes) but not as good as GoFast (15.4).</comment>
+		</query>
+		<query>
+			<formula>simulate 100 [&lt;=100] {
+  14+Kim.Aalborg, 12+Kim.Bike, 10+Kim.Easy, 8+Kim.Heavy,
+   6+Kim.Train,    4+Kim.Go,    2+Kim.Wait,   Kim.Sydney
+} under GoFastSafe</formula>
+			<comment>Generate an overview where and when the time is being spent under GoFast strategy.
+Result: most of the time is spent in Bike and Sydney (same as with GoSafe).</comment>
+		</query>
+	</queries>
+</nta>
