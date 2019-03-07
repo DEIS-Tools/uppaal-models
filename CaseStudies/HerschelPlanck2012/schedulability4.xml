@@ -1,0 +1,633 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**
+Simplified Herschel-Planck satellite software task model for schedulability analysis.
+This model version is minimized for clarity and optimized for statistical model-checking. 
+The results are published in the following paper:
+
+Schedulability Analysis using Statistical Model Checking.
+Alexandre David, Kim G. Larsen, Axel Legay, Marius Mikučionis.
+Proceedings of the 6th international conference on Leveraging applications of formal methods, verification, and validation, ISoLA 2012.
+
+
+The model is a follow-up research started from the following publication:
+Schedulability analysis using Uppaal: Herschel-Planck case study.
+Marius Mikučionis, Kim G. Larsen, Jacob I. Rasmussen, Brian Nielsen, Arne Skou, Steen U. Palm, Jan S. Pedersen and Poul Hougaard.
+Proceedings of the 4th international conference on Leveraging applications of formal methods, verification, and validation, ISoLA 2010.
+
+@inproceedings{Mikucionis:2010:SAU:1939345.1939369,
+  author = {Miku\v{c}ionis, Marius and Larsen, Kim Guldstrand and Rasmussen, Jacob Illum and Nielsen, Brian and Skou, Arne and Palm, Steen Ulrik and Pedersen, Jan Storbank and Hougaard, Poul},
+  title = {Schedulability analysis using Uppaal: Herschel-Planck case study},
+  booktitle = {Proceedings of the 4th international conference on Leveraging applications of formal methods, verification, and validation - Volume Part II},
+  series = {ISoLA'10},
+  year = {2010},
+  isbn = {3-642-16560-5, 978-3-642-16560-3},
+  location = {Heraklion, Crete, Greece},
+  pages = {175--190},
+  numpages = {16},
+  url = {http://portal.acm.org/citation.cfm?id=1939345.1939369},
+  acmid = {1939369},
+  publisher = {Springer-Verlag},
+  address = {Berlin, Heidelberg},
+  keywords = {model-checking, schedulability analysis, stop-watch automata, timed automata, verification},
+} 
+
+*/
+
+const int NRTASK = 3; // number of tasks
+const int NRRES = 1; // number of resources
+const int BIGEXP = 1000000; // force leaving the WaitForCPU location
+
+typedef int[1, NRTASK] task_t;
+typedef int[0, NRTASK] tasks_t;
+typedef int[1, NRRES] res_t;
+typedef int[0, NRRES] ress_t;
+
+/** Scheduler messages: */
+broadcast chan release[ress_t][task_t];
+broadcast chan request[ress_t][task_t];
+urgent broadcast chan grant[ress_t][task_t], preempt[task_t];
+//urgent broadcast chan ASAP;
+
+typedef tasks_t list_t[tasks_t];
+typedef struct {
+    list_t list;
+    tasks_t len;
+} queue_t;
+
+queue_t q;
+bool runs[task_t]; // controls if the task is currently executed on CPU
+int P[task_t] = { 3, 2, 1 }; // current task priorities
+bool error = false;
+
+// for f in [80,83] symbolic check gives spurious trace,  while SMC cannot reproduce it
+// for f in [84,100] symbolic check shows that deadline cannot be violated.
+// for f in [0,79] both symbolic and SMC can provide with a trace to error.
+const int f = 83; // ratio in percents of BCET/WCET
+const int Period[task_t]   = {  100,  100, 100 };
+const int Offset[task_t]   = {   20,   0,  10 }; 
+const int WCET[task_t]     = {   15,   25,  40 };
+const int BCET[task_t]     = { WCET[1]*f/100, WCET[2]*f/100  , WCET[3]*f/100 };
+//const int Deadline[task_t] = {   100,   100,  100 }; 
+//const int Deadline[task_t] = { 55, 40, 70 }; // WCRT(f=0-83)
+const int Deadline[task_t] = { 20, 40, 70 };// WCRT(f=84-100)
+const res_t  R[task_t]        = {    1,    1,   1 }; // resources
+
+task_t front(queue_t queue){ return queue.list[0]; }
+bool empty(queue_t queue) { return queue.len==0; }
+
+void enqueue(queue_t &amp;queue, task_t id)
+{
+    tasks_t i = 0;
+    tasks_t tid;
+    while (i&lt;queue.len) {
+	    if (P[id] &gt; P[queue.list[i]]) {
+           tid = queue.list[i]; queue.list[i] = id; id = tid;
+        }
+        i++;
+    }
+    queue.list[queue.len] = id;
+    queue.len++;
+}
+
+void dequeue(queue_t &amp;queue, task_t tid)
+{
+    tasks_t i = 0;
+    while (tid!=queue.list[i]) i++;
+    while (i&lt;queue.len) {
+        queue.list[i]=queue.list[i+1];
+        i++;
+    }
+    queue.len--;
+    queue.list[queue.len]=0;
+}
+
+// simple bubble sorter, O(n^2) in general, O(2n) after 1 change
+void sort(queue_t&amp; queue)
+{ 
+    tasks_t i, tmp;
+    int j;
+    for (i=0,j=0; queue.list[i+1]!=0; i++,j=i){        
+        while (j&gt;=0 &amp;&amp; P[queue.list[j+1]]&gt;P[queue.list[j]]) {
+            tmp = queue.list[j]; queue.list[j] = queue.list[j+1]; queue.list[j+1] = tmp;
+            j--;
+        }
+    }
+}
+
+int defaultP(task_t task) { // default priority
+    if (task==0) return 0;
+    else return NRTASK-task+1;
+}
+
+const ress_t CPU=0;
+const task_t ceiling[res_t] = { 3 };
+tasks_t owner[res_t];
+
+/** Lock the resource based on priority ceiling protocol: */
+void lockCeil(res_t res, task_t task) {
+    owner[res] = task; // mark resource occupied by the task
+    P[task] = ceiling[res]; // assume the priority of the resource
+}
+
+/** Unlock the resource based on priority ceiling protocol: */
+void unlockCeil(res_t res, task_t task){
+    owner[res] = 0; // mark the resource as released
+    P[task] = defaultP(task); // return to default priority
+}
+
+/** Boost the priority of resource owner based on priority inheritance protocol: */
+void boostP(res_t res, task_t task) {
+    if (P[owner[res]] &lt;= defaultP(task)) {
+        P[owner[res]] = defaultP(task)+1;
+        sort(q);
+    }
+}
+
+/** Lock the resource based on priority inheritance protocol: */
+void lockInh(res_t res, task_t task) {
+    owner[res] = task; // mark the resource as occupied by the task
+}
+
+/** Unlock the resource based on priority inheritance protocol: */
+void unlockInh(res_t res, task_t task) {
+    owner[res] = 0; // mark the resource as released
+    P[task] = defaultP(task); // return to default priority
+}
+
+clock usage;</declaration>
+	<template>
+		<name>CPUScheduler</name>
+		<parameter>const ress_t CPU</parameter>
+		<declaration>tasks_t task = 0; // current task owning the cpu</declaration>
+		<location id="id0" x="128" y="-160">
+			<committed/>
+		</location>
+		<location id="id1" x="-16" y="-160">
+			<committed/>
+		</location>
+		<location id="id2" x="-192" y="-72">
+			<committed/>
+		</location>
+		<location id="id3" x="-16" y="-72">
+			<name x="0" y="-64">Occupied</name>
+		</location>
+		<location id="id4" x="-16" y="-272">
+			<name x="-72" y="-288">Free</name>
+			<label kind="invariant" x="-104" y="-272">usage'==0</label>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id4"/>
+			<label kind="guard" x="32" y="-288">empty(q)</label>
+			<label kind="assignment" x="32" y="-272">task=0</label>
+			<nail x="128" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="16" y="-176">!empty(q)</label>
+			<label kind="assignment" x="16" y="-160">task=front(q)</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<label kind="select" x="72" y="-136">t:task_t</label>
+			<label kind="synchronisation" x="72" y="-120">release[CPU][t]?</label>
+			<label kind="assignment" x="72" y="-104">runs[t]=false,
+dequeue(q, t)</label>
+			<nail x="128" y="-72"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-176" y="-40">P[front(q)]&lt;=P[task]</label>
+			<nail x="-192" y="-24"/>
+			<nail x="-16" y="-24"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-56" y="-136">grant[CPU][task]!</label>
+			<label kind="assignment" x="-56" y="-120">runs[task]=true</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-184" y="-176">P[front(q)]&gt;P[task]</label>
+			<label kind="synchronisation" x="-184" y="-160">preempt[task]!</label>
+			<label kind="assignment" x="-184" y="-144">runs[task]=false,
+task=front(q)</label>
+			<nail x="-192" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="select" x="-160" y="-104">t:task_t</label>
+			<label kind="synchronisation" x="-160" y="-88">request[CPU][t]?</label>
+			<label kind="assignment" x="-160" y="-72">enqueue(q, t)</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id1"/>
+			<label kind="select" x="-56" y="-248">t:task_t</label>
+			<label kind="synchronisation" x="-56" y="-232">request[CPU][t]?</label>
+			<label kind="assignment" x="-56" y="-216">enqueue(q,t),
+task=front(q)</label>
+		</transition>
+	</template>
+	<template>
+		<name>InheritanceScheduler</name>
+		<parameter>const res_t id</parameter>
+		<declaration>queue_t w;
+tasks_t task = 0;
+task_t tid;</declaration>
+		<location id="id5" x="-16" y="32">
+			<name x="8" y="24">Block</name>
+			<committed/>
+		</location>
+		<location id="id6" x="192" y="-160">
+			<name x="128" y="-192">Unblock</name>
+			<committed/>
+		</location>
+		<location id="id7" x="-16" y="-80">
+			<name x="-96" y="-96">Occupied</name>
+		</location>
+		<location id="id8" x="-16" y="-272">
+			<name x="-64" y="-280">Free</name>
+		</location>
+		<init ref="id8"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id7"/>
+			<label kind="guard" x="32" y="-32">runs[tid]</label>
+			<label kind="synchronisation" x="32" y="-8">release[CPU][tid]!</label>
+			<nail x="32" y="8"/>
+			<nail x="32" y="-48"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id8"/>
+			<label kind="guard" x="32" y="-288">empty(w)</label>
+			<nail x="192" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="8" y="-176">!empty(w)</label>
+			<label kind="synchronisation" x="8" y="-160">request[CPU][front(w)]!</label>
+			<label kind="assignment" x="8" y="-144">task=front(w),
+lockInh(id, task)</label>
+			<nail x="0" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="select" x="48" y="-112">t:task_t</label>
+			<label kind="synchronisation" x="48" y="-96">release[id][t]?</label>
+			<label kind="assignment" x="48" y="-80">unlockInh(id, t),
+dequeue(w, t)</label>
+			<nail x="160" y="-80"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id5"/>
+			<label kind="select" x="-96" y="-64">t:task_t</label>
+			<label kind="synchronisation" x="-96" y="-48">request[id][t]?</label>
+			<label kind="assignment" x="-96" y="-32">tid=t,
+enqueue(w, tid),
+boostP(id, tid)</label>
+			<nail x="-40" y="-56"/>
+			<nail x="-40" y="16"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="select" x="-56" y="-256">t:task_t</label>
+			<label kind="synchronisation" x="-56" y="-240">request[id][t]?</label>
+			<label kind="assignment" x="-56" y="-224">enqueue(w,t),
+task=front(w),
+lockInh(id, task)</label>
+		</transition>
+	</template>
+	<template>
+		<name>CeilingScheduler</name>
+		<parameter>const res_t id</parameter>
+		<declaration>queue_t w;
+tasks_t task = 0;
+task_t tid;</declaration>
+		<location id="id9" x="-16" y="32">
+			<name x="8" y="24">Block</name>
+			<committed/>
+		</location>
+		<location id="id10" x="208" y="-160">
+			<name x="136" y="-192">Unblock</name>
+			<committed/>
+		</location>
+		<location id="id11" x="-16" y="-80">
+			<name x="-96" y="-96">Occupied</name>
+		</location>
+		<location id="id12" x="-16" y="-272">
+			<name x="-64" y="-288">Free</name>
+		</location>
+		<init ref="id12"/>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id11"/>
+			<label kind="guard" x="16" y="-32">runs[tid]</label>
+			<label kind="synchronisation" x="16" y="-16">release[CPU][tid]!</label>
+			<nail x="64" y="8"/>
+			<nail x="64" y="-40"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id12"/>
+			<label kind="guard" x="32" y="-288">empty(w)</label>
+			<nail x="184" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="guard" x="8" y="-176">!empty(w)</label>
+			<label kind="synchronisation" x="8" y="-160">request[CPU][front(w)]!</label>
+			<label kind="assignment" x="8" y="-144">task=front(w),
+lockCeil(id, task)</label>
+			<nail x="0" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id10"/>
+			<label kind="select" x="72" y="-112">t:task_t</label>
+			<label kind="synchronisation" x="72" y="-96">release[id][t]?</label>
+			<label kind="assignment" x="72" y="-80">unlockCeil(id, t),
+dequeue(w, t)</label>
+			<nail x="184" y="-80"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id9"/>
+			<label kind="select" x="-112" y="-64">t:task_t</label>
+			<label kind="synchronisation" x="-112" y="-48">request[id][t]?</label>
+			<label kind="assignment" x="-112" y="-32">tid=t,
+enqueue(w, tid),
+boostP(id, tid)</label>
+			<nail x="-56" y="-56"/>
+			<nail x="-56" y="-24"/>
+			<nail x="-56" y="16"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="select" x="-56" y="-256">t:task_t</label>
+			<label kind="synchronisation" x="-56" y="-240">request[id][t]?</label>
+			<label kind="assignment" x="-56" y="-224">enqueue(w,t),
+task=front(w),
+lockCeil(id, task)</label>
+		</transition>
+	</template>
+	<template>
+		<name>Task</name>
+		<parameter>const task_t id</parameter>
+		<declaration>clock p;  // controls periodic start
+clock c; // accumulated execution time
+clock r; // computes response time
+clock ux; // urgent execution</declaration>
+		<location id="id13" x="-32" y="-624">
+			<name x="-160" y="-656">Ready</name>
+			<label kind="invariant" x="-160" y="-640">c'==0 &amp;&amp;
+ux'==runs[id] 
+&amp;&amp; ux&lt;=0</label>
+			<label kind="exponentialrate" x="-161" y="-586">BIGEXP</label>
+		</location>
+		<location id="id14" x="-152" y="-760">
+			<name x="-160" y="-744">Starting</name>
+			<label kind="invariant" x="-160" y="-728">p&lt;=Offset[id] &amp;&amp;
+c'==0 &amp;&amp; r'==0</label>
+		</location>
+		<location id="id15" x="-32" y="-408">
+			<name x="-160" y="-448">Release</name>
+			<label kind="invariant" x="-160" y="-432">ux'==runs[id]
+&amp;&amp; ux&lt;=0</label>
+			<label kind="exponentialrate" x="-161" y="-399">BIGEXP</label>
+		</location>
+		<location id="id16" x="-32" y="-536">
+			<name x="-161" y="-561">Computing</name>
+			<label kind="invariant" x="-161" y="-544">c'==runs[id] &amp;&amp;
+c&lt;=WCET[id]</label>
+			<label kind="exponentialrate" x="-161" y="-510">BIGEXP</label>
+		</location>
+		<location id="id17" x="112" y="-624">
+			<name x="64" y="-616">Error</name>
+		</location>
+		<location id="id18" x="-32" y="-760">
+			<name x="-8" y="-776">Idle</name>
+			<label kind="invariant" x="-16" y="-760">p&lt;=Period[id] &amp;&amp;
+c'==0 &amp;&amp;
+r'==0</label>
+		</location>
+		<init ref="id14"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id17"/>
+			<label kind="guard" x="16" y="-448">p&gt;Deadline[id]</label>
+			<label kind="assignment" x="16" y="-432">error=1</label>
+			<nail x="8" y="-432"/>
+			<nail x="112" y="-432"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-8" y="-640">p&gt;Deadline[id]</label>
+			<label kind="assignment" x="-8" y="-624">error=1</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-64" y="-600">runs[id]</label>
+			<label kind="synchronisation" x="-64" y="-584">request[R[id]][id]!</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-136" y="-776">p==Offset[id]</label>
+			<label kind="assignment" x="-136" y="-760">p=Period[id]</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-8" y="-552">p&gt;Deadline[id]</label>
+			<label kind="assignment" x="-8" y="-536">error=1</label>
+			<nail x="88" y="-536"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-72" y="-512">runs[id] &amp;&amp;
+c&gt;=BCET[id] &amp;&amp;
+p&lt;=Deadline[id]</label>
+			<label kind="synchronisation" x="-68" y="-467">release[R[id]][id]!</label>
+			<label kind="assignment" x="-68" y="-450">ux=0, c=0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id18"/>
+			<label kind="guard" x="32" y="-728">runs[id] &amp;&amp;
+p&lt;=Deadline[id]</label>
+			<label kind="synchronisation" x="32" y="-696">release[CPU][id]!</label>
+			<label kind="assignment" x="32" y="-680">c=0, r=0</label>
+			<nail x="136" y="-408"/>
+			<nail x="136" y="-760"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-96" y="-696">p==Period[id]</label>
+			<label kind="synchronisation" x="-96" y="-680">request[CPU][id]!</label>
+			<label kind="assignment" x="-96" y="-664">p=0, c=0, r=0, ux=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Global</name>
+		<declaration>clock t;</declaration>
+		<location id="id19" x="0" y="0">
+			<label kind="invariant" x="24" y="-16">t&lt;=2000</label>
+		</location>
+		<init ref="id19"/>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id19"/>
+			<label kind="guard" x="-64" y="56">t==2000</label>
+			<label kind="assignment" x="-64" y="72">t=0, usage=0</label>
+			<nail x="-40" y="56"/>
+			<nail x="32" y="56"/>
+		</transition>
+	</template>
+	<system>//clock time;
+
+CPUs=CPUScheduler(CPU);
+ResInh(const int[1,1] rid)=InheritanceScheduler(rid);
+// ResCeil(const int[2,2] rid)=CeilingScheduler(rid);
+
+T(const task_t id)=Task(id);
+
+// Tasks in table order:
+system CPUs, ResInh, T, Global;
+
+
+/*
+gantt {
+    T(i:task_t): 
+	((Task(i).Computing || Task(i).Ready || Task(i).Release) &amp;&amp; !runs[i]) -&gt; 1,// green: ready
+	((Task(i).Computing || Task(i).Release) &amp;&amp; runs[i]) -&gt; 2, // blue:  running
+	((Task(i).Computing || Task(i).Ready) &amp;&amp; owner[R[i]]!=i) -&gt; 0;          // red:   blocked
+*/
+/*
+    R(i:res_t):  
+	(owner[i]&gt;0 &amp;&amp; runs[owner[i]]) -&gt; 2,  // blue: locked and actively used
+	(owner[i]&gt;0 &amp;&amp; !runs[owner[i]] &amp;&amp; !susp[owner[i]]) -&gt; 1, // green: locked but preempted
+        (owner[i]&gt;0 &amp;&amp; susp[owner[i]]) -&gt; 9;  // cyan: locked and suspended
+*/
+//}</system>
+	<queries>
+		<query>
+			<formula>simulate 1 [&lt;=300] { 
+  (T(1).Ready+T(1).Computing+T(1).Release+runs[1]-3*T(1).Error)+6, 
+  (T(2).Ready+T(2).Computing+T(2).Release+runs[2]-3*T(2).Error)+3,
+  (T(3).Ready+T(3).Computing+T(3).Release+runs[3]-3*T(3).Error)+0
+}
+			</formula>
+			<comment>Simple run visualization as a Gantt chart where:
+base level corresponds to Idle state, 
+base+1 corresponds to a ready state, 
+base+2 corresponds to ready and running, and
+below base means error has been reached.
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=300] { 
+(0.25*T(1).Ready+0.5*T(1).Computing+0.75*T(1).Release+0.1*runs[1]-T(1).Error)+0, 
+(0.25*T(2).Ready+0.5*T(2).Computing+0.75*T(2).Release+0.1*runs[2]-T(2).Error)+1, 
+(0.25*T(3).Ready+0.5*T(3).Computing+0.75*T(3).Release+0.1*runs[3]-T(3).Error)+2
+}
+			</formula>
+			<comment>Validate in a Gantt chart like plot, where task location is encoded as level, and error shows up as abrupt dive down.
+			</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; error
+			</formula>
+			<comment>Check symbolically for schedulability (for f=83 it returns a spurious trace, for f=84 it shows that error is not reachable)
+			</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=200](&lt;&gt; error)
+			</formula>
+			<comment>Try to get probabilistic counter-example disproving schedulability (result: for f=83 it cannot find it)
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 50000 [&lt;=300] { 
+  (T(1).Ready+T(1).Computing+T(1).Release+runs[1]-3*T(1).Error)+6, 
+  (T(2).Ready+T(2).Computing+T(2).Release+runs[2]-3*T(2).Error)+3,
+  (T(3).Ready+T(3).Computing+T(3).Release+runs[3]-3*T(3).Error)+0
+}: 1 : error
+			</formula>
+			<comment>Perform a large number of simulations and display one run where error is reachable (if such run is found).
+			</comment>
+		</query>
+		<query>
+			<formula>simulate   100 [&lt;=200] { 
+(0.25*T(1).Ready+0.5*T(1).Computing+0.75*T(1).Release+0.1*runs[1]-2*T(1).Error)+2, 
+(0.25*T(2).Ready+0.5*T(2).Computing+0.75*T(2).Release+0.1*runs[2]-2*T(2).Error)+1, 
+(0.25*T(3).Ready+0.5*T(3).Computing+0.75*T(3).Release+0.1*runs[3]-2*T(3).Error)+0
+}: error
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 50000 [&lt;=200] { 
+  (0.25*T(1).Ready+0.5*T(1).Computing+0.75*T(1).Release+0.1*runs[1]-2*T(1).Error)+2, 
+  (0.25*T(2).Ready+0.5*T(2).Computing+0.75*T(2).Release+0.1*runs[2]-2*T(2).Error)+1, 
+  (0.25*T(3).Ready+0.5*T(3).Computing+0.75*T(3).Release+0.1*runs[3]-2*T(3).Error)+0,
+}: error
+			</formula>
+			<comment>Make a Gantt chart-like plot of the error trace. The task location is encoded in the level, while error shows up as abrupt dive below the base level.
+			</comment>
+		</query>
+		<query>
+			<formula>E[&lt;=200; 50000] (max: T(1).r)
+			</formula>
+			<comment>Estimate a distribution of response times for Task 1
+			</comment>
+		</query>
+		<query>
+			<formula>E[&lt;=200; 50000] (max: T(2).r)
+			</formula>
+			<comment>Estimate a distribution of response times for Task 2
+			</comment>
+		</query>
+		<query>
+			<formula>E[&lt;=200; 50000] (max: T(3).r)
+			</formula>
+			<comment>Estimate a distribution of response times for Task 3
+			</comment>
+		</query>
+		<query>
+			<formula>sup: usage
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>sup: T(1).r, T(2).r, T(3).r
+			</formula>
+			<comment>Estimate worst response times using symbolic reachability method.
+Note that the system should be schedulable in the first place (otherwise response times will be infinit).
+[System is schedulable when f&gt;=84, or Deadline[1]=55 for any f]
+			</comment>
+		</query>
+	</queries>
+</nta>
