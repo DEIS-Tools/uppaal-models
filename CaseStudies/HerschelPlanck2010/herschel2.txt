@@ -1,0 +1,185 @@
+
+
+HerschelEvents2-128.xml
+
+Verifying property 1 at line 4
+ -- Property MAY be satisfied.
+sup:
+WCRT[0] <= 32000000
+WCRT[1] <= 13
+WCRT[2] <= 83
+WCRT[3] <= 70
+WCRT[4] <= 103
+WCRT[5] <= 113
+WCRT[6] <= 173
+WCRT[7] <= 243
+WCRT[8] <= 313
+WCRT[9] <= 383
+WCRT[10] <= 533
+WCRT[11] <= 933
+WCRT[12] <= 1103
+WCRT[13] <= 0
+WCRT[14] <= 5153
+WCRT[15] <= 5873
+WCRT[16] <= 6273
+WCRT[17] <= 5380
+WCRT[18] <= 11615
+WCRT[19] <= 6473
+WCRT[20] <= 9473
+WCRT[21] <= 54115
+WCRT[22] <= 53994
+WCRT[23] <= 2503
+WCRT[24] <= 4953
+WCRT[25] <= 17863
+WCRT[26] <= 9813
+WCRT[27] <= 14796
+WCRT[28] <= 11896
+WCRT[29] <= 94346
+WCRT[30] <= 65177
+WCRT[31] <= 110666
+WCRT[32] <= 154556
+WCRT[33] <= 15046
+idleTime <= 11633480
+usedTime <= 20366590
+globalTime <= 32000000
+ -- States stored : 0 states
+ -- States explored : 5635227 states
+14149.38 user, 5.08 system, 14432.43 elapsed -- Max VSize = 141448KB, Max RSS = 122000KB
+
+HerschelEvents2-156.xml
+
+Verifying property 1 at line 4
+ -- Property MAY be satisfied.
+sup:
+WCRT[0] <= 39000000
+WCRT[1] <= 13
+WCRT[2] <= 83
+WCRT[3] <= 70
+WCRT[4] <= 103
+WCRT[5] <= 113
+WCRT[6] <= 173
+WCRT[7] <= 243
+WCRT[8] <= 313
+WCRT[9] <= 383
+WCRT[10] <= 533
+WCRT[11] <= 933
+WCRT[12] <= 1103
+WCRT[13] <= 0
+WCRT[14] <= 5153
+WCRT[15] <= 5873
+WCRT[16] <= 6273
+WCRT[17] <= 5380
+WCRT[18] <= 11615
+WCRT[19] <= 6473
+WCRT[20] <= 9473
+WCRT[21] <= 54115
+WCRT[22] <= 53994
+WCRT[23] <= 2503
+WCRT[24] <= 4953
+WCRT[25] <= 17863
+WCRT[26] <= 9813
+WCRT[27] <= 14796
+WCRT[28] <= 11896
+WCRT[29] <= 94346
+WCRT[30] <= 65177
+WCRT[31] <= 110666
+WCRT[32] <= 154556
+WCRT[33] <= 15046
+idleTime <= 14178260
+usedTime <= 24821740
+globalTime <= 39000000
+ -- States stored : 0 states
+ -- States explored : 343402 states
+789.41 user, 0.65 system, 801.18 elapsed -- Max VSize = 91204KB, Max RSS = 76228KB
+
+HerschelEvents2-256.xml
+
+Verifying property 1 at line 4
+ -- Property MAY be satisfied.
+sup:
+WCRT[0] <= 64000000
+WCRT[1] <= 13
+WCRT[2] <= 83
+WCRT[3] <= 70
+WCRT[4] <= 103
+WCRT[5] <= 113
+WCRT[6] <= 173
+WCRT[7] <= 243
+WCRT[8] <= 313
+WCRT[9] <= 383
+WCRT[10] <= 533
+WCRT[11] <= 933
+WCRT[12] <= 1103
+WCRT[13] <= 0
+WCRT[14] <= 5153
+WCRT[15] <= 5873
+WCRT[16] <= 6273
+WCRT[17] <= 5380
+WCRT[18] <= 11615
+WCRT[19] <= 6473
+WCRT[20] <= 9473
+WCRT[21] <= 54115
+WCRT[22] <= 53994
+WCRT[23] <= 2503
+WCRT[24] <= 4953
+WCRT[25] <= 17863
+WCRT[26] <= 9813
+WCRT[27] <= 14796
+WCRT[28] <= 11896
+WCRT[29] <= 94346
+WCRT[30] <= 65177
+WCRT[31] <= 110666
+WCRT[32] <= 154556
+WCRT[33] <= 15046
+idleTime <= 23266890
+usedTime <= 40733180
+globalTime <= 64000000
+ -- States stored : 0 states
+ -- States explored : 11270279 states
+23219.38 user, 10.31 system, 23299.28 elapsed -- Max VSize = 224440KB, Max RSS = 207264KB
+
+HerschelEvents2-512.xml
+
+Verifying property 1 at line 4
+ -- Property MAY be satisfied.
+sup:
+WCRT[0] <= 128000000
+WCRT[1] <= 13
+WCRT[2] <= 83
+WCRT[3] <= 70
+WCRT[4] <= 103
+WCRT[5] <= 113
+WCRT[6] <= 173
+WCRT[7] <= 243
+WCRT[8] <= 313
+WCRT[9] <= 383
+WCRT[10] <= 533
+WCRT[11] <= 933
+WCRT[12] <= 1103
+WCRT[13] <= 0
+WCRT[14] <= 5153
+WCRT[15] <= 5873
+WCRT[16] <= 6273
+WCRT[17] <= 5380
+WCRT[18] <= 11615
+WCRT[19] <= 6473
+WCRT[20] <= 9473
+WCRT[21] <= 54115
+WCRT[22] <= 53994
+WCRT[23] <= 2503
+WCRT[24] <= 4953
+WCRT[25] <= 17863
+WCRT[26] <= 9813
+WCRT[27] <= 14796
+WCRT[28] <= 11896
+WCRT[29] <= 94346
+WCRT[30] <= 65177
+WCRT[31] <= 110666
+WCRT[32] <= 154556
+WCRT[33] <= 15046
+idleTime <= 46533780
+usedTime <= 81466290
+globalTime <= 128000000
+ -- States stored : 0 states
+ -- States explored : 22540388 states
+49202.23 user, 39.05 system, 50906.43 elapsed -- Max VSize = 390428KB, Max RSS = 362288KB
