@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>typedef int[0, 1&lt;&lt;30] u32_t;
+
+clock t;
+
+/** Population: */
+clock susceptible_athome = 55000.0;
+clock susceptible_atwork = 0.0;
+clock susceptible_atshop = 0.0;
+double susceptible() { return susceptible_athome+susceptible_atwork+susceptible_atshop; }
+
+clock exposed_athome = 0.0;
+clock exposed_atwork = 0.0;
+clock exposed_atshop = 1.0;
+
+clock positive_athome = 0.0;
+clock positive_atwork = 0.0;
+clock positive_atshop = 0.0;
+
+clock infected_athome = 0.0;
+clock infected_atshop = 0.0;
+double infectious() { return exposed_athome+exposed_atwork+exposed_atshop+infected_athome+infected_atshop; }
+
+clock hospitalized = 0.0;
+clock recovered = 0.0;
+clock dead = 0.0;
+</declaration>
+	<template>
+		<name x="5" y="5">P</name>
+		<declaration>clock x;</declaration>
+		<location id="id0" x="-144" y="187">
+			<label kind="invariant" x="-154" y="204">x&lt;=7 &amp;&amp;
+susceptible_athome' == -1.5*susceptible_athome + 3.2*susceptible_atwork + 24*susceptible_atshop + -1e-06*susceptible_athome*exposed_athome + -1e-06*susceptible_athome*exposed_athome &amp;&amp;
+susceptible_atwork' == 1.5*susceptible_athome + -3.2*susceptible_atwork + -0.333333*susceptible_atwork + -0.0002*susceptible_atwork*exposed_atwork &amp;&amp;
+susceptible_atshop' == 0 &amp;&amp;
+exposed_athome' == -1.5*exposed_athome + 3.2*exposed_atwork + 24*exposed_atshop + -0.2*exposed_athome + 1e-06*susceptible_athome*exposed_athome &amp;&amp;
+exposed_atwork' == 1.5*exposed_athome + -3.2*exposed_atwork + -0.333333*exposed_atwork + -0.2*exposed_atwork + 0.0002*susceptible_atwork*exposed_atwork &amp;&amp;
+exposed_atshop' == 0 &amp;&amp;
+infected_athome' == 0.2*exposed_athome + 0.2*exposed_atwork + 0.2*exposed_atshop + -0.2*infected_athome + -0.047619*infected_athome + -0.142857*infected_athome + 24*infected_atshop + 1e-06*susceptible_athome*exposed_athome &amp;&amp;
+infected_atshop' == 0 &amp;&amp;
+hospitalized' == 0.142857*infected_athome + 0.142857*infected_atshop + -0.047619*hospitalized + -0.0178571*hospitalized &amp;&amp;
+recovered' == 0.047619*infected_athome + 0.047619*infected_atshop + 0.047619*hospitalized &amp;&amp;
+dead' == 0.0178571*hospitalized</label>
+		</location>
+		<location id="id1" x="-144" y="-127">
+			<label kind="invariant" x="-127" y="-127">x&lt;=7 &amp;&amp;
+susceptible_athome' == -1.5*susceptible_athome + 3.2*susceptible_atwork + 24*susceptible_atshop + -1e-06*susceptible_athome*exposed_athome + -1e-06*susceptible_athome*exposed_athome &amp;&amp;
+susceptible_atwork' == 1.5*susceptible_athome + -3.2*susceptible_atwork + -0.333333*susceptible_atwork + -0.0002*susceptible_atwork*exposed_atwork &amp;&amp;
+susceptible_atshop' == 0.333333*susceptible_atwork + -24*susceptible_atshop + -0.00142857*susceptible_atshop*exposed_atshop + -0.0002*susceptible_atshop*exposed_atshop &amp;&amp;
+exposed_athome' == -1.5*exposed_athome + 3.2*exposed_atwork + 24*exposed_atshop + -0.2*exposed_athome + 1e-06*susceptible_athome*exposed_athome &amp;&amp;
+exposed_atwork' == 1.5*exposed_athome + -3.2*exposed_atwork + -0.333333*exposed_atwork + -0.2*exposed_atwork + 0.0002*susceptible_atwork*exposed_atwork &amp;&amp;
+exposed_atshop' == 0.333333*exposed_atwork + -24*exposed_atshop + -0.2*exposed_atshop + 0.00142857*susceptible_atshop*exposed_atshop &amp;&amp;
+infected_athome' == 0.2*exposed_athome + 0.2*exposed_atwork + 0.2*exposed_atshop + -0.2*infected_athome + -0.047619*infected_athome + -0.142857*infected_athome + 24*infected_atshop + 1e-06*susceptible_athome*exposed_athome &amp;&amp;
+infected_atshop' == 0.2*infected_athome + -24*infected_atshop + -0.047619*infected_atshop + -0.142857*infected_atshop + 0.0002*susceptible_atshop*exposed_atshop &amp;&amp;
+hospitalized' == 0.142857*infected_athome + 0.142857*infected_atshop + -0.047619*hospitalized + -0.0178571*hospitalized &amp;&amp;
+recovered' == 0.047619*infected_athome + 0.047619*infected_atshop + 0.047619*hospitalized &amp;&amp;
+dead' == 0.0178571*hospitalized</label>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-203" y="153">x==7</label>
+			<label kind="assignment" x="-203" y="187">x=0</label>
+			<nail x="-221" y="187"/>
+			<nail x="-221" y="-127"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-127" y="93">x&gt;=7</label>
+			<label kind="assignment" x="-127" y="110">susceptible_athome = susceptible_athome + susceptible_atshop, susceptible_atshop = 0,
+exposed_athome = exposed_athome + exposed_atshop, exposed_atshop = 0,
+infected_athome = infected_athome + infected_atshop, infected_atshop = 0,
+x=0</label>
+		</transition>
+	</template>
+	<system>system P;</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=90] {
+  susceptible(), infectious(), hospitalized, recovered, dead
+}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=90] {
+  susceptible_athome, susceptible_atwork, susceptible_atshop,
+  exposed_athome, exposed_atwork, exposed_atshop,
+  infected_athome, infected_atshop,
+  hospitalized, recovered, dead
+}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=7] {
+  susceptible_athome, susceptible_atwork, susceptible_atshop,
+  exposed_athome, exposed_atwork, exposed_atshop,
+  infected_athome, infected_atshop,
+  hospitalized, recovered, dead
+}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=21] {
+  susceptible_athome+susceptible_atwork+susceptible_atshop,
+  exposed_athome+exposed_atwork+exposed_atshop,
+  infected_athome+infected_atshop,
+  hospitalized, recovered, dead
+}//: 1 : (exposed_athome+exposed_atwork+exposed_atshop+infected_athome+infected_atshop)==0</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

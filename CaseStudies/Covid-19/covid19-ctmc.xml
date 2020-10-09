@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>typedef int[0, 1&lt;&lt;30] u32_t;
+
+clock t;</declaration>
+	<template>
+		<name x="5" y="5">Move</name>
+		<parameter>u32_t&amp; from, u32_t&amp; to, const double half_life</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="0" y="8">
+			<label kind="exponentialrate" x="-34" y="25">1.0*from/half_life</label>
+			<label kind="comments" x="-42" y="51">Conversion:
+from -&gt; to   with 1/half_life rate</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="42" y="-42">from&gt;0</label>
+			<label kind="assignment" x="42" y="-25">from--,
+to++</label>
+			<nail x="-34" y="-43"/>
+			<nail x="34" y="-43"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Infect</name>
+		<parameter>u32_t&amp; susceptible, u32_t&amp; exposed, u32_t&amp; res, const double half_life</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id1" x="0" y="8">
+			<label kind="exponentialrate" x="-34" y="25">1.0*susceptible*exposed/half_life</label>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="42" y="-51">susceptible&gt;0 &amp;&amp;
+exposed&gt;0</label>
+			<label kind="assignment" x="42" y="-17">susceptible--,
+res++</label>
+			<nail x="-34" y="-43"/>
+			<nail x="34" y="-43"/>
+		</transition>
+	</template>
+	<system>/** Population: */
+u32_t susceptible_athome = 55000;
+u32_t susceptible_atwork = 0;
+u32_t susceptible_atshop = 0;
+u32_t susceptible() { return susceptible_athome+susceptible_atwork+susceptible_atshop; }
+
+u32_t exposed_athome = 0;
+u32_t exposed_atwork = 0;
+u32_t exposed_atshop = 1;
+
+u32_t positive_athome = 0;
+u32_t positive_atwork = 0;
+u32_t positive_atshop = 0;
+
+u32_t infected_athome = 0;
+u32_t infected_atshop = 0;
+u32_t infectious() { return exposed_athome+exposed_atwork+exposed_atshop+infected_athome+infected_atshop; }
+
+u32_t hospitalized = 0;
+u32_t recovered = 0;
+u32_t dead = 0;
+
+/** 1 time unit = 1 day */
+/** Behavior: susceptible life style */
+h_home_work = Move(susceptible_athome, susceptible_atwork, 16.0/24);// half-life: 16h
+h_work_home = Move(susceptible_atwork, susceptible_athome, 7.5/24); // 7.5h
+h_work_shop = Move(susceptible_atwork, susceptible_atshop, 3.0);    // once per 3 days
+h_shop_home = Move(susceptible_atshop, susceptible_athome, 1.0/24); // 1h
+
+/** Behavior: exposed without symptoms life style */
+i_home_work = Move(exposed_athome, exposed_atwork, 16.0/24);
+i_work_home = Move(exposed_atwork, exposed_athome, 7.5/24);
+i_work_shop = Move(exposed_atwork, exposed_atshop, 3.0);
+i_shop_home = Move(exposed_atshop, exposed_athome, 1.0/24);
+
+/** Behavior: from exposed to infected with symptoms (incubation period)  */
+i_home_infected = Move(exposed_athome, infected_athome, 5.0);
+i_work_infected = Move(exposed_atwork, infected_athome, 5.0);
+i_shop_infected = Move(exposed_atshop, infected_athome, 5.0);
+
+/** behavior: infected, not going to work, minimize shopping */
+s_home_shop    = Move(infected_athome, infected_atshop,  5.0);
+s_home_recover = Move(infected_athome, recovered,    21.0);
+s_home_hosp    = Move(infected_athome, hospitalized, 7.0);
+s_shop_home    = Move(infected_atshop, infected_athome,  1.0/24);
+s_shop_recover = Move(infected_atshop, recovered,    21.0);
+s_shop_hosp    = Move(infected_atshop, hospitalized, 7.0);
+s_hosp_recover = Move(hospitalized, recovered,   21.0);
+s_hosp_dead    = Move(hospitalized, dead,        56.0);
+
+/** Infection spread: */
+const double home_hl = 1000000.0; // half-life of transition at home
+const double work_hl = 5000.0; // half-life of transition at work
+const double shop_hl = 700.0; // half-life of transition at shop
+i_infect_athome = Infect(susceptible_athome, exposed_athome, exposed_athome, home_hl);
+i_infect_atwork = Infect(susceptible_atwork, exposed_atwork, exposed_atwork, work_hl);
+i_infect_atshop = Infect(susceptible_atshop, exposed_atshop, exposed_atshop, shop_hl);
+
+s_infect_athome = Infect(susceptible_athome, infected_athome, exposed_athome, home_hl);
+s_infect_atshop = Infect(susceptible_atshop, infected_atshop, exposed_atshop, work_hl);
+
+system
+h_home_work, i_home_work, // disable this for quarantine
+h_work_home, i_work_home,
+h_work_shop, i_work_shop,
+h_shop_home, i_shop_home,
+i_home_infected, i_work_infected, i_shop_infected,
+s_home_shop, s_home_recover, s_home_hosp,
+s_shop_home, s_shop_recover, s_shop_hosp,
+s_hosp_recover, s_hosp_dead,
+i_infect_athome, s_infect_athome,
+i_infect_atwork,
+i_infect_atshop, s_infect_atshop
+;
+</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=31] {
+  susceptible(), infectious(), hospitalized, recovered, dead
+}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=31] {
+  susceptible_athome, susceptible_atwork, susceptible_atshop,
+  exposed_athome, exposed_atwork, exposed_atshop,
+  infected_athome, infected_atshop,
+  hospitalized, recovered, dead
+}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=21] {
+  susceptible_athome+susceptible_atwork+susceptible_atshop,
+  exposed_athome+exposed_atwork+exposed_atshop,
+  infected_athome+infected_atshop,
+  hospitalized, recovered, dead
+}//: 1 : (exposed_athome+exposed_atwork+exposed_atshop+infected_athome+infected_atshop)==0</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
