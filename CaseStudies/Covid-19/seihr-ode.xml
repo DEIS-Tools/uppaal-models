@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/** 
+The model is part of the following publication (Fig.2):
+"Fluid Model-Checking in UPPAAL for Covid-19" by 
+Peter G. Jensen, Kenneth Y. Jørgensen, Kim G. Larsen, Marius Mikučionis, Marco Muñiz, and Danny B. Poulsen.
+in "Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2020)"
+October 2020.
+
+The model shows aggregated ODE approach for the SEIHR diagram.
+
+The model is typeset by Marius Mikucionis using the coefficients from the note
+"Stochastic Epidemic Models for Estimation and Forecasting"
+by Torben Knudsen, May 4, 2020.
+
+SEIHR model:
+S --&gt;^{beta*I*S/N} E --&gt;^{alpha*E} I --&gt;^{gamma*I} R
+I --&gt;^{kappa*I} H --&gt;^{tau*H} R
+H --&gt;^{phi*H} C --&gt;^{eta*C} D
+C --&gt;^{vphi*C} H
+
+Torben Knudsen used stepsize of 1min (1d/24/60 = 0.000694444d)
+*/
+
+typedef int[0,1&lt;&lt;31-1] int32_t;
+
+const int32_t N = 10000;    // whole population
+const double eps = 0.01;      // initial infected fraction, 0.0009 in SIR
+const double BRN = 2.4;       // basic reproductive number
+const double alpha = 1.0/5.1; // 0.1961
+const double gamma = 1.0/3.4; // later JJL suggested 1.0/3.1
+const double beta = BRN * gamma; // 0.7059
+const double p_H = 0.9e-3; // 0.011;       // from Thygesen2020
+const double kappa = gamma * p_H/(1.0-p_H);
+const double tau = 1.0/10.12; // 0.0988, from Lange2020 RegionH and RegionS_j
+
+clock S = (1.0-eps)*N;
+clock E = eps * N;
+clock I = 0.0;
+clock H = 0.0;
+clock R = 0.0;
+
+double u = 0.0; // quarantine input</declaration>
+	<template>
+		<name x="5" y="5">Simple</name>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="0" y="0">
+			<label kind="invariant" x="-17" y="17">S' == -beta*I*S/N                           &amp;&amp;
+E' == beta*I*S/N - alpha*E             &amp;&amp;
+I'  == alpha*E - (gamma+kappa)*I   &amp;&amp;
+H' == kappa*I - tau*H                      &amp;&amp;
+R' == gamma*I + tau*H</label>
+			<label kind="comments" x="25" y="-8">Quantities</label>
+		</location>
+		<init ref="id0"/>
+	</template>
+	<template>
+		<name x="5" y="5">P</name>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id1" x="0" y="0">
+			<label kind="invariant" x="-17" y="17">S' == -(1.0-u)*beta*I*S/N                &amp;&amp;
+E' == (1.0-u)*beta*I*S/N - alpha*E  &amp;&amp;
+I'  == alpha*E - (gamma+kappa)*I    &amp;&amp;
+H' == kappa*I - tau*H                       &amp;&amp;
+R' == gamma*I + tau*H</label>
+			<label kind="comments" x="17" y="-8">Quantities</label>
+		</location>
+		<init ref="id1"/>
+	</template>
+	<template>
+		<name>Quarantine</name>
+		<declaration>clock x;</declaration>
+		<location id="id2" x="-76" y="102">
+		</location>
+		<location id="id3" x="-76" y="17">
+			<label kind="invariant" x="-59" y="8">x&lt;=25</label>
+			<label kind="comments" x="8" y="0">2020-04-15 First opening
+2020-05-10 Complete opening</label>
+		</location>
+		<location id="id4" x="-76" y="-85">
+			<name x="-59" y="-102">Lockdown</name>
+			<label kind="invariant" x="-59" y="-85">x&lt;=33</label>
+			<label kind="comments" x="25" y="-102">2020-03-13 Lockdown
+2020-04-15 First opening</label>
+		</location>
+		<location id="id5" x="-76" y="-195">
+			<name x="-59" y="-212">First</name>
+			<label kind="invariant" x="-59" y="-195">x&lt;=17</label>
+			<label kind="comments" x="0" y="-212">2020-02-25 First confirmed Covid19 case
+2020-03-13 Lockdown</label>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-68" y="34">x&gt;=25</label>
+			<label kind="assignment" x="-68" y="51">u=0,
+x=0</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-68" y="-59">x&gt;=33</label>
+			<label kind="assignment" x="-68" y="-42">u=0.4,
+x=0</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-68" y="-170">x&gt;=17</label>
+			<label kind="assignment" x="-68" y="-153">u=0.5,
+x=0</label>
+		</transition>
+	</template>
+	<system>system P;
+</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=100] { S,E,I,H*1000,R}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=100] {H}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=200] { H, u*500 }</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

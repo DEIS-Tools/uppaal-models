@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**
+The model is part of the following publication (Fig.4):
+"Fluid Model-Checking in UPPAAL for Covid-19" by 
+Peter G. Jensen, Kenneth Y. Jørgensen, Kim G. Larsen, Marius Mikučionis, Marco Muñiz, and Danny B. Poulsen.
+in "Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2020)"
+October 2020.
+
+The model shows CTMC agent approach for the SEIHR diagram.
+*/
+
+typedef int[0,1&lt;&lt;31-1] int32_t;
+const int32_t N = 10000;    // whole population
+const double BRN = 2.4;       // basic reproductive number
+const double alpha = 1.0/5.1; // 0.1961
+const double gamma = 1.0/3.4; // later JJL suggested 1.0/3.1
+const double beta = BRN * gamma; // 0.7059
+const double p_H = 0.9e-3; // 0.011;       // from Thygesen2020
+const double kappa = gamma * p_H/(1.0-p_H);
+const double tau = 1.0/10.12; // 0.0988, from Lange2020 RegionH and RegionS_j
+
+const int E0 = 10;
+const int S0 = N-E0;
+
+int32_t susceptible = S0;
+int32_t exposed = E0;
+int32_t infectious = 0;
+int32_t hospitalized = 0;
+int32_t removed = 0;
+
+int hosp = 0;</declaration>
+	<template>
+		<name x="5" y="5">Pretty</name>
+		<parameter>const int32_t id</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="-476" y="-68">
+			<name x="-493" y="-59">S</name>
+			<label kind="exponentialrate" x="-493" y="-102">beta * infectious/N</label>
+		</location>
+		<location id="id1" x="-340" y="-68">
+			<name x="-357" y="-59">E</name>
+			<label kind="exponentialrate" x="-348" y="-102">alpha</label>
+		</location>
+		<location id="id2" x="-204" y="-68">
+			<name x="-212" y="-59">I</name>
+			<label kind="exponentialrate" x="-212" y="-102">kappa+gamma</label>
+		</location>
+		<location id="id3" x="-51" y="-68">
+			<name x="-43" y="-59">R</name>
+		</location>
+		<location id="id4" x="-170" y="34">
+			<name x="-195" y="42">H</name>
+			<label kind="exponentialrate" x="-153" y="42">tau</label>
+		</location>
+		<branchpoint id="id5" x="-170" y="-68">
+		</branchpoint>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id3"/>
+			<label kind="assignment" x="-153" y="-85">--infectious</label>
+			<label kind="probability" x="-144" y="-68">gamma</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="assignment" x="-255" y="-25">--infectious</label>
+			<label kind="probability" x="-221" y="-8">kappa</label>
+			<label kind="comments" x="-459" y="68">The floating point expressions in weights 
+are supported since Uppaal 4.1.25.
+An integer workaround: fint(1e6*kappa)</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id5"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<nail x="-94" y="34"/>
+			<nail x="-51" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="assignment" x="-323" y="-68">++infectious</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Susceptible</name>
+		<parameter>const int32_t id</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id6" x="-476" y="-68">
+			<name x="-493" y="-59">S</name>
+			<label kind="exponentialrate" x="-493" y="-102">beta * infectious/N</label>
+		</location>
+		<location id="id7" x="-340" y="-68">
+			<name x="-357" y="-59">E</name>
+			<label kind="exponentialrate" x="-348" y="-102">alpha</label>
+		</location>
+		<location id="id8" x="-204" y="-68">
+			<name x="-212" y="-59">I</name>
+			<label kind="exponentialrate" x="-212" y="-102">kappa+gamma</label>
+		</location>
+		<location id="id9" x="-25" y="-68">
+			<name x="-17" y="-59">R</name>
+		</location>
+		<location id="id10" x="-170" y="34">
+			<name x="-195" y="42">H</name>
+			<label kind="exponentialrate" x="-153" y="42">tau</label>
+		</location>
+		<branchpoint id="id11" x="-170" y="-68">
+		</branchpoint>
+		<init ref="id6"/>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id9"/>
+			<label kind="assignment" x="-144" y="-85">--infectious</label>
+			<label kind="probability" x="-127" y="-68">gamma</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id10"/>
+			<label kind="assignment" x="-297" y="-34">--infectious, 
+hosp+=(id&lt;=30)</label>
+			<label kind="probability" x="-238" y="0">kappa</label>
+			<label kind="comments" x="-484" y="17">Hospitalization count of the first 30.</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id11"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<nail x="-68" y="34"/>
+			<nail x="-25" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="assignment" x="-323" y="-68">++infectious</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Exposed</name>
+		<parameter>const int32_t id</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id12" x="-476" y="-68">
+			<name x="-493" y="-59">S</name>
+			<label kind="exponentialrate" x="-493" y="-102">beta * infectious/N</label>
+		</location>
+		<location id="id13" x="-340" y="-68">
+			<name x="-357" y="-59">E</name>
+			<label kind="exponentialrate" x="-348" y="-102">alpha</label>
+		</location>
+		<location id="id14" x="-204" y="-68">
+			<name x="-212" y="-59">I</name>
+			<label kind="exponentialrate" x="-212" y="-102">kappa+gamma</label>
+		</location>
+		<location id="id15" x="-25" y="-68">
+			<name x="-17" y="-59">R</name>
+		</location>
+		<location id="id16" x="-170" y="34">
+			<name x="-195" y="42">H</name>
+			<label kind="exponentialrate" x="-153" y="42">tau</label>
+		</location>
+		<branchpoint id="id17" x="-170" y="-68">
+		</branchpoint>
+		<init ref="id13"/>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id15"/>
+			<label kind="assignment" x="-144" y="-85">--infectious</label>
+			<label kind="probability" x="-136" y="-68">gamma</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="assignment" x="-255" y="-25">--infectious</label>
+			<label kind="probability" x="-221" y="-8">kappa</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id17"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<nail x="-68" y="34"/>
+			<nail x="-25" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="assignment" x="-323" y="-68">++infectious</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Susceptible2</name>
+		<parameter>const int32_t id</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id18" x="-476" y="-68">
+			<name x="-493" y="-59">S</name>
+			<label kind="exponentialrate" x="-493" y="-102">beta * infectious/N</label>
+		</location>
+		<location id="id19" x="-340" y="-68">
+			<name x="-357" y="-59">E</name>
+			<label kind="exponentialrate" x="-348" y="-102">alpha</label>
+		</location>
+		<location id="id20" x="-204" y="-68">
+			<name x="-212" y="-59">I</name>
+			<label kind="exponentialrate" x="-212" y="-102">kappa+gamma</label>
+		</location>
+		<location id="id21" x="-25" y="-68">
+			<name x="-17" y="-59">R</name>
+		</location>
+		<location id="id22" x="-170" y="34">
+			<name x="-195" y="42">H</name>
+			<label kind="exponentialrate" x="-153" y="42">tau</label>
+		</location>
+		<branchpoint id="id23" x="-170" y="-68">
+		</branchpoint>
+		<init ref="id18"/>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id21"/>
+			<label kind="assignment" x="-144" y="-85">--infectious,
+++removed</label>
+			<label kind="probability" x="-144" y="-51">gamma</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id22"/>
+			<label kind="assignment" x="-297" y="-34">--infectious,
+++hospitalized,
+hosp+=(id&lt;=30)</label>
+			<label kind="probability" x="-238" y="17">kappa</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id23"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id21"/>
+			<label kind="assignment" x="-153" y="0">--hospitalized,
+++removed</label>
+			<nail x="-51" y="34"/>
+			<nail x="-25" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id20"/>
+			<label kind="assignment" x="-323" y="-68">--exposed,
+++infectious</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="assignment" x="-458" y="-68">--susceptible,
+++exposed</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Exposed2</name>
+		<parameter>const int32_t id</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id24" x="-476" y="-68">
+			<name x="-493" y="-59">S</name>
+			<label kind="exponentialrate" x="-493" y="-102">beta * infectious/N</label>
+		</location>
+		<location id="id25" x="-340" y="-68">
+			<name x="-357" y="-59">E</name>
+			<label kind="exponentialrate" x="-348" y="-102">alpha</label>
+		</location>
+		<location id="id26" x="-204" y="-68">
+			<name x="-212" y="-59">I</name>
+			<label kind="exponentialrate" x="-212" y="-102">kappa+gamma</label>
+		</location>
+		<location id="id27" x="-25" y="-68">
+			<name x="-17" y="-59">R</name>
+		</location>
+		<location id="id28" x="-170" y="34">
+			<name x="-195" y="42">H</name>
+			<label kind="exponentialrate" x="-153" y="42">tau</label>
+		</location>
+		<branchpoint id="id29" x="-170" y="-68">
+		</branchpoint>
+		<init ref="id25"/>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id27"/>
+			<label kind="assignment" x="-144" y="-85">--infectious,
+++removed</label>
+			<label kind="probability" x="-144" y="-51">gamma</label>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id28"/>
+			<label kind="assignment" x="-297" y="-34">--infectious,
+++hospitalized,
+hosp+=(id&lt;=30)</label>
+			<label kind="probability" x="-238" y="17">kappa</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id29"/>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id27"/>
+			<label kind="assignment" x="-153" y="0">--hospitalized,
+++removed</label>
+			<nail x="-51" y="34"/>
+			<nail x="-25" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id26"/>
+			<label kind="assignment" x="-323" y="-68">--exposed,
+++infectious</label>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="assignment" x="-458" y="-68">--susceptible,
+++exposed</label>
+		</transition>
+	</template>
+	<system>clock t;
+
+/** Slower: */
+/*
+S(const int[1,S0] id)=Susceptible(id);
+E(const int[1,E0] id)=Exposed(id);
+*/
+/** Faster: */
+S(const int[1,S0] id)=Susceptible2(id);
+E(const int[1,E0] id)=Exposed2(id);
+
+system S,E;
+</system>
+	<queries>
+		<query>
+			<formula>// WARNING: these queries may take a long time (up to 30min) to evaluate</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=100] { 
+   0 + 0.2*S(1).E + 0.4*S(1).I + 0.6*S(1).H + 0.8*S(1).R,
+   2 + 0.2*S(2).E + 0.4*S(2).I + 0.6*S(2).H + 0.8*S(2).R,
+   4 + 0.2*S(3).E + 0.4*S(3).I + 0.6*S(3).H + 0.8*S(3).R,
+   6 + 0.2*S(4).E + 0.4*S(4).I + 0.6*S(4).H + 0.8*S(4).R,
+   8 + 0.2*S(5).E + 0.4*S(5).I + 0.6*S(5).H + 0.8*S(5).R,
+  10 + 0.2*S(6).E + 0.4*S(6).I + 0.6*S(6).H + 0.8*S(6).R,
+  12 + 0.2*S(7).E + 0.4*S(7).I + 0.6*S(7).H + 0.8*S(7).R,
+  14 + 0.2*S(8).E + 0.4*S(8).I + 0.6*S(8).H + 0.8*S(8).R,
+  16 + 0.2*S(9).E + 0.4*S(9).I + 0.6*S(9).H + 0.8*S(9).R,
+  18 + 0.2*S(10).E + 0.4*S(10).I + 0.6*S(10).H + 0.8*S(10).R
+}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=100] { susceptible, infectious, exposed, hospitalized*1000, removed }</formula>
+			<comment>Using Susceptible2 and Exposed2, population 10000, time: 86.72s</comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=100] { 
+  sum(i:int[1,S0]) S(i).S,
+  (sum(i:int[1,S0]) S(i).E) + (sum(i:int[1,E0]) E(i).E),
+  (sum(i:int[1,S0]) S(i).I) + (sum(i:int[1,E0]) E(i).I),
+  1000*((sum(i:int[1,S0]) S(i).H) + (sum(i:int[1,E0]) E(i).H)),
+  (sum(i:int[1,S0]) S(i).R) + (sum(i:int[1,E0]) E(i).R)
+}</formula>
+			<comment>Using Susceptible and Exposed, population: 10000, time: 392.23s</comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=100] { 
+   0 + 0.2*S(1).E + 0.4*S(1).I + 0.6*S(1).H + 0.8*S(1).R,
+   2 + 0.2*S(2).E + 0.4*S(2).I + 0.6*S(2).H + 0.8*S(2).R,
+   4 + 0.2*S(3).E + 0.4*S(3).I + 0.6*S(3).H + 0.8*S(3).R,
+   6 + 0.2*S(4).E + 0.4*S(4).I + 0.6*S(4).H + 0.8*S(4).R,
+   8 + 0.2*S(5).E + 0.4*S(5).I + 0.6*S(5).H + 0.8*S(5).R,
+  10 + 0.2*S(6).E + 0.4*S(6).I + 0.6*S(6).H + 0.8*S(6).R,
+  12 + 0.2*S(7).E + 0.4*S(7).I + 0.6*S(7).H + 0.8*S(7).R,
+  14 + 0.2*S(8).E + 0.4*S(8).I + 0.6*S(8).H + 0.8*S(8).R,
+  16 + 0.2*S(9).E + 0.4*S(9).I + 0.6*S(9).H + 0.8*S(9).R,
+  18 + 0.2*S(10).E + 0.4*S(10).I + 0.6*S(10).H + 0.8*S(10).R,
+  20 + 0.2*S(11).E + 0.4*S(11).I + 0.6*S(11).H + 0.8*S(11).R,
+  22 + 0.2*S(12).E + 0.4*S(12).I + 0.6*S(12).H + 0.8*S(12).R,
+  24 + 0.2*S(13).E + 0.4*S(13).I + 0.6*S(13).H + 0.8*S(13).R,
+  26 + 0.2*S(14).E + 0.4*S(14).I + 0.6*S(14).H + 0.8*S(14).R,
+  28 + 0.2*S(15).E + 0.4*S(15).I + 0.6*S(15).H + 0.8*S(15).R,
+  30 + 0.2*S(16).E + 0.4*S(16).I + 0.6*S(16).H + 0.8*S(16).R,
+  32 + 0.2*S(17).E + 0.4*S(17).I + 0.6*S(17).H + 0.8*S(17).R,
+  34 + 0.2*S(18).E + 0.4*S(18).I + 0.6*S(18).H + 0.8*S(18).R,
+  36 + 0.2*S(19).E + 0.4*S(19).I + 0.6*S(19).H + 0.8*S(19).R,
+  38 + 0.2*S(20).E + 0.4*S(20).I + 0.6*S(20).H + 0.8*S(20).R,
+  40 + 0.2*S(21).E + 0.4*S(21).I + 0.6*S(21).H + 0.8*S(21).R,
+  42 + 0.2*S(22).E + 0.4*S(22).I + 0.6*S(22).H + 0.8*S(22).R,
+  44 + 0.2*S(23).E + 0.4*S(23).I + 0.6*S(23).H + 0.8*S(23).R,
+  46 + 0.2*S(24).E + 0.4*S(24).I + 0.6*S(24).H + 0.8*S(24).R,
+  48 + 0.2*S(25).E + 0.4*S(25).I + 0.6*S(25).H + 0.8*S(25).R,
+  50 + 0.2*S(26).E + 0.4*S(26).I + 0.6*S(26).H + 0.8*S(26).R,
+  52 + 0.2*S(27).E + 0.4*S(27).I + 0.6*S(27).H + 0.8*S(27).R,
+  54 + 0.2*S(28).E + 0.4*S(28).I + 0.6*S(28).H + 0.8*S(28).R,
+  56 + 0.2*S(29).E + 0.4*S(29).I + 0.6*S(29).H + 0.8*S(29).R,
+  58 + 0.2*S(30).E + 0.4*S(30).I + 0.6*S(30).H + 0.8*S(30).R
+}</formula>
+			<comment>With population 10000 takes 86.2s to compute</comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=100] {
+   S(1).E + 2*S(1).I + 3*S(1).H + 4*S(1).R,
+   S(2).E + 2*S(2).I + 3*S(2).H + 4*S(2).R,
+   S(3).E + 2*S(3).I + 3*S(3).H + 4*S(3).R,
+   S(4).E + 2*S(4).I + 3*S(4).H + 4*S(4).R,
+   S(5).E + 2*S(5).I + 3*S(5).H + 4*S(5).R,
+   S(6).E + 2*S(6).I + 3*S(6).H + 4*S(6).R,
+   S(7).E + 2*S(7).I + 3*S(7).H + 4*S(7).R,
+   S(8).E + 2*S(8).I + 3*S(8).H + 4*S(8).R,
+   S(9).E + 2*S(9).I + 3*S(9).H + 4*S(9).R,
+   S(10).E + 2*S(10).I + 3*S(10).H + 4*S(10).R,
+   S(11).E + 2*S(11).I + 3*S(11).H + 4*S(11).R,
+   S(12).E + 2*S(12).I + 3*S(12).H + 4*S(12).R,
+   S(13).E + 2*S(13).I + 3*S(13).H + 4*S(13).R,
+   S(14).E + 2*S(14).I + 3*S(14).H + 4*S(14).R,
+   S(15).E + 2*S(15).I + 3*S(15).H + 4*S(15).R,
+   S(16).E + 2*S(16).I + 3*S(16).H + 4*S(16).R,
+   S(17).E + 2*S(17).I + 3*S(17).H + 4*S(17).R,
+   S(18).E + 2*S(18).I + 3*S(18).H + 4*S(18).R,
+   S(19).E + 2*S(19).I + 3*S(19).H + 4*S(19).R,
+   S(20).E + 2*S(20).I + 3*S(20).H + 4*S(20).R,
+   S(21).E + 2*S(21).I + 3*S(21).H + 4*S(21).R,
+   S(22).E + 2*S(22).I + 3*S(22).H + 4*S(22).R,
+   S(23).E + 2*S(23).I + 3*S(23).H + 4*S(23).R,
+   S(24).E + 2*S(24).I + 3*S(24).H + 4*S(24).R,
+   S(25).E + 2*S(25).I + 3*S(25).H + 4*S(25).R,
+   S(26).E + 2*S(26).I + 3*S(26).H + 4*S(26).R,
+   S(27).E + 2*S(27).I + 3*S(27).H + 4*S(27).R,
+   S(28).E + 2*S(28).I + 3*S(28).H + 4*S(28).R,
+   S(29).E + 2*S(29).I + 3*S(29).H + 4*S(29).R,
+   S(30).E + 2*S(30).I + 3*S(30).H + 4*S(30).R
+}</formula>
+			<comment>Using P1 template: population: 10000, time: 111.47s</comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=100; 100] {
+   S(1).E + 2*S(1).I + 3*S(1).H + 4*S(1).R,
+   S(2).E + 2*S(2).I + 3*S(2).H + 4*S(2).R,
+   S(3).E + 2*S(3).I + 3*S(3).H + 4*S(3).R,
+   S(4).E + 2*S(4).I + 3*S(4).H + 4*S(4).R,
+   S(5).E + 2*S(5).I + 3*S(5).H + 4*S(5).R,
+   S(6).E + 2*S(6).I + 3*S(6).H + 4*S(6).R,
+   S(7).E + 2*S(7).I + 3*S(7).H + 4*S(7).R,
+   S(8).E + 2*S(8).I + 3*S(8).H + 4*S(8).R,
+   S(9).E + 2*S(9).I + 3*S(9).H + 4*S(9).R,
+   S(10).E + 2*S(10).I + 3*S(10).H + 4*S(10).R,
+   S(11).E + 2*S(11).I + 3*S(11).H + 4*S(11).R,
+   S(12).E + 2*S(12).I + 3*S(12).H + 4*S(12).R,
+   S(13).E + 2*S(13).I + 3*S(13).H + 4*S(13).R,
+   S(14).E + 2*S(14).I + 3*S(14).H + 4*S(14).R,
+   S(15).E + 2*S(15).I + 3*S(15).H + 4*S(15).R,
+   S(16).E + 2*S(16).I + 3*S(16).H + 4*S(16).R,
+   S(17).E + 2*S(17).I + 3*S(17).H + 4*S(17).R,
+   S(18).E + 2*S(18).I + 3*S(18).H + 4*S(18).R,
+   S(19).E + 2*S(19).I + 3*S(19).H + 4*S(19).R,
+   S(20).E + 2*S(20).I + 3*S(20).H + 4*S(20).R,
+   S(21).E + 2*S(21).I + 3*S(21).H + 4*S(21).R,
+   S(22).E + 2*S(22).I + 3*S(22).H + 4*S(22).R,
+   S(23).E + 2*S(23).I + 3*S(23).H + 4*S(23).R,
+   S(24).E + 2*S(24).I + 3*S(24).H + 4*S(24).R,
+   S(25).E + 2*S(25).I + 3*S(25).H + 4*S(25).R,
+   S(26).E + 2*S(26).I + 3*S(26).H + 4*S(26).R,
+   S(27).E + 2*S(27).I + 3*S(27).H + 4*S(27).R,
+   S(28).E + 2*S(28).I + 3*S(28).H + 4*S(28).R,
+   S(29).E + 2*S(29).I + 3*S(29).H + 4*S(29).R,
+   S(30).E + 2*S(30).I + 3*S(30).H + 4*S(30).R
+} : 1 : hosp &amp;&amp; t&gt;=100</formula>
+			<comment>find a trace with at least one hospitalization</comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**
+The model is part of the following publication (Fig.3):
+"Fluid Model-Checking in UPPAAL for Covid-19" by 
+Peter G. Jensen, Kenneth Y. Jørgensen, Kim G. Larsen, Marius Mikučionis, Marco Muñiz, and Danny B. Poulsen.
+in "Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2020)"
+October 2020.
+
+The model shows aggregated CTMC approach for the SEIHR diagram.
+*/
+typedef int[0, 1&lt;&lt;31-1] u32_t;
+</declaration>
+	<template>
+		<name x="5" y="5">Move</name>
+		<parameter>const double rate, u32_t&amp; from, u32_t&amp; to</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="0" y="8">
+			<label kind="exponentialrate" x="-34" y="25">rate*from</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="42" y="-42">from&gt;0</label>
+			<label kind="assignment" x="42" y="-25">--from,
+++to</label>
+			<nail x="-34" y="-43"/>
+			<nail x="34" y="-43"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Infect</name>
+		<parameter>const double rate, u32_t&amp; susceptible, u32_t&amp; infected, u32_t&amp; exposed</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id1" x="0" y="8">
+			<label kind="exponentialrate" x="-34" y="25">rate*susceptible*infected</label>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="42" y="-51">susceptible&gt;0 &amp;&amp;
+infected&gt;0</label>
+			<label kind="assignment" x="42" y="-17">--susceptible,
+++exposed</label>
+			<nail x="-34" y="-43"/>
+			<nail x="34" y="-43"/>
+		</transition>
+	</template>
+	<system>/** Population: */
+
+const u32_t N = 10000;    // whole population
+const double eps = 0.01;      // initial infected fraction, 0.0009 in SIR
+const double BRN = 2.4;       // basic reproductive number
+const double alpha = 1.0/5.1; // 0.1961
+const double gamma = 1.0/3.4; // later JJL suggested 1.0/3.1
+const double beta = BRN * gamma; // 0.7059
+const double p_H = 0.9e-3;       // 0.011; // from Thygesen2020
+const double kappa = gamma * p_H/(1.0-p_H);
+const double tau = 1.0/10.12; // 0.0988, from Lange2020 RegionH and RegionS_j
+
+u32_t S = fint(N-N*eps);
+u32_t E = fint(N*eps);
+u32_t I = 0;
+u32_t H = 0;
+u32_t R = 0;
+
+I_infect = Infect(beta/N, S, I, E);
+E_to_I = Move(alpha, E, I);
+I_to_H = Move(kappa, I, H);
+H_to_R = Move(tau, H, R);
+I_to_R = Move(gamma, I, R);
+
+system I_infect, E_to_I, I_to_H, H_to_R, I_to_R;
+
+
+</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=100] {S, E, I, H*1000, R}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=100;100] {H}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

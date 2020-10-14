@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
 <nta>
-	<declaration>typedef int[0, 1&lt;&lt;30] u32_t;
+	<declaration>/**
+The model is part of the following publication:
+"Fluid Model-Checking in UPPAAL for Covid-19" by 
+Peter G. Jensen, Kenneth Y. Jørgensen, Kim G. Larsen, Marius Mikučionis, Marco Muñiz, and Danny B. Poulsen.
+in "Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2020)"
+October 2020.
+
+The model is an early proof of concept by Marius Mikucionis,
+showing that we can actually model the epidemics.
+*/
+
+typedef int[0, 1&lt;&lt;31-1] u32_t;
 
 clock t;
 
