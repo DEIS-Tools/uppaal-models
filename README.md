@@ -6,14 +6,14 @@ Everyone is welcome to contribute by sending a pull-request or the model to [Mar
 The model should fall under one or several categories below.
 Please note the origins of the model file (authors, companies, universities, references to papers, reports, websites, previous versions).
 
-## Demos
+## [Demos](Demos)
 
 Demo models demonstrate concepts and/or features.
 They should be focused, small and easy to understand.
 The verification should not take much effort, a few seconds at most.
 The model should explain the intentions and result interpretations in the comments.
 
-## Case Studies
+## [Case Studies](CaseStudies)
 
 Case study models are the result of analysis of a real phenomena.
 The models may contain many features, details and may take a lot of resources to verify.
