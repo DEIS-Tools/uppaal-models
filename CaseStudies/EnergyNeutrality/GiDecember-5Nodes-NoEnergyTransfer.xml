@@ -1,0 +1,791 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/*
+*  --------- BEGIN CONFIGURATION SECTION
+*/
+
+const int MaxTime = 485;
+typedef int[0,MaxTime] time_t;
+
+// Number of tasks
+const int Tasks = 11;                 
+typedef int[0,Tasks-1] t_id;
+
+// Number of resources
+const int Procs = 5;                 
+typedef int[0,Procs-1] r_id;
+
+typedef struct { 
+  bool periodic;
+  time_t initial_offset;
+  time_t min_period;
+  time_t max_period;
+  time_t offset;
+  time_t deadline;
+  time_t bcet;
+  time_t wcet;
+  r_id resource;
+  int pri;  
+} task_t;
+
+
+//init_offset, min_period, max_period, offset, deadline, bcet, wcet, resource, priority
+//time units in minutes
+const task_t task[Tasks] = {
+
+{true,0,120,120,0,120,5,5,0,1}, //Elevator
+{true,0,120,120,0,120,5,5,1,1}, //Engine
+
+{true,0,120,120,0,120,10,10,1,1}, //Aircraft dynamics
+
+{true,0,240,240,0,240,5,5,0,1}, //H_filter 
+{true,0,240,240,0,240,5,5,1,1}, //Az_filter
+{true,0,240,240,0,240,5,5,2,1}, //Vz_filter
+{true,0,240,240,0,240,5,5,3,1}, //Q_filter
+{true,0,240,240,0,240,5,5,4,1}, //Va_filter
+
+{true,0,480,480,0,480,5,5,0,1}, //Altitude_hold
+
+{true,0,480,480,0,480,5,5,1,1}, //Vz_control
+{true,0,480,480,0,480,5,5,4,1} //Va_control
+};
+
+
+typedef struct {
+  int[0,Tasks] length;
+  t_id element[Tasks];
+} buffer_t; 
+
+buffer_t buffer[Procs];
+
+const int Policies      = 3;
+const int EDF  		= 0;
+const int FIFO 		= 1;
+const int FPS  		= 2;
+
+broadcast chan inserted, insert_task[Policies];
+typedef int[0,Policies-1] policy_t;
+
+
+/*
+* Task graph definition of dependencies
+*
+* Meaning of Depend[i][j]:
+*    - 0/false : task i does not depend on task j
+*    - 1/true  : task i depends on task j
+*/
+const bool Depend[Tasks][Tasks] = {  // Task graph
+{0,0,0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0,0,0},
+
+{1,1,0,0,0,0,0,0,0,0,0},
+
+{0,0,1,0,0,0,0,0,0,0,0},
+{0,0,1,0,0,0,0,0,0,0,0},
+{0,0,1,0,0,0,0,0,0,0,0},
+{0,0,1,0,0,0,0,0,0,0,0},
+{0,0,1,0,0,0,0,0,0,0,0},
+
+{0,0,0,1,0,0,0,0,0,0,0},
+
+{0,0,0,0,1,1,1,0,1,0,0},
+{0,0,0,0,0,1,0,1,0,0,0}
+
+};
+
+
+/*
+*  --------- END CONFIGURATION SECTION
+*/
+clock time[Tasks];//, exec[Tasks];
+bool complete[Tasks];
+
+urgent broadcast chan ready[Procs];
+broadcast chan finished[Tasks];//run[Procs+1], stop[Procs], done[Procs];
+
+meta struct {
+  meta t_id task;
+  meta r_id resource;
+  meta bool preempt;
+} param;
+
+void setParams(t_id t, r_id r, bool preempt) {
+  param.task = t; param.resource = r; param.preempt = preempt;
+}
+
+//meta t_id ready_task;
+// modified by AG in order to have a more consistent behavior w.r.t Task IDs while executing on the resources
+t_id ready_task;
+
+void insert_at(int[0,Tasks] pos, t_id tid, r_id rid) {
+  int i;
+  for(i = buffer[rid].length; i &gt; pos; i--) {
+    buffer[rid].element[i] = buffer[rid].element[i-1];
+  }
+  buffer[rid].element[pos] = tid;
+  buffer[rid].length++;
+
+}
+
+
+
+
+// Girona irradiation curve parameters in december
+const double HEIGHT = 85000.0;
+const double SIGMA = 80.0; 
+const double MU = 200.0; 
+const int OFFSET = -470;
+
+
+// storage configs for GiD (in Watt.minutes)
+const int max_batt[Procs] = {400,1405,105,105,200};
+const int min_batt[Procs] = {0,0,0,0,0};
+
+
+// nb minutes within a day
+const int DAY = 1440;
+
+
+// threshold constant for resuming battery recharging
+const double BATT_THRESHOLD = 0.5;
+
+
+// solar panel parameters 
+//const int WattPeak = 30;
+const double panel_area=0.4;
+const double conv_eff=0.23;
+const double loss_coeff=0.95;
+
+
+// used in resource to compute dissipated power
+int pow_coeff[Procs] = {1,1,1,1,1};
+int load[Tasks] = {6,6,13,6,6,6,6,6,10,10,10};
+int[0,1] energyAvailable[Procs] = {1,1,1,1,1};
+
+
+// other variables
+clock global_time, battery_energy[Procs], depleted[Procs];
+
+double solar_panel_output;
+int dissipated_power[Procs];
+
+broadcast chan suspend[Procs], resume[Procs], resched[Procs];
+urgent broadcast chan empty_batt[Procs], replenished_batt[Procs];
+</declaration>
+	<template>
+		<name x="5" y="5">Task</name>
+		<parameter>const t_id tid</parameter>
+		<declaration>clock x;
+
+bool dependencies_met() {
+  return forall (j : t_id)  Depend[tid][j] imply complete[j];
+}
+
+void completed() {
+  complete[tid] = true;
+}
+
+void new_period() {
+  complete[tid] = false;
+}
+
+bool periodic() { return task[tid].periodic; }
+time_t initialOffset() { return task[tid].initial_offset; }
+time_t minPeriod() { return task[tid].min_period; }
+time_t maxPeriod() { return task[tid].max_period; }
+time_t offset() { return task[tid].offset; }
+time_t deadline() { return task[tid].deadline; }
+time_t BCET() { return task[tid].bcet; }
+time_t WCET() { return task[tid].wcet; }
+time_t resource() { return task[tid].resource; }
+time_t priotiry() { return task[tid].pri; }
+
+int[0,1] isRunning() {
+  return (buffer[resource()].element[0] == tid? 1 : 0);
+}
+
+
+</declaration>
+		<location id="id0" x="-25" y="-442">
+			<name x="-178" y="-459">WaitingDependency</name>
+			<label kind="invariant" x="-136" y="-442">x' == 0</label>
+		</location>
+		<location id="id1" x="255" y="-238" color="#0000ff">
+			<name x="247" y="-221">Frozen</name>
+			<label kind="invariant" x="221" y="-178">x' == 0 &amp;&amp;
+time[tid]&lt;=
+deadline()</label>
+			<label kind="exponentialrate" x="255" y="-204">1e6</label>
+		</location>
+		<location id="id2" x="-204" y="-51">
+			<name x="-220" y="-83">Done</name>
+			<label kind="invariant" x="-228" y="-35">x' == 0</label>
+		</location>
+		<location id="id3" x="-25" y="-51">
+			<name x="0" y="-59">Completed</name>
+			<committed/>
+		</location>
+		<location id="id4" x="-195" y="-561">
+			<committed/>
+		</location>
+		<location id="id5" x="-195" y="-646">
+			<name x="-170" y="-661">Initial</name>
+			<label kind="invariant" x="-119" y="-664">x' == 0 &amp;&amp;
+time[tid] &lt;= initialOffset()</label>
+		</location>
+		<location id="id6" x="-204" y="-238" color="#ff0000">
+			<name x="-221" y="-221">Error</name>
+		</location>
+		<location id="id7" x="-25" y="43">
+			<name x="-8" y="17">PeriodDone</name>
+			<label kind="invariant" x="85" y="9">x' == 0 &amp;&amp;
+time[tid] &lt;= maxPeriod()</label>
+			<label kind="exponentialrate" x="0" y="43">1e6</label>
+		</location>
+		<location id="id8" x="-25" y="-239">
+			<name x="-9" y="-247">Ready</name>
+			<label kind="invariant" x="42" y="-264">x' == isRunning() &amp;&amp;
+x &lt;= WCET() &amp;&amp;
+time[tid] &lt;= deadline()</label>
+			<label kind="exponentialrate" x="-59" y="-222">1e6</label>
+		</location>
+		<location id="id9" x="-25" y="-561">
+			<name x="0" y="-569">WaitingOffset</name>
+			<label kind="invariant" x="102" y="-578">x' == 0 &amp;&amp;
+time[tid] &lt;= offset()</label>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="8" y="-476">dependencies_met() &amp;&amp;
+energyAvailable[resource()]==0</label>
+			<label kind="synchronisation" x="34" y="-442">ready[resource()]!</label>
+			<label kind="assignment" x="34" y="-425">ready_task = tid</label>
+			<nail x="255" y="-441"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id6"/>
+			<label kind="guard" x="34" y="-357">time[tid] &gt;= deadline()</label>
+			<label kind="synchronisation" x="34" y="-340">resched[resource()]!</label>
+			<nail x="222" y="-322"/>
+			<nail x="-178" y="-323"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="25" y="-196">resume[resource()]?</label>
+			<nail x="212" y="-196"/>
+			<nail x="17" y="-196"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="25" y="-298">suspend[resource()]?</label>
+			<nail x="17" y="-281"/>
+			<nail x="212" y="-280"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-17" y="-527">time[tid] == offset()</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-144" y="-68">!periodic()</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-17" y="-25">periodic()</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-195" y="-612">time[tid] == initialOffset()</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id9"/>
+			<label kind="assignment" x="-178" y="-552">time[tid] = 0, 
+x = 0,
+new_period()</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-221" y="25">time[tid] &gt;= minPeriod()</label>
+			<nail x="-238" y="42"/>
+			<nail x="-234" y="-562"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-187" y="-281">time[tid]&gt;=deadline()</label>
+			<label kind="synchronisation" x="-187" y="-264">resched[resource()]!</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-17" y="-161">x &gt;= BCET() &amp;&amp;
+time[tid] &lt;= maxPeriod()</label>
+			<label kind="synchronisation" x="-17" y="-127">finished[tid]!</label>
+			<label kind="assignment" x="-17" y="-110">completed()</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-161" y="-408">dependencies_met()</label>
+			<label kind="synchronisation" x="-161" y="-391">ready[resource()]!</label>
+			<label kind="assignment" x="-161" y="-374">ready_task = tid</label>
+		</transition>
+	</template>
+	<template>
+		<name>Policy_FIFO</name>
+		<location id="id10" x="-176" y="-128">
+			<committed/>
+		</location>
+		<location id="id11" x="-176" y="-248">
+		</location>
+		<init ref="id11"/>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-256" y="-128">inserted!</label>
+			<nail x="-224" y="-128"/>
+			<nail x="-224" y="-248"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-168" y="-232">insert_task[FIFO]?</label>
+			<label kind="assignment" x="-168" y="-200">insert_at(buffer[param.resource].length,
+	param.task,
+	param.resource)</label>
+		</transition>
+	</template>
+	<template>
+		<name>Policy_FPS</name>
+		<declaration>
+void insert_task_in_buffer() {
+  t_id t = param.task;
+  r_id r = param.resource;
+  int place = (param.preempt ? 0 : 1);
+  int i;
+  // Find out where to put the task
+  while ( place &lt; buffer[r].length &amp;&amp; task[buffer[r].element[place]].pri &gt;= task[t].pri ) {
+    place++;
+  }
+  insert_at(place,t,r);
+}</declaration>
+		<location id="id12" x="-176" y="-144">
+			<committed/>
+		</location>
+		<location id="id13" x="-176" y="-248">
+		</location>
+		<init ref="id13"/>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-256" y="-144">inserted!</label>
+			<nail x="-216" y="-144"/>
+			<nail x="-216" y="-248"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-170" y="-212">insert_task[FPS]?</label>
+			<label kind="assignment" x="-168" y="-192">insert_task_in_buffer()</label>
+		</transition>
+	</template>
+	<template>
+		<name>Policy_EDF</name>
+		<declaration>int[0,Tasks] place;
+t_id tid;
+r_id rid;
+bool preempt;
+
+void readParameters() {
+  tid = param.task; rid = param.resource; preempt = param.preempt;
+}
+
+void resetVars() {
+  place = tid = rid = 0;
+}</declaration>
+		<location id="id14" x="-176" y="-128">
+			<committed/>
+		</location>
+		<location id="id15" x="-176" y="-264">
+			<committed/>
+		</location>
+		<location id="id16" x="-176" y="-384">
+		</location>
+		<init ref="id16"/>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-288" y="-176">inserted!</label>
+			<label kind="assignment" x="-304" y="-232">resetVars()</label>
+			<nail x="-224" y="-128"/>
+			<nail x="-224" y="-384"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-128" y="-304">place &lt; buffer[rid].length &amp;&amp;
+time[tid]-task[tid].deadline &lt;=
+time[buffer[rid].element[place]] - task[buffer[rid].element[place]].deadline</label>
+			<label kind="assignment" x="-128" y="-256">place++</label>
+			<nail x="-136" y="-280"/>
+			<nail x="-136" y="-248"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-168" y="-232">place == buffer[rid].length ||
+time[tid]-task[tid].deadline &gt;
+time[buffer[rid].element[place]] - task[buffer[rid].element[place]].deadline</label>
+			<label kind="assignment" x="-168" y="-176">insert_at(place,tid,rid)</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-168" y="-368">insert_task[EDF]?</label>
+			<label kind="assignment" x="-168" y="-344">readParameters(),
+place = (preempt ? 0 : 1)</label>
+		</transition>
+	</template>
+	<template>
+		<name>Resource</name>
+		<parameter>const r_id rid, bool preemptive, policy_t policy</parameter>
+		<declaration>
+void removeTask() {
+  int i = 0;
+  buffer[rid].length--;
+  do {
+    buffer[rid].element[i] = buffer[rid].element[i+1];
+    i++;
+  } while (i &lt; buffer[rid].length);
+  buffer[rid].element[buffer[rid].length] = 0;
+}
+
+t_id front() { return buffer[rid].element[0]; }
+
+bool empty() {
+  return buffer[rid].length == 0;
+}
+</declaration>
+		<location id="id17" x="-611" y="-501">
+			<name x="-621" y="-535">st2</name>
+		</location>
+		<location id="id18" x="-416" y="-502">
+			<name x="-407" y="-493">st1</name>
+			<committed/>
+		</location>
+		<location id="id19" x="-849" y="-629">
+			<name x="-859" y="-663">st3</name>
+			<committed/>
+		</location>
+		<location id="id20" x="-841" y="-289">
+			<name x="-841" y="-264">InUse</name>
+		</location>
+		<location id="id21" x="-603" y="-629">
+			<name x="-619" y="-661">Idle</name>
+		</location>
+		<init ref="id21"/>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="-1087" y="-663">resched[rid]?</label>
+			<label kind="assignment" x="-1087" y="-646">removeTask(), 
+dissipated_power[rid]=0</label>
+			<nail x="-1011" y="-288"/>
+			<nail x="-1096" y="-289"/>
+			<nail x="-1096" y="-629"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="-1045" y="-272">resume[rid]?</label>
+			<label kind="assignment" x="-1096" y="-255">dissipated_power[rid]=
+pow_coeff[rid]*load[front()]</label>
+			<nail x="-926" y="-264"/>
+			<nail x="-883" y="-230"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="-696" y="-255">suspend[rid]?</label>
+			<label kind="assignment" x="-696" y="-238">dissipated_power[rid]=0</label>
+			<nail x="-696" y="-255"/>
+			<nail x="-730" y="-230"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-629" y="-399">empty()</label>
+			<label kind="assignment" x="-688" y="-383">insert_at(0,ready_task,rid), 
+dissipated_power[rid]=
+pow_coeff[rid]*load[front()]*
+energyAvailable[rid]</label>
+			<nail x="-467" y="-383"/>
+			<nail x="-713" y="-383"/>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="-815" y="-477">inserted?</label>
+			<label kind="assignment" x="-815" y="-460">dissipated_power[rid]=
+pow_coeff[rid]*load[front()]*
+energyAvailable[rid]</label>
+			<nail x="-611" y="-459"/>
+			<nail x="-824" y="-459"/>
+			<nail x="-841" y="-434"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-551" y="-578">!empty()</label>
+			<label kind="synchronisation" x="-577" y="-561">insert_task[policy]!</label>
+			<label kind="assignment" x="-577" y="-544">setParams(ready_task,
+  rid, preemptive)</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="-1070" y="-476">finished[front()]?</label>
+			<label kind="assignment" x="-1070" y="-459">removeTask(), 
+dissipated_power[rid]=0</label>
+			<nail x="-960" y="-365"/>
+			<nail x="-960" y="-535"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="-501" y="-289">ready[rid]?</label>
+			<nail x="-418" y="-289"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-866" y="-586">!empty()</label>
+			<label kind="assignment" x="-909" y="-569">dissipated_power[rid]=
+pow_coeff[rid]*load[front()]*
+energyAvailable[rid]</label>
+			<nail x="-892" y="-552"/>
+			<nail x="-892" y="-365"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-756" y="-646">empty()</label>
+			<label kind="assignment" x="-815" y="-629">dissipated_power[rid]=0</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="-518" y="-646">ready[rid]?</label>
+			<nail x="-419" y="-628"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">SolarPanel</name>
+		<parameter>double&amp; solar_panel_output</parameter>
+		<declaration>double irrad; 
+
+double solar_panel(double gTime) {
+ const double PI=3.14159265; double totalPow, result;
+ double timeOfTheDay = fmod(gTime,DAY);
+   
+ irrad = HEIGHT * ((1 / (SIGMA * sqrt(2.0*PI))) * exp(- ((timeOfTheDay + OFFSET - MU) * (timeOfTheDay + OFFSET - MU)) / (2 * SIGMA * SIGMA)));
+ return irrad * panel_area * conv_eff * loss_coeff;
+}
+</declaration>
+		<location id="id22" x="-578" y="-459">
+			<name x="-561" y="-484">nominal</name>
+			<label kind="exponentialrate" x="-586" y="-442">1e2</label>
+		</location>
+		<init ref="id22"/>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id22"/>
+			<label kind="assignment" x="-578" y="-578">solar_panel_output=
+solar_panel(global_time)</label>
+			<nail x="-578" y="-535"/>
+			<nail x="-408" y="-535"/>
+			<nail x="-408" y="-459"/>
+		</transition>
+	</template>
+	<template>
+		<name>BatteryManager</name>
+		<parameter>const r_id bid</parameter>
+		<location id="id23" x="-331" y="-493">
+			<name x="-399" y="-518">Nominal</name>
+			<label kind="invariant" x="-399" y="-595">battery_energy[bid]'== 
+solar_panel_output - 
+dissipated_power[bid]
+&amp;&amp; depleted[bid]'==0</label>
+			<label kind="exponentialrate" x="-314" y="-518">1e2</label>
+		</location>
+		<location id="id24" x="-586" y="-255">
+			<name x="-561" y="-263">Init</name>
+			<committed/>
+		</location>
+		<location id="id25" x="-586" y="-374">
+			<name x="-629" y="-382">Full</name>
+			<label kind="invariant" x="-671" y="-348">battery_energy[bid]'==0
+&amp;&amp; depleted[bid]'==0</label>
+			<label kind="exponentialrate" x="-629" y="-365">1e2</label>
+		</location>
+		<location id="id26" x="-42" y="-374">
+			<name x="-68" y="-365">Empty</name>
+			<label kind="invariant" x="-178" y="-331">battery_energy[bid]'==0
+&amp;&amp; depleted[bid]'==1</label>
+			<label kind="exponentialrate" x="-59" y="-348">1e2</label>
+		</location>
+		<location id="id27" x="-306" y="-374">
+			<committed/>
+		</location>
+		<init ref="id24"/>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-323" y="-459">battery_energy[bid] 
+&lt;= min_batt[bid]</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="-246" y="-408">empty_batt[bid]!</label>
+			<label kind="assignment" x="-246" y="-391">battery_energy[bid] = 
+min_batt[bid]</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id23"/>
+			<label kind="guard" x="-204" y="-561">solar_panel_output &gt; 
+dissipated_power[bid] + 
+BATT_THRESHOLD</label>
+			<label kind="synchronisation" x="-204" y="-510">replenished_batt[bid]!</label>
+			<nail x="-42" y="-493"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id23"/>
+			<label kind="guard" x="-544" y="-408">solar_panel_output &lt; 
+dissipated_power[bid]</label>
+			<nail x="-357" y="-374"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-671" y="-527">battery_energy[bid] &gt;=max_batt[bid]</label>
+			<label kind="assignment" x="-671" y="-510">battery_energy[bid] = max_batt[bid]</label>
+			<nail x="-586" y="-493"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="assignment" x="-586" y="-289">battery_energy[bid] = max_batt[bid]</label>
+		</transition>
+	</template>
+	<template>
+		<name>Controller</name>
+		<parameter>const r_id id</parameter>
+		<location id="id28" x="-943" y="-1028">
+			<name x="-1028" y="-1054">Nominal</name>
+		</location>
+		<location id="id29" x="-731" y="-1028">
+			<name x="-756" y="-1062">st1</name>
+			<committed/>
+		</location>
+		<location id="id30" x="-943" y="-1130">
+			<name x="-952" y="-1173">st2</name>
+		</location>
+		<location id="id31" x="-1147" y="-1130">
+			<name x="-1156" y="-1172">st3</name>
+			<committed/>
+		</location>
+		<init ref="id28"/>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id29"/>
+			<label kind="guard" x="-918" y="-960">energyAvailable[id]==0</label>
+			<label kind="synchronisation" x="-875" y="-943">ready[id]?</label>
+			<nail x="-943" y="-943"/>
+			<nail x="-731" y="-943"/>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id30"/>
+			<label kind="guard" x="-935" y="-1105">buffer[id].length &lt; 1</label>
+			<label kind="synchronisation" x="-935" y="-1088">empty_batt[id]?</label>
+			<label kind="assignment" x="-935" y="-1071">energyAvailable[id]=0</label>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="-1113" y="-1028">resume[id]!</label>
+			<nail x="-1147" y="-1028"/>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="-1122" y="-1164">replenished_batt[id]?</label>
+			<label kind="assignment" x="-1122" y="-1147">energyAvailable[id]=1</label>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="-858" y="-1147">suspend[id]!</label>
+			<nail x="-731" y="-1036"/>
+			<nail x="-731" y="-1045"/>
+			<nail x="-731" y="-1079"/>
+			<nail x="-731" y="-1130"/>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id29"/>
+			<label kind="guard" x="-918" y="-1028">buffer[id].length &gt;= 1</label>
+			<label kind="synchronisation" x="-892" y="-1011">empty_batt[id]?</label>
+			<label kind="assignment" x="-918" y="-994">energyAvailable[id]=0</label>
+		</transition>
+	</template>
+	<system>
+sp = SolarPanel(solar_panel_output);
+
+Node0 = Resource(0,true,FIFO);
+Node1 = Resource(1,true,FIFO);
+Node2 = Resource(2,true,FPS);
+Node3 = Resource(3,false,FPS);
+Node4 = Resource(4,false,FPS);
+
+Batt0 = BatteryManager(0);
+Batt1 = BatteryManager(1);
+Batt2 = BatteryManager(2);
+Batt3 = BatteryManager(3);
+Batt4 = BatteryManager(4);
+
+system sp, Task, Node0, Node1, Node2, Node3, Node4, Batt0, Batt1, Batt2, Batt3, Batt4, Controller, Policy_FPS, Policy_FIFO;</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=2*DAY; 1] {dissipated_power[0], dissipated_power[1], dissipated_power[2], dissipated_power[3], dissipated_power[4]}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=2*DAY; 1] {sp.irrad, battery_energy[0], battery_energy[1], battery_energy[2], battery_energy[3], battery_energy[4]}</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=2*DAY; 1000] {battery_energy[0], battery_energy[1], battery_energy[2], battery_energy[3], battery_energy[4]} : 1 : exists(i:t_id) Task(i).Error</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>Pr [&lt;= 2*DAY] (&lt;&gt; exists(i:t_id) Task(i).Error)</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
