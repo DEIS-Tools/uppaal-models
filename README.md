@@ -1,7 +1,7 @@
 # Uppaal Model Repository
 
 The repository contains various Uppaal models.
-Everyone is welcome to contribute by sending a pull-request or the model to [Marius Mikučionis](marius@cs.aau.dk) to be added.
+Everyone is welcome to contribute by sending a pull-request or the model to [Marius Mikučionis](mailto:marius@cs.aau.dk) to be added.
 
 The model should fall under one or several categories below.
 Please note the origins of the model file (authors, companies, universities, references to papers, reports, websites, previous versions).
