@@ -1,5 +1,5 @@
 # Modeling and Analysis for Energy-Driven Computing using Statistical Model-Checking
-**Modeling and Analysis for Energy-Driven Computing using Statistical Model-Checking**, Abdoulaye Gamatié, Marius Mikučionis. *Design, Automation and Test in Europe (DATE 2021),* February 1, 2021.
+**Modeling and Analysis for Energy-Driven Computing using Statistical Model-Checking**, Abdoulaye Gamatié, Gilles Sassatelli, Marius Mikučionis. *Design, Automation and Test in Europe (DATE 2021),* February 1, 2021.
 
 ## Abstract
 Energy-driven computing is a recent paradigm that

@@ -1,7 +1,7 @@
 # List of Case Studies
 
 _**[Modeling and Analysis for Energy-Driven Computing using Statistical Model-Checking](EnergyNeutrality)**_,
-Abdoulaye Gamatié, Marius Mikučionis. *Design, Automation and Test in Europe (DATE 2021),* February 1, 2021.
+Abdoulaye Gamatié, Gilles Sassatelli, Marius Mikučionis. *Design, Automation and Test in Europe (DATE 2021),* February 1, 2021.
 
 _**[Fluid Model-Checking in UPPAAL for Covid-19](Covid-19)**_,
 Peter G. Jensen, Kenneth Y. Jørgensen, Kim G. Larsen, Marius Mikučionis, Marco Muñiz, and Danny B. Poulsen. *Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2020),* October 2020. Springer-Verlag Berlin Heidelberg.
