@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+
+clock globalTime;
+
+const int N = 8;         // # People
+typedef int[0,N-1] id_p;  // Person ID
+
+// Global variable for sharing values/secrets
+// 6 secrets + saving the id of the sending user
+int share[N+1];
+bool knowAll[N];
+
+chan sending[N], call[N];
+
+
+
+// Taken from the help page to check if entire array is true
+bool alltrue(bool a[N])
+{
+  return forall (i : int[0,N-1]) a[i];
+}
+</declaration>
+	<template>
+		<name x="5" y="5">Person</name>
+		<parameter>const id_p id</parameter>
+		<declaration>// Place local declarations here.
+bool available = 1;  // Is this person currently available for a call
+bool secrets[N]; // = {0, 0, 0, 0, 0, 0};  // How many secrets have they accumulated
+clock x;
+id_p lastSender;
+id_p call_partner;
+
+// Initialize the person with a secret
+void initialize() {
+    secrets[id] = 1;
+}
+
+void save_partner(id_p partner){
+    call_partner = partner;
+}
+
+// Update the global array with current secrets
+void loadSecrets() {
+    int n;
+    for (n=0; n&lt;N; n++) {
+        share[n] = secrets[n];
+    }
+    share[N] = id; // Save id of sender in order to return secrets
+}
+
+// Get secrets from the global array
+void getSecrets() {
+    int n;
+    for (n=0; n&lt;N; n++) {
+        if (share[n] == 1) {
+            secrets[n] = share[n];
+        }
+    }
+    lastSender = share[N];
+
+    // Check if person knows all secrets
+    if (forall (i : int[0,N-1]) secrets[i]) {
+        knowAll[id] = 1;
+    }
+}</declaration>
+		<location id="id0" x="-586" y="68">
+			<name x="-596" y="34">Init</name>
+		</location>
+		<location id="id1" x="-416" y="68">
+			<name x="-426" y="34">Free</name>
+		</location>
+		<location id="id2" x="-280" y="-128">
+		</location>
+		<location id="id3" x="-280" y="254">
+			<committed/>
+		</location>
+		<location id="id4" x="-68" y="-128">
+			<name x="-78" y="-162">Got_Secrets</name>
+			<committed/>
+		</location>
+		<location id="id5" x="-59" y="254">
+			<name x="-69" y="220">Gave_Secrets</name>
+		</location>
+		<location id="id6" x="102" y="68">
+			<name x="92" y="34">CallEnd</name>
+			<label kind="invariant" x="85" y="93">x&lt;=60</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="comments" x="178" y="59">Discuss more, wait until 60 seconds</label>
+			<nail x="170" y="17"/>
+			<nail x="170" y="68"/>
+			<nail x="170" y="110"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="34" y="161">sending[id]?</label>
+			<label kind="assignment" x="34" y="178">getSecrets()</label>
+			<label kind="comments" x="34" y="212">Get secrets</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-255" y="272">sending[call_partner]!</label>
+			<label kind="assignment" x="-255" y="297">loadSecrets()</label>
+			<label kind="comments" x="-238" y="348">Give secrets</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="select" x="-450" y="144">e: id_p</label>
+			<label kind="synchronisation" x="-442" y="161">call[e]!</label>
+			<label kind="assignment" x="-450" y="178">available = 0,
+save_partner(e),
+x=0</label>
+			<label kind="comments" x="-450" y="238">Person calls</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-161" y="76">x == 60</label>
+			<label kind="assignment" x="-170" y="102">available = 1,
+x = 0</label>
+			<label kind="comments" x="-238" y="110">Hang up</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="8" y="-93">sending[lastSender]!</label>
+			<label kind="assignment" x="8" y="-76">loadSecrets()</label>
+			<label kind="comments" x="17" y="-127">Give secrets</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-246" y="-170">sending[id]?</label>
+			<label kind="assignment" x="-246" y="-153">getSecrets()</label>
+			<label kind="comments" x="-246" y="-204">Get secrets</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-442" y="-68">available == 1</label>
+			<label kind="synchronisation" x="-425" y="-51">call[id]?</label>
+			<label kind="assignment" x="-450" y="-25">available = 0,
+x=0</label>
+			<label kind="comments" x="-467" y="-94">Person gets called</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-569" y="68">x = 0,
+initialize()</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+//Process = P1;
+
+// List one or more processes to be composed into a system.
+system Person;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; knowAll[0] &amp;&amp; globalTime &lt;= 1000</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

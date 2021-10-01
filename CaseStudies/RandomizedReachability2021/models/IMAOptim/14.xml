@@ -1,0 +1,967 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/* Global declarations */
+/* Time */
+const int[0, 10000000] MaxTime = 10000000;
+typedef int[0, MaxTime] time_t;
+
+const time_t MajorFrame = 18759;
+
+clock t;    // Global clock
+
+bool error = false;
+
+/* Resource */
+const int Resources = 2;                 // Number of resources
+typedef int[0,Resources - 1] rid_t;
+
+// Resource constants
+const rid_t NONE = 0;
+// CPU resource
+const rid_t CPU1 = 0;
+const rid_t CPU1_Q1 = CPU1;
+const rid_t CPU1_Q2 = CPU1 + 1;
+
+// Priority type
+const int MaxPrio = 0;
+const int MinPrio = 10;
+typedef int[MaxPrio, MinPrio] prio_t;
+
+/* Partition */
+const int Partitions = 2;    // Number of partitions
+typedef int[0, Partitions - 1] pid_t;
+
+// Constants of partition ID
+const pid_t P1 = 0;
+const pid_t P2 = P1 + 1;
+
+// Type of partition
+typedef struct {
+    rid_t cpu_id;
+    rid_t rq_id;
+    time_t period;
+    int wind_num;
+    int wind_idx;
+} partition_t;
+
+// Type of partition window
+typedef struct {
+    time_t offset;
+    time_t duration;
+} partition_window_t;
+
+const int TotalWindowsNum = 392;
+const partition_window_t partition_windows[TotalWindowsNum] = {
+	// Partition 1
+	{2, 39},
+	{113, 39},
+	{224, 39},
+	{335, 39},
+	{446, 39},
+	{557, 39},
+	{668, 39},
+	{779, 39},
+	{890, 39},
+	{1001, 39},
+	{1112, 39},
+	{1223, 39},
+	{1334, 39},
+	{1445, 39},
+	{1556, 39},
+	{1667, 39},
+	{1778, 39},
+	{1889, 39},
+	{2000, 39},
+	{2111, 39},
+	{2222, 39},
+	{2333, 39},
+	{2444, 39},
+	{2555, 39},
+	{2666, 39},
+	{2777, 39},
+	{2888, 39},
+	{2999, 39},
+	{3110, 39},
+	{3221, 39},
+	{3332, 39},
+	{3443, 39},
+	{3554, 39},
+	{3665, 39},
+	{3776, 39},
+	{3887, 39},
+	{3998, 39},
+	{4109, 39},
+	{4220, 39},
+	{4331, 39},
+	{4442, 39},
+	{4553, 39},
+	{4664, 39},
+	{4775, 39},
+	{4886, 39},
+	{4997, 39},
+	{5108, 39},
+	{5219, 39},
+	{5330, 39},
+	{5441, 39},
+	{5552, 39},
+	{5663, 39},
+	{5774, 39},
+	{5885, 39},
+	{5996, 39},
+	{6107, 39},
+	{6218, 39},
+	{6329, 39},
+	{6440, 39},
+	{6551, 39},
+	{6662, 39},
+	{6773, 39},
+	{6884, 39},
+	{6995, 39},
+	{7106, 39},
+	{7217, 39},
+	{7328, 39},
+	{7439, 39},
+	{7550, 39},
+	{7661, 39},
+	{7772, 39},
+	{7883, 39},
+	{7994, 39},
+	{8105, 39},
+	{8216, 39},
+	{8327, 39},
+	{8438, 39},
+	{8549, 39},
+	{8660, 39},
+	{8771, 39},
+	{8882, 39},
+	{8993, 39},
+	{9104, 39},
+	{9215, 39},
+	{9326, 39},
+	{9437, 39},
+	{9548, 39},
+	{9659, 39},
+	{9770, 39},
+	{9881, 39},
+	{9992, 39},
+	{10103, 39},
+	{10214, 39},
+	{10325, 39},
+	{10436, 39},
+	{10547, 39},
+	{10658, 39},
+	{10769, 39},
+	{10880, 39},
+	{10991, 39},
+	{11102, 39},
+	{11213, 39},
+	{11324, 39},
+	{11435, 39},
+	{11546, 39},
+	{11657, 39},
+	{11768, 39},
+	{11879, 39},
+	{11990, 39},
+	{12101, 39},
+	{12212, 39},
+	{12323, 39},
+	{12434, 39},
+	{12545, 39},
+	{12656, 39},
+	{12767, 39},
+	{12878, 39},
+	{12989, 39},
+	{13100, 39},
+	{13211, 39},
+	{13322, 39},
+	{13433, 39},
+	{13544, 39},
+	{13655, 39},
+	{13766, 39},
+	{13877, 39},
+	{13988, 39},
+	{14099, 39},
+	{14210, 39},
+	{14321, 39},
+	{14432, 39},
+	{14543, 39},
+	{14654, 39},
+	{14765, 39},
+	{14876, 39},
+	{14987, 39},
+	{15098, 39},
+	{15209, 39},
+	{15320, 39},
+	{15431, 39},
+	{15542, 39},
+	{15653, 39},
+	{15764, 39},
+	{15875, 39},
+	{15986, 39},
+	{16097, 39},
+	{16208, 39},
+	{16319, 39},
+	{16430, 39},
+	{16541, 39},
+	{16652, 39},
+	{16763, 39},
+	{16874, 39},
+	{16985, 39},
+	{17096, 39},
+	{17207, 39},
+	{17318, 39},
+	{17429, 39},
+	{17540, 39},
+	{17651, 39},
+	{17762, 39},
+	{17873, 39},
+	{17984, 39},
+	{18095, 39},
+	{18206, 39},
+	{18317, 39},
+	{18428, 39},
+	{18539, 39},
+	{18650, 39},
+	// Partition 2
+	{43, 68},
+	{154, 2},
+	{171, 51},
+	{265, 19},
+	{376, 68},
+	{487, 2},
+	{509, 46},
+	{598, 24},
+	{709, 68},
+	{820, 2},
+	{847, 41},
+	{931, 29},
+	{1042, 68},
+	{1153, 2},
+	{1185, 36},
+	{1264, 34},
+	{1375, 68},
+	{1486, 2},
+	{1523, 31},
+	{1597, 39},
+	{1708, 68},
+	{1819, 2},
+	{1861, 26},
+	{1930, 44},
+	{2041, 68},
+	{2152, 2},
+	{2199, 21},
+	{2263, 49},
+	{2374, 68},
+	{2485, 2},
+	{2537, 16},
+	{2596, 54},
+	{2707, 68},
+	{2818, 2},
+	{2875, 11},
+	{2929, 59},
+	{3044, 64},
+	{3151, 6},
+	{3213, 6},
+	{3262, 64},
+	{3382, 59},
+	{3484, 11},
+	{3551, 1},
+	{3595, 68},
+	{3706, 1},
+	{3720, 54},
+	{3817, 16},
+	{3928, 68},
+	{4039, 2},
+	{4058, 49},
+	{4150, 21},
+	{4261, 68},
+	{4372, 2},
+	{4396, 44},
+	{4483, 26},
+	{4594, 68},
+	{4705, 2},
+	{4734, 39},
+	{4816, 31},
+	{4927, 68},
+	{5038, 2},
+	{5072, 34},
+	{5149, 36},
+	{5260, 68},
+	{5371, 2},
+	{5410, 29},
+	{5482, 41},
+	{5593, 68},
+	{5704, 2},
+	{5748, 24},
+	{5815, 46},
+	{5926, 68},
+	{6037, 2},
+	{6086, 19},
+	{6148, 51},
+	{6259, 68},
+	{6370, 2},
+	{6424, 14},
+	{6481, 56},
+	{6593, 67},
+	{6703, 3},
+	{6762, 9},
+	{6814, 61},
+	{6931, 62},
+	{7036, 8},
+	{7100, 4},
+	{7147, 66},
+	{7269, 57},
+	{7369, 13},
+	{7480, 68},
+	{7591, 2},
+	{7607, 52},
+	{7702, 18},
+	{7813, 68},
+	{7924, 2},
+	{7945, 47},
+	{8035, 23},
+	{8146, 68},
+	{8257, 2},
+	{8283, 42},
+	{8368, 28},
+	{8479, 68},
+	{8590, 2},
+	{8621, 37},
+	{8701, 33},
+	{8812, 68},
+	{8923, 2},
+	{8959, 32},
+	{9034, 38},
+	{9145, 68},
+	{9256, 2},
+	{9297, 27},
+	{9367, 43},
+	{9478, 68},
+	{9589, 2},
+	{9635, 22},
+	{9700, 48},
+	{9811, 68},
+	{9922, 2},
+	{9973, 17},
+	{10033, 53},
+	{10144, 68},
+	{10255, 2},
+	{10311, 12},
+	{10366, 58},
+	{10480, 65},
+	{10588, 5},
+	{10649, 7},
+	{10699, 63},
+	{10818, 60},
+	{10921, 10},
+	{10987, 2},
+	{11032, 68},
+	{11156, 55},
+	{11254, 15},
+	{11365, 68},
+	{11476, 2},
+	{11494, 50},
+	{11587, 20},
+	{11698, 68},
+	{11809, 2},
+	{11832, 45},
+	{11920, 25},
+	{12031, 68},
+	{12142, 2},
+	{12170, 40},
+	{12253, 30},
+	{12364, 68},
+	{12475, 2},
+	{12508, 35},
+	{12586, 35},
+	{12697, 68},
+	{12808, 2},
+	{12846, 30},
+	{12919, 40},
+	{13030, 68},
+	{13141, 2},
+	{13184, 25},
+	{13252, 45},
+	{13363, 68},
+	{13474, 2},
+	{13522, 20},
+	{13585, 50},
+	{13696, 68},
+	{13807, 2},
+	{13860, 15},
+	{13918, 55},
+	{14029, 68},
+	{14140, 2},
+	{14198, 10},
+	{14251, 60},
+	{14367, 63},
+	{14473, 7},
+	{14536, 5},
+	{14584, 65},
+	{14705, 58},
+	{14806, 12},
+	{14917, 68},
+	{15028, 2},
+	{15043, 53},
+	{15139, 17},
+	{15250, 68},
+	{15361, 2},
+	{15381, 48},
+	{15472, 22},
+	{15583, 68},
+	{15694, 2},
+	{15719, 43},
+	{15805, 27},
+	{15916, 68},
+	{16027, 2},
+	{16057, 38},
+	{16138, 32},
+	{16249, 68},
+	{16360, 2},
+	{16395, 33},
+	{16471, 37},
+	{16582, 68},
+	{16693, 2},
+	{16733, 28},
+	{16804, 42},
+	{16915, 68},
+	{17026, 2},
+	{17071, 23},
+	{17137, 47},
+	{17248, 68},
+	{17359, 2},
+	{17409, 18},
+	{17470, 52},
+	{17581, 68},
+	{17692, 2},
+	{17747, 13},
+	{17803, 57},
+	{17916, 66},
+	{18025, 4},
+	{18085, 8},
+	{18136, 62},
+	{18254, 61},
+	{18358, 9},
+	{18423, 3},
+	{18469, 67},
+	{18592, 56},
+	{18691, 14}
+};
+
+// Partition list
+const partition_t partition[Partitions] = {
+    {CPU1, CPU1_Q1, 111, 169, 0},
+    {CPU1, CPU1_Q2, 169, 223, 169}
+};
+
+bool in_partition[pid_t];    // Flag set after entering current partition
+int perror[pid_t];    // Error flags for each partition
+
+/* Task */
+const int Tasks = 8;    // Number of tasks
+typedef int[0, Tasks - 1] tid_t;
+const int MaxTasks = 5;    // Maximal Number of tasks in a partition
+
+// Type of task
+typedef struct {
+    //time_t minInitOffset;
+    //time_t maxInitOffset;
+    time_t et;
+    time_t period;
+    time_t deadline;
+    pid_t pid;
+    prio_t prio;
+} task_t;
+
+// Task list
+const task_t task[tid_t] = {
+    // Task11
+    {8, 160, 100, P1, 1},
+    // Task12
+    {12, 240, 200, P1, 2},
+    // Task13
+    {16, 320, 300, P1, 3},
+    // Task14
+    {24, 480, 400, P1, 4},
+    // Task21
+    {8, 160, 100, P2, 1},
+    // Task22
+    {12, 240, 200, P2, 2},
+    // Task23
+    {16, 320, 300, P2, 3},
+    // Task24
+    {24, 480, 400, P2, 4}
+};
+
+// Type of task queue
+typedef struct {
+  int[0, MaxTasks + 1] len;
+  tid_t list[MaxTasks + 1];
+} queue_t;
+queue_t rq[rid_t];    // Request queue of ready or blocked tasks
+
+typedef int[0, 1] policy_t;    // Scheduling policy
+const policy_t FIFO = 0;    // First in first out
+const policy_t FP = 1;    // Fixed priority
+
+// Current priority of tasks
+prio_t cprio[tid_t];
+
+/* Channel */
+broadcast chan enter_partition[pid_t], exit_partition[pid_t];
+broadcast chan ready[tid_t];
+broadcast chan sched[tid_t];
+broadcast chan stop[tid_t];
+broadcast chan release[pid_t][tid_t];
+
+/* Global functions */
+void _enque(rid_t rid, tid_t tid, int start, policy_t policy){
+    if(policy == FIFO)
+        rq[rid].list[rq[rid].len++] = tid;
+    if(policy == FP){
+        tid_t tmp;
+        rq[rid].list[rq[rid].len++] = tid;
+        if (rq[rid].len &gt; 1){
+            int i = rq[rid].len - 1;
+            while(i &gt; start &amp;&amp; cprio[rq[rid].list[i]] &lt; cprio[rq[rid].list[i - 1]]){
+                tmp = rq[rid].list[i - 1];
+                rq[rid].list[i - 1] = rq[rid].list[i];
+                rq[rid].list[i] = tmp;
+                i--;
+            }
+        }
+    }
+}
+
+void _deque(rid_t rid, tid_t tid){
+    int[0, Tasks] i;
+    bool find = false;
+
+    for(i = 0; i &lt; rq[rid].len; i++) {    
+        if(find)
+            rq[rid].list[i - 1] = rq[rid].list[i];
+        if(!find &amp;&amp; rq[rid].list[i] == tid)
+            find = true;
+    }
+
+    if(find) {
+        rq[rid].list[rq[rid].len - 1] = 0;
+        rq[rid].len--;
+    }
+}
+
+tid_t _front(rid_t rid){
+    return rq[rid].list[0];
+}
+
+void setError(pid_t pid){
+    error = true;
+    perror[pid] = 1;
+}</declaration>
+	<template>
+		<name>PartitionScheduler</name>
+		<parameter>pid_t pid</parameter>
+		<declaration>clock x;
+
+int[0, TotalWindowsNum] wind;
+
+time_t windStart(int[0, TotalWindowsNum] win){
+    if(win &lt; partition[pid].wind_num)
+        return partition_windows[partition[pid].wind_idx + win].offset;
+    else
+        return MajorFrame + 1;
+}
+
+time_t windEnd(int[0, TotalWindowsNum - 1] win){
+    return partition_windows[partition[pid].wind_idx + win].offset
+                + partition_windows[partition[pid].wind_idx + win].duration;
+}</declaration>
+		<location id="id0" x="-255" y="-425">
+			<name x="-265" y="-459">Init</name>
+			<committed/>
+		</location>
+		<location id="id1" x="-255" y="-323">
+			<name x="-265" y="-357">OutOfPartition</name>
+			<label kind="invariant" x="-314" y="-306">x &lt;= windStart(wind)
+&amp;&amp; x &lt;= MajorFrame</label>
+		</location>
+		<location id="id2" x="59" y="-323">
+			<name x="49" y="-357">InPartition</name>
+			<label kind="invariant" x="76" y="-340">x &lt;= windEnd(wind)
+&amp;&amp; x &lt;= MajorFrame</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="guard" x="59" y="-425">x &gt;= MajorFrame</label>
+			<label kind="synchronisation" x="59" y="-408">exit_partition[pid]!</label>
+			<label kind="assignment" x="59" y="-391">in_partition[pid] = false,
+x = 0, wind = 0</label>
+			<nail x="59" y="-425"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-382" y="-340">x &gt;= MajorFrame</label>
+			<label kind="assignment" x="-382" y="-323">x = 0, wind = 0</label>
+			<nail x="-399" y="-323"/>
+			<nail x="-399" y="-425"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-161" y="-273">x &gt;= windEnd(wind)
+&amp;&amp; x &lt; MajorFrame</label>
+			<label kind="synchronisation" x="-161" y="-239">exit_partition[pid]!</label>
+			<label kind="assignment" x="-161" y="-222">in_partition[pid] = false, wind++</label>
+			<nail x="59" y="-222"/>
+			<nail x="-255" y="-222"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-161" y="-340">x &gt;= windStart(wind)</label>
+			<label kind="synchronisation" x="-161" y="-323">enter_partition[pid]!</label>
+			<label kind="assignment" x="-161" y="-306">in_partition[pid] = true</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-161" y="-408">x &gt;= windStart(wind)</label>
+			<label kind="synchronisation" x="-161" y="-391">enter_partition[pid]!</label>
+			<label kind="assignment" x="-161" y="-374">in_partition[pid] = true</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-297" y="-391">x &lt; windStart(wind)</label>
+		</transition>
+	</template>
+	<template>
+		<name>TaskScheduler</name>
+		<parameter>pid_t pid</parameter>
+		<declaration>tid_t running = 0;    // Running task
+
+void resetRunning() { running = 0; }
+
+void enque(tid_t tid){
+    _enque(partition[pid].rq_id, tid, 0, FP);
+}
+
+void deque(tid_t tid){
+    _deque(partition[pid].rq_id, tid);
+}
+
+tid_t front(){
+    return _front(partition[pid].rq_id);
+}
+
+int[0, MaxTasks] rqLen() { return rq[partition[pid].rq_id].len; }
+
+pid_t partition(tid_t tid) { return task[tid].pid; }</declaration>
+		<location id="id3" x="-323" y="42">
+			<name x="-333" y="8">Clear</name>
+			<committed/>
+		</location>
+		<location id="id4" x="-204" y="-238">
+			<name x="-263" y="-263">NoTask</name>
+		</location>
+		<location id="id5" x="459" y="-85">
+			<name x="449" y="-119">Release</name>
+			<committed/>
+		</location>
+		<location id="id6" x="-204" y="42">
+			<name x="-221" y="8">WaitPartition</name>
+		</location>
+		<location id="id7" x="-59" y="204">
+			<name x="-69" y="170">Interrupt</name>
+			<committed/>
+		</location>
+		<location id="id8" x="102" y="-85">
+			<name x="92" y="-119">Preempt</name>
+			<committed/>
+		</location>
+		<location id="id9" x="297" y="136">
+			<name x="289" y="102">Occupied</name>
+		</location>
+		<location id="id10" x="297" y="-85">
+			<name x="287" y="-119">Schedule</name>
+			<committed/>
+		</location>
+		<location id="id11" x="297" y="-238">
+			<name x="287" y="-272">Idle</name>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-306" y="25">rqLen() != 0</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-314" y="-238">rqLen() == 0</label>
+			<nail x="-323" y="-238"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id6"/>
+			<label kind="select" x="-204" y="-204">n:tid_t</label>
+			<label kind="guard" x="-204" y="-187">partition(n) == pid</label>
+			<label kind="synchronisation" x="-204" y="-170">ready[n]?</label>
+			<label kind="assignment" x="-204" y="-153">enque(n)</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-26" y="-306">enter_partition[pid]?</label>
+			<nail x="-170" y="-289"/>
+			<nail x="255" y="-289"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-26" y="-255">exit_partition[pid]?</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id11"/>
+			<label kind="guard" x="340" y="-255">rqLen() == 0</label>
+			<nail x="459" y="-238"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="select" x="-229" y="68">n:tid_t</label>
+			<label kind="guard" x="-229" y="85">partition(n) == pid</label>
+			<label kind="synchronisation" x="-229" y="102">ready[n]?</label>
+			<label kind="assignment" x="-229" y="119">enque(n)</label>
+			<nail x="-272" y="136"/>
+			<nail x="-136" y="136"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-306" y="187">stop[running]!</label>
+			<label kind="assignment" x="-306" y="204">deque(running), resetRunning()</label>
+			<nail x="-323" y="204"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-26" y="-162">enter_partition[pid]?</label>
+			<nail x="-51" y="-144"/>
+			<nail x="246" y="-145"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-25" y="187">exit_partition[pid]?</label>
+			<nail x="297" y="204"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id10"/>
+			<label kind="guard" x="340" y="-102">rqLen() != 0</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id5"/>
+			<label kind="select" x="331" y="119">n: tid_t</label>
+			<label kind="synchronisation" x="331" y="136">release[pid][n]?</label>
+			<label kind="assignment" x="331" y="153">deque(n),
+resetRunning()</label>
+			<nail x="459" y="136"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="select" x="144" y="-17">n:tid_t</label>
+			<label kind="guard" x="144" y="0">partition(n) == pid</label>
+			<label kind="synchronisation" x="145" y="17">ready[n]?</label>
+			<label kind="assignment" x="145" y="34">enque(n)</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="145" y="119">running == front()</label>
+			<nail x="102" y="136"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="guard" x="145" y="-102">running != front()</label>
+			<label kind="synchronisation" x="145" y="-85">stop[running]!</label>
+			<label kind="assignment" x="145" y="-68">deque(running),
+resetRunning()</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="297" y="0">sched[front()]!</label>
+			<label kind="assignment" x="297" y="17">running = front()</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id10"/>
+			<label kind="select" x="297" y="-204">n:tid_t</label>
+			<label kind="guard" x="297" y="-187">partition(n) == pid</label>
+			<label kind="synchronisation" x="297" y="-170">ready[n]?</label>
+			<label kind="assignment" x="297" y="-153">enque(n)</label>
+		</transition>
+	</template>
+	<template>
+		<name>Task</name>
+		<parameter>tid_t tid</parameter>
+		<declaration>clock curTime, exeTime;
+
+//time_t minInitOffset() { return task[tid].minInitOffset; }
+//time_t maxInitOffset() { return task[tid].maxInitOffset; }
+time_t period() { return task[tid].period; }
+time_t execTime() { return task[tid].et; }
+time_t deadline() { return task[tid].deadline; }
+pid_t pid() { return task[tid].pid; }
+prio_t prio() { return task[tid].prio; }</declaration>
+		<location id="id12" x="-561" y="-399">
+			<urgent/>
+		</location>
+		<location id="id13" x="-399" y="-552">
+			<urgent/>
+		</location>
+		<location id="id14" x="-722" y="-467">
+			<name x="-732" y="-501">Ready</name>
+			<label kind="invariant" x="-799" y="-450">exeTime' == 0
+&amp;&amp; curTime &lt;= deadline()</label>
+		</location>
+		<location id="id15" x="-722" y="-323">
+			<name x="-732" y="-357">WaitNextRelease</name>
+			<label kind="invariant" x="-732" y="-306">curTime &lt;= period()</label>
+		</location>
+		<location id="id16" x="-399" y="-467">
+			<name x="-409" y="-501">Running</name>
+			<label kind="invariant" x="-409" y="-450">exeTime &lt;= execTime()
+&amp;&amp; curTime &lt;= deadline()</label>
+		</location>
+		<location id="id17" x="-561" y="-246">
+			<name x="-571" y="-280">MissDeadline</name>
+		</location>
+		<location id="id18" x="-561" y="-170">
+			<committed/>
+		</location>
+		<location id="id19" x="-722" y="-552">
+			<name x="-732" y="-586">Init</name>
+		</location>
+		<init ref="id19"/>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-603" y="-450">exeTime &lt; execTime()</label>
+			<label kind="synchronisation" x="-603" y="-433">ready[tid]!</label>
+			<nail x="-561" y="-433"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-603" y="-382">exeTime &gt;= execTime()</label>
+			<nail x="-561" y="-365"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-603" y="-569">enter_partition[pid()]?</label>
+			<label kind="assignment" x="-603" y="-552">cprio[tid] = prio()</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-603" y="-527">ready[tid]!</label>
+			<label kind="assignment" x="-603" y="-510">curTime = 0, exeTime = 0</label>
+			<nail x="-399" y="-510"/>
+			<nail x="-722" y="-510"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="-722" y="-212">release[pid()][tid]!</label>
+			<nail x="-595" y="-195"/>
+			<nail x="-595" y="-221"/>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="-518" y="-212">sched[tid]?</label>
+			<nail x="-527" y="-221"/>
+			<nail x="-527" y="-195"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-476" y="-263">curTime &gt;= deadline()</label>
+			<label kind="synchronisation" x="-476" y="-246">release[pid()][tid]!</label>
+			<label kind="assignment" x="-476" y="-229">setError(pid())</label>
+			<nail x="-289" y="-467"/>
+			<nail x="-289" y="-246"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-765" y="-263">curTime &gt;= deadline()</label>
+			<label kind="assignment" x="-765" y="-246">setError(pid())</label>
+			<nail x="-841" y="-467"/>
+			<nail x="-841" y="-246"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-527" y="-416">stop[tid]?</label>
+			<nail x="-442" y="-399"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-799" y="-408">curTime &gt;= period()</label>
+			<label kind="synchronisation" x="-799" y="-395">ready[tid]!</label>
+			<label kind="assignment" x="-799" y="-378">curTime = 0, exeTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-637" y="-340">exeTime &gt;= execTime()</label>
+			<label kind="synchronisation" x="-603" y="-323">release[pid()][tid]!</label>
+			<nail x="-399" y="-323"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-603" y="-484">sched[tid]?</label>
+		</transition>
+	</template>
+	<system>/* Template instantiations */
+// Partition Schedulers
+ps1 = PartitionScheduler(P1);
+ps2 = PartitionScheduler(P2);
+
+// Task Schedulers
+ts1 = TaskScheduler(P1);
+ts2 = TaskScheduler(P2);
+
+// Tasks of partition 1
+task11 = Task(0); task12 = Task(1); task13 = Task(2); task14 = Task(3);
+// Tasks of partition 2
+task21 = Task(4); task22 = Task(5); task23 = Task(6); task24 = Task(7);
+
+/* Processes */
+system
+ps1, ps2,
+ts1, ts2,
+task11, task12, task13, task14,
+task21, task22, task23, task24;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; error</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Count up every time a call is made.
+typedef int[0,2147000000] c_t;
+c_t calls = 0;
+clock y;
+
+const int N = 8;
+typedef int[0,N-1] girl_t;
+chan phone_out[girl_t], share;
+
+bool secrets[N][N][girl_t];
+clock totalTime;
+
+</declaration>
+	<template>
+		<name x="5" y="5">Girl</name>
+		<parameter>girl_t id</parameter>
+		<declaration>clock x;
+bool my_secrets[N];
+girl_t part_id;
+
+void init_secrets(){
+    my_secrets[id] = true;
+}
+
+
+void share_secrets(){
+   int i;
+   for(i=0; i&lt;N; i++){ 
+        secrets[id][part_id][i] = my_secrets[i];};
+}
+
+void receive_secrets(){
+    int i;
+
+    for(i=0; i&lt;N; i++){ 
+        // Only exchange 'new' secrets.
+        if(my_secrets[i] == false){
+            my_secrets[i] = secrets[part_id][id][i];
+        }
+    };
+
+}
+
+void reset_buffer(){
+    bool empty_secrets[N];
+    secrets[part_id][id] = empty_secrets;
+}</declaration>
+		<location id="id0" x="-1870" y="-510">
+			<name x="-1844" y="-527">ready</name>
+		</location>
+		<location id="id1" x="-1870" y="-714">
+			<name x="-1963" y="-748">has_received1</name>
+			<urgent/>
+		</location>
+		<location id="id2" x="-1870" y="-306">
+			<name x="-1989" y="-314">has_shared1</name>
+			<urgent/>
+		</location>
+		<location id="id3" x="-2006" y="-510">
+			<name x="-2065" y="-535">start</name>
+		</location>
+		<location id="id4" x="-1700" y="-714">
+			<name x="-1700" y="-748">has_shared2</name>
+			<label kind="invariant" x="-1683" y="-714">x &lt;= 60</label>
+		</location>
+		<location id="id5" x="-1700" y="-306">
+			<name x="-1683" y="-323">has_received2</name>
+			<label kind="invariant" x="-1710" y="-289">x &lt;= 60</label>
+		</location>
+		<init ref="id3"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-1657" y="-416">x == 60</label>
+			<nail x="-1700" y="-442"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id5"/>
+			<label kind="assignment" x="-1844" y="-297">receive_secrets()</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-1691" y="-620">x == 60</label>
+			<label kind="assignment" x="-1759" y="-561">reset_buffer()</label>
+			<nail x="-1700" y="-612"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="assignment" x="-1836" y="-739">share_secrets()</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-1988" y="-510">init_secrets()</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="select" x="-1963" y="-433">e:girl_t</label>
+			<label kind="guard" x="-1963" y="-450">e != id</label>
+			<label kind="synchronisation" x="-1980" y="-416">phone_out[e]!</label>
+			<label kind="assignment" x="-1980" y="-399">part_id = e,
+share_secrets(),
+x=0,
+calls++</label>
+			<nail x="-1870" y="-348"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="select" x="-1963" y="-637">e:girl_t</label>
+			<label kind="guard" x="-1963" y="-654">e != id</label>
+			<label kind="synchronisation" x="-1989" y="-612">phone_out[id]?</label>
+			<label kind="assignment" x="-1989" y="-586">part_id = e,
+receive_secrets(),
+x=0</label>
+			<nail x="-1870" y="-680"/>
+		</transition>
+	</template>
+	<system>
+system Girl;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; forall(i:girl_t) forall(j:girl_t) Girl(i).my_secrets[j] == true &amp;&amp; totalTime &lt;= 1200</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

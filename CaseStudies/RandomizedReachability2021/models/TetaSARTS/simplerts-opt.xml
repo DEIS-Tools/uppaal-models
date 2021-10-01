@@ -1,0 +1,3545 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>//
+broadcast chan GO; //
+clock globalClock;
+const int periodicThreads = 9;
+const int schedulerID = 0;
+const int exerciseBound = 240;
+const int JVM_ICONST_0 = 3;
+const int JVM_IRETURN = 172;
+bool synchronized = false;
+
+const int totalThreads = periodicThreads;
+typedef int[1,periodicThreads] PeriodicID;
+typedef int[1,totalThreads] ThreadID;
+int running[totalThreads+1];
+//Scheduler
+bool schedulable[ThreadID];
+bool blocked[ThreadID];
+chan run[ThreadID];
+// bools for synchronization
+
+
+void runScheduler(){
+	int i;
+	for (i = 0; i &lt;= totalThreads; i++){
+		running[i] = 0;
+	}
+	running[schedulerID] = 1;
+}
+
+int monitorDepth = 0;
+void monitorEnter(){
+	synchronized = true;
+	monitorDepth++;
+}
+
+void monitorExit(){
+	monitorDepth--;
+	if (monitorDepth == 0){
+		synchronized = false;
+		for(i:ThreadID) {
+			blocked[i] = false;
+		}
+		runScheduler();
+	}
+}
+
+//
+
+/*
+* This is for the FPS-scheduler
+*/
+int selectedThreadPriority = -1;
+
+void enqueue_task(ThreadID tid, const int pri) {
+	if(pri &lt; selectedThreadPriority) {
+		return;
+	} else if(pri &gt;= selectedThreadPriority) {
+		int i;
+		if(synchronized){
+		    blocked[tid] = true;
+	    } else {
+	    	for(i = 0; i &lt;= totalThreads; i++){
+		    	running[i] = 0;
+	       	}
+	        running[schedulerID] = 1;
+		}
+	}
+}
+
+void dequeue_task(ThreadID tid) {
+	int i;
+	if(synchronized){
+		    blocked[tid] = true;
+	} else {
+		for(i = 0; i &lt;= totalThreads; i++){
+			running[i] = 0;
+		}
+		running[schedulerID] = 1;
+	}
+}
+/*
+* End of FPS-scheduler
+*/
+
+
+//
+bool notImplementedMethods = false;
+bool loopAnnotationNotSet = false;
+
+int threadPriority[ThreadID] = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+
+
+urgent chan jvm_execute;
+int[0,255] jvm_instruction;
+const int ASSEMBLY_INTEGER_LITERAL = 9;
+const int ASSEMBLY_STRING_LITERAL = 15;
+const int ASSEMBLY_WORD = 26;
+const int ASSEMBLY_START = 27;
+const int ASSEMBLY_SECTION = 28;
+const int ASSEMBLY_PROGRAM = 29;
+const int ASSEMBLY_LABEL = 30;
+const int ASSEMBLY_SIZE = 31;
+const int ASSEMBLY_VMA = 32;
+const int ASSEMBLY_LMA = 33;
+const int ASSEMBLY_OFFSET = 34;
+const int ASSEMBLY_ADD = 35;
+const int ASSEMBLY_ADC = 36;
+const int ASSEMBLY_ADIW = 37;
+const int ASSEMBLY_AND = 38;
+const int ASSEMBLY_ANDI = 39;
+const int ASSEMBLY_ASR = 40;
+const int ASSEMBLY_BCLR = 41;
+const int ASSEMBLY_BLD = 42;
+const int ASSEMBLY_BRBC = 43;
+const int ASSEMBLY_BRBS = 44;
+const int ASSEMBLY_BRCC = 45;
+const int ASSEMBLY_BRCS = 46;
+const int ASSEMBLY_BREAK = 47;
+const int ASSEMBLY_BREQ = 48;
+const int ASSEMBLY_BRGE = 49;
+const int ASSEMBLY_BRHC = 50;
+const int ASSEMBLY_BRHS = 51;
+const int ASSEMBLY_BRID = 52;
+const int ASSEMBLY_BRIE = 53;
+const int ASSEMBLY_BRLO = 54;
+const int ASSEMBLY_BRLT = 55;
+const int ASSEMBLY_BRMI = 56;
+const int ASSEMBLY_BRNE = 57;
+const int ASSEMBLY_BRPL = 58;
+const int ASSEMBLY_BRSH = 59;
+const int ASSEMBLY_BRTC = 60;
+const int ASSEMBLY_BRTS = 61;
+const int ASSEMBLY_BRVC = 62;
+const int ASSEMBLY_BRVS = 63;
+const int ASSEMBLY_BSET = 64;
+const int ASSEMBLY_BST = 65;
+const int ASSEMBLY_CALL = 66;
+const int ASSEMBLY_CBI = 67;
+const int ASSEMBLY_CBR = 68;
+const int ASSEMBLY_CLC = 69;
+const int ASSEMBLY_CLH = 70;
+const int ASSEMBLY_CLI = 71;
+const int ASSEMBLY_CLN = 72;
+const int ASSEMBLY_CLR = 73;
+const int ASSEMBLY_CLS = 74;
+const int ASSEMBLY_CLT = 75;
+const int ASSEMBLY_CLV = 76;
+const int ASSEMBLY_CLZ = 77;
+const int ASSEMBLY_COM = 78;
+const int ASSEMBLY_CP = 79;
+const int ASSEMBLY_CPC = 80;
+const int ASSEMBLY_CPI = 81;
+const int ASSEMBLY_CPSE = 82;
+const int ASSEMBLY_DEC = 83;
+const int ASSEMBLY_EICALL = 84;
+const int ASSEMBLY_EIJMP = 85;
+const int ASSEMBLY_ELPM = 86;
+const int ASSEMBLY_EOR = 87;
+const int ASSEMBLY_FMUL = 88;
+const int ASSEMBLY_FMULS = 89;
+const int ASSEMBLY_FMULSU = 90;
+const int ASSEMBLY_ICALL = 91;
+const int ASSEMBLY_IJMP = 92;
+const int ASSEMBLY_IN = 93;
+const int ASSEMBLY_INC = 94;
+const int ASSEMBLY_JMP = 95;
+const int ASSEMBLY_LD = 96;
+const int ASSEMBLY_LDD = 97;
+const int ASSEMBLY_LDI = 98;
+const int ASSEMBLY_LDS = 99;
+const int ASSEMBLY_LPM = 100;
+const int ASSEMBLY_LSL = 101;
+const int ASSEMBLY_LSR = 102;
+const int ASSEMBLY_MOV = 103;
+const int ASSEMBLY_MOVW = 104;
+const int ASSEMBLY_MUL = 105;
+const int ASSEMBLY_MULS = 106;
+const int ASSEMBLY_MULSU = 107;
+const int ASSEMBLY_NEG = 108;
+const int ASSEMBLY_NOP = 109;
+const int ASSEMBLY_OR = 110;
+const int ASSEMBLY_ORI = 111;
+const int ASSEMBLY_OUT = 112;
+const int ASSEMBLY_POP = 113;
+const int ASSEMBLY_PUSH = 114;
+const int ASSEMBLY_RCALL = 115;
+const int ASSEMBLY_RET = 116;
+const int ASSEMBLY_RETI = 117;
+const int ASSEMBLY_RJMP = 118;
+const int ASSEMBLY_ROL = 119;
+const int ASSEMBLY_ROR = 120;
+const int ASSEMBLY_SBC = 121;
+const int ASSEMBLY_SBCI = 122;
+const int ASSEMBLY_SBI = 123;
+const int ASSEMBLY_SBIC = 124;
+const int ASSEMBLY_SBIS = 125;
+const int ASSEMBLY_SBIW = 126;
+const int ASSEMBLY_SBR = 127;
+const int ASSEMBLY_SBRC = 128;
+const int ASSEMBLY_SBRS = 129;
+const int ASSEMBLY_SEC = 130;
+const int ASSEMBLY_SEH = 131;
+const int ASSEMBLY_SEI = 132;
+const int ASSEMBLY_SEN = 133;
+const int ASSEMBLY_SER = 134;
+const int ASSEMBLY_SES = 135;
+const int ASSEMBLY_SET = 136;
+const int ASSEMBLY_SEV = 137;
+const int ASSEMBLY_SEZ = 138;
+const int ASSEMBLY_SLEEP = 139;
+const int ASSEMBLY_SPM = 140;
+const int ASSEMBLY_ST = 141;
+const int ASSEMBLY_STD = 142;
+const int ASSEMBLY_STS = 143;
+const int ASSEMBLY_SUB = 144;
+const int ASSEMBLY_SUBI = 145;
+const int ASSEMBLY_SWAP = 146;
+const int ASSEMBLY_TST = 147;
+const int ASSEMBLY_WDR = 148;
+const int ASSEMBLY_IDENTIFIER = 149;
+const int ASSEMBLY_DOT_IDENTIFIER = 152;
+urgent chan assembly_execute;
+int assembly_instruction;
+clock globalclock;
+/*
+* this is for the METAMOC model
+*/
+const int PIPELINE_STAGES = 2;
+typedef int[-1,131071] address;
+address dataadr[PIPELINE_STAGES];
+const int INSTR_NONE=-1;
+const address INVALID_ADDRESS = -1;
+const int PIPELINE_FETCH_STAGE = 0;
+const int PIPELINE_EXECUTE_STAGE = 1;
+int instrtype[PIPELINE_STAGES];
+address instradr[PIPELINE_STAGES];
+urgent chan fetch, execute;
+/*
+* End of METAMOC
+*/
+
+
+/*
+register_mask regread[PIPELINE_STAGES];
+register_mask regwrite[PIPELINE_STAGES];
+urgent chan main_done, fetch_done, execute_done;
+clock cyclecounter;
+
+typedef int[0,65535] register_mask;
+register_mask bitwise_neg(register_mask regmask){
+    return 65535 - regmask;
+}
+*/</declaration>
+	<template>
+		<name x="0" y="0">FPS_scheduler</name>
+		<declaration>//
+
+/*
+* The scheduler_wcet constant needs to be set according to the specific scheduler used
+*/
+const int scheduler_wcet = 1;
+int selectedThread;
+clock executionTime;
+
+void select_thread(){
+		int i;
+		selectedThread = -1;
+		selectedThreadPriority = -1;
+		for(i:ThreadID){
+			if(schedulable[i] &amp;&amp; threadPriority[i] &gt; selectedThreadPriority){
+				selectedThread = i;
+				selectedThreadPriority = threadPriority[i];
+			}
+		}
+
+		for (i = 0; i &lt;= totalThreads; i++){
+			running[i] = 0;
+		}
+		running[selectedThread] = 1;
+}
+
+void idle(){
+		int i;
+		for (i = 0; i &lt;= totalThreads; i++){
+			running[i] = 0;
+		}
+		selectedThreadPriority = -1;
+}</declaration>
+		<location id="id0" x="296" y="-48">
+			<committed/>
+		</location>
+		<location id="id1" x="296" y="-160">
+			<name x="296" y="-160">Running</name>
+			<label kind="invariant" x="296" y="-195">executionTime &lt;= scheduler_wcet &amp;&amp;
+executionTime' == running[schedulerID]</label>
+		</location>
+		<location id="id2" x="32" y="-48">
+			<name x="32" y="-48">finishedHyperPeriod</name>
+			<committed/>
+		</location>
+		<location id="id3" x="296" y="-280">
+			<name x="296" y="-280">schedule</name>
+			<committed/>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="296" y="-119">GO!</label>
+			<label kind="assignment" x="296" y="-104">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<nail x="2" y="-78"/>
+			<nail x="62" y="-78"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="64" y="-104">globalClock &gt;= exerciseBound</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="196" y="-220">executionTime == scheduler_wcet &amp;&amp;
+globalClock &lt; exerciseBound</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="guard" x="54" y="-325">!exists(i:ThreadID)schedulable[i]</label>
+			<label kind="assignment" x="54" y="-310">idle(),
+executionTime = 0</label>
+			<nail x="32" y="-280"/>
+			<nail x="32" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="guard" x="372" y="-325">exists(i:ThreadID)schedulable[i]</label>
+			<label kind="assignment" x="372" y="-310">select_thread(),
+executionTime = 0</label>
+			<nail x="568" y="-280"/>
+			<nail x="568" y="-160"/>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">PeriodicThread</name>
+		<parameter>const PeriodicID pID, const int period, const int deadline, const int offset</parameter>
+		<declaration>//
+clock releasedTime;</declaration>
+		<location id="id4" x="-160" y="-176">
+		</location>
+		<location id="id5" x="-160" y="-80">
+			<name x="-160" y="-80">CheckForOffset</name>
+			<label kind="invariant" x="-160" y="-100">releasedTime &lt;= offset</label>
+		</location>
+		<location id="id6" x="-160" y="0">
+			<committed/>
+		</location>
+		<location id="id7" x="360" y="0">
+			<name x="360" y="0">ReadyToBeScheduled</name>
+			<committed/>
+		</location>
+		<location id="id8" x="360" y="136">
+			<name x="360" y="136">ExecutingThread</name>
+		</location>
+		<location id="id9" x="360" y="272">
+			<name x="360" y="272">DONE</name>
+			<label kind="invariant" x="360" y="252">releasedTime &lt;= period</label>
+		</location>
+		<location id="id10" x="56" y="136">
+			<name x="56" y="136">DeadlineOverrun</name>
+			<committed/>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-180" y="-143">GO?</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-160" y="-40">releasedTime == offset</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="assignment" x="50" y="10">schedulable[pID] = true,
+releasedTime = 0,
+enqueue_task(pID, threadPriority[pID])</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="370" y="68">run[pID]!</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="guard" x="148" y="116">releasedTime &gt; deadline</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="370" y="174">releasedTime &lt;= deadline</label>
+			<label kind="synchronisation" x="370" y="189">run[pID]?</label>
+			<label kind="assignment" x="370" y="204">schedulable[pID] = false,
+dequeue_task(pID)</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id6"/>
+			<label kind="guard" x="60" y="252">releasedTime == period</label>
+			<nail x="-160" y="272"/>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0001</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+
+// sas2013.simpleRTS.SimpleRTS.run()Z</declaration>
+		<location id="id11" x="0" y="250">
+			<name x="-15" y="220">iconst_00</name>
+		</location>
+		<location id="id12" x="0" y="375">
+			<name x="-15" y="345">ireturn1</name>
+		</location>
+		<location id="id13" x="0" y="125">
+			<name x="-15" y="95">Empty2</name>
+			<committed/>
+		</location>
+		<location id="id14" x="150" y="500">
+			<name x="135" y="470">Empty3</name>
+			<committed/>
+		</location>
+		<location id="id15" x="0" y="0">
+			<name x="-15" y="-30">sas2013_simpleRTS_SimpleRTS_run_Z_init4</name>
+		</location>
+		<init ref="id15"/>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-30" y="282">running[tID] == true</label>
+			<label kind="synchronisation" x="-30" y="297">jvm_execute!</label>
+			<label kind="assignment" x="-30" y="312">jvm_instruction = JVM_ICONST_0</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id14"/>
+			<label kind="guard" x="45" y="407">running[tID] == true</label>
+			<label kind="synchronisation" x="45" y="422">jvm_execute!</label>
+			<label kind="assignment" x="45" y="437">jvm_instruction = JVM_IRETURN</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id11"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-30" y="32">run[tID]?</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="45" y="220">run[tID]!</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">staticjvm</name>
+		<location id="id16" x="0" y="0">
+			<name x="0" y="0">Idle</name>
+		</location>
+		<location id="id17" x="0" y="0">
+			<name x="0" y="0">ExecuteJBC</name>
+			<committed/>
+		</location>
+		<location id="id18" x="0" y="0">
+			<name x="0" y="0">ChooseJBCImplementation</name>
+			<committed/>
+		</location>
+		<location id="id19" x="0" y="0">
+			<name x="0" y="0">jbcFinish</name>
+			<committed/>
+		</location>
+		<location id="id20" x="0" y="0">
+			<name x="0" y="0">JVM_Execute_ICONST_0</name>
+			<committed/>
+		</location>
+		<location id="id21" x="0" y="0">
+			<name x="0" y="0">JVM_Execute_IRETURN</name>
+			<committed/>
+		</location>
+		<location id="id22" x="0" y="0">
+			<name x="0" y="0">Executing_staticjvm_58</name>
+			<committed/>
+		</location>
+		<location id="id23" x="0" y="0">
+			<name x="0" y="0">Return_staticjvm_59</name>
+			<committed/>
+		</location>
+		<location id="id24" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID0_staticjvm_60</name>
+		</location>
+		<location id="id25" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_0_staticjvm_61</name>
+		</location>
+		<location id="id26" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_1_staticjvm_62</name>
+		</location>
+		<location id="id27" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_2_staticjvm_63</name>
+		</location>
+		<location id="id28" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_3_staticjvm_64</name>
+		</location>
+		<location id="id29" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_4_staticjvm_65</name>
+		</location>
+		<location id="id30" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_5_staticjvm_66</name>
+		</location>
+		<location id="id31" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_6_staticjvm_67</name>
+		</location>
+		<location id="id32" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_7_staticjvm_68</name>
+		</location>
+		<location id="id33" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_8_staticjvm_69</name>
+		</location>
+		<location id="id34" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_9_staticjvm_70</name>
+		</location>
+		<location id="id35" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_10_staticjvm_71</name>
+		</location>
+		<location id="id36" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_12_staticjvm_72</name>
+		</location>
+		<location id="id37" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_11_staticjvm_73</name>
+		</location>
+		<location id="id38" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_14_staticjvm_74</name>
+		</location>
+		<location id="id39" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_13_staticjvm_75</name>
+		</location>
+		<location id="id40" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbiw_ID0_16_staticjvm_76</name>
+		</location>
+		<location id="id41" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_15_staticjvm_77</name>
+		</location>
+		<location id="id42" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_18_staticjvm_78</name>
+		</location>
+		<location id="id43" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID0_17_staticjvm_79</name>
+		</location>
+		<location id="id44" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_20_staticjvm_80</name>
+		</location>
+		<location id="id45" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_19_staticjvm_81</name>
+		</location>
+		<location id="id46" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_22_staticjvm_82</name>
+		</location>
+		<location id="id47" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_21_staticjvm_83</name>
+		</location>
+		<location id="id48" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_24_staticjvm_84</name>
+		</location>
+		<location id="id49" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_23_staticjvm_85</name>
+		</location>
+		<location id="id50" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_26_staticjvm_86</name>
+		</location>
+		<location id="id51" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_25_staticjvm_87</name>
+		</location>
+		<location id="id52" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_29_staticjvm_88</name>
+		</location>
+		<location id="id53" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_30_staticjvm_89</name>
+		</location>
+		<location id="id54" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_27_staticjvm_90</name>
+		</location>
+		<location id="id55" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_28_staticjvm_91</name>
+		</location>
+		<location id="id56" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID0_33_staticjvm_92</name>
+		</location>
+		<location id="id57" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID0_34_staticjvm_93</name>
+		</location>
+		<location id="id58" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_31_staticjvm_94</name>
+		</location>
+		<location id="id59" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID0_32_staticjvm_95</name>
+		</location>
+		<location id="id60" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_37_staticjvm_96</name>
+		</location>
+		<location id="id61" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_call_ID0_38_staticjvm_97</name>
+			<committed/>
+		</location>
+		<location id="id62" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_35_staticjvm_98</name>
+		</location>
+		<location id="id63" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_36_staticjvm_99</name>
+		</location>
+		<location id="id64" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID0_staticjvm_100</name>
+			<committed/>
+		</location>
+		<location id="id65" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID1_staticjvm_101</name>
+		</location>
+		<location id="id66" x="0" y="0">
+			<name x="0" y="0">Method_returned_ID0_38_staticjvm_102</name>
+			<committed/>
+		</location>
+		<location id="id67" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID1_3_staticjvm_103</name>
+		</location>
+		<location id="id68" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID1_2_staticjvm_104</name>
+		</location>
+		<location id="id69" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_lds_ID1_1_staticjvm_105</name>
+		</location>
+		<location id="id70" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_lds_ID1_0_staticjvm_106</name>
+		</location>
+		<location id="id71" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID1_7_staticjvm_107</name>
+		</location>
+		<location id="id72" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mul_ID1_6_staticjvm_108</name>
+		</location>
+		<location id="id73" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID1_5_staticjvm_109</name>
+		</location>
+		<location id="id74" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mul_ID1_4_staticjvm_110</name>
+		</location>
+		<location id="id75" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_subi_ID1_11_staticjvm_111</name>
+		</location>
+		<location id="id76" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_eor_ID1_10_staticjvm_112</name>
+		</location>
+		<location id="id77" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID1_9_staticjvm_113</name>
+		</location>
+		<location id="id78" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mul_ID1_8_staticjvm_114</name>
+		</location>
+		<location id="id79" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_breq_ID1_15_staticjvm_115</name>
+			<committed/>
+		</location>
+		<location id="id80" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_and_ID1_14_staticjvm_116</name>
+		</location>
+		<location id="id81" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID1_13_staticjvm_117</name>
+		</location>
+		<location id="id82" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbci_ID1_12_staticjvm_118</name>
+		</location>
+		<location id="id83" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sts_ID2_2_staticjvm_119</name>
+		</location>
+		<location id="id84" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sts_ID2_3_staticjvm_120</name>
+		</location>
+		<location id="id85" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_4_staticjvm_121</name>
+		</location>
+		<location id="id86" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_5_staticjvm_122</name>
+		</location>
+		<location id="id87" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID1_staticjvm_123</name>
+			<committed/>
+		</location>
+		<location id="id88" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID2_staticjvm_124</name>
+		</location>
+		<location id="id89" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_0_staticjvm_125</name>
+		</location>
+		<location id="id90" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_1_staticjvm_126</name>
+		</location>
+		<location id="id91" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID3_staticjvm_127</name>
+		</location>
+		<location id="id92" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID3_0_staticjvm_128</name>
+		</location>
+		<location id="id93" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID3_1_staticjvm_129</name>
+		</location>
+		<location id="id94" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID3_2_staticjvm_130</name>
+		</location>
+		<location id="id95" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_6_staticjvm_131</name>
+		</location>
+		<location id="id96" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_7_staticjvm_132</name>
+		</location>
+		<location id="id97" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_rjmp_ID2_8_staticjvm_133</name>
+			<committed/>
+		</location>
+		<location id="id98" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID2_staticjvm_134</name>
+			<committed/>
+		</location>
+		<location id="id99" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID3_8_staticjvm_135</name>
+		</location>
+		<location id="id100" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID3_7_staticjvm_136</name>
+		</location>
+		<location id="id101" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ret_ID3_10_staticjvm_137</name>
+			<committed/>
+		</location>
+		<location id="id102" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID3_9_staticjvm_138</name>
+		</location>
+		<location id="id103" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID3_4_staticjvm_139</name>
+		</location>
+		<location id="id104" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID3_3_staticjvm_140</name>
+		</location>
+		<location id="id105" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID3_6_staticjvm_141</name>
+		</location>
+		<location id="id106" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID3_5_staticjvm_142</name>
+		</location>
+		<location id="id107" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adiw_ID4_3_staticjvm_143</name>
+		</location>
+		<location id="id108" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mov_ID4_2_staticjvm_144</name>
+		</location>
+		<location id="id109" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID4_5_staticjvm_145</name>
+		</location>
+		<location id="id110" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_lpm_ID4_4_staticjvm_146</name>
+		</location>
+		<location id="id111" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID4_staticjvm_147</name>
+		</location>
+		<location id="id112" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID3_staticjvm_148</name>
+			<committed/>
+		</location>
+		<location id="id113" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID4_1_staticjvm_149</name>
+		</location>
+		<location id="id114" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID4_0_staticjvm_150</name>
+		</location>
+		<location id="id115" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID4_12_staticjvm_151</name>
+		</location>
+		<location id="id116" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID4_13_staticjvm_152</name>
+		</location>
+		<location id="id117" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID4_10_staticjvm_153</name>
+		</location>
+		<location id="id118" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID4_11_staticjvm_154</name>
+		</location>
+		<location id="id119" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID4_8_staticjvm_155</name>
+		</location>
+		<location id="id120" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID4_9_staticjvm_156</name>
+		</location>
+		<location id="id121" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID4_6_staticjvm_157</name>
+		</location>
+		<location id="id122" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID4_7_staticjvm_158</name>
+		</location>
+		<location id="id123" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID4_14_staticjvm_159</name>
+			<committed/>
+		</location>
+		<location id="id124" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID4_staticjvm_160</name>
+			<committed/>
+		</location>
+		<location id="id125" x="0" y="0">
+			<name x="0" y="0">Executing_handleIRETURN_OPCODE_T_1_staticjvm_161</name>
+			<committed/>
+		</location>
+		<location id="id126" x="0" y="0">
+			<name x="0" y="0">Return_handleIRETURN_OPCODE_T_2_staticjvm_162</name>
+			<committed/>
+		</location>
+		<location id="id127" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID0_handleIRETURN_OPCODE_T_3_staticjvm_163</name>
+		</location>
+		<location id="id128" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_0_handleIRETURN_OPCODE_T_4_staticjvm_164</name>
+		</location>
+		<location id="id129" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_1_handleIRETURN_OPCODE_T_5_staticjvm_165</name>
+		</location>
+		<location id="id130" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_2_handleIRETURN_OPCODE_T_6_staticjvm_166</name>
+		</location>
+		<location id="id131" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_3_handleIRETURN_OPCODE_T_7_staticjvm_167</name>
+		</location>
+		<location id="id132" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_4_handleIRETURN_OPCODE_T_8_staticjvm_168</name>
+		</location>
+		<location id="id133" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_5_handleIRETURN_OPCODE_T_9_staticjvm_169</name>
+		</location>
+		<location id="id134" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_lds_ID0_6_handleIRETURN_OPCODE_T_10_staticjvm_170</name>
+		</location>
+		<location id="id135" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_lds_ID0_7_handleIRETURN_OPCODE_T_11_staticjvm_171</name>
+		</location>
+		<location id="id136" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbiw_ID0_8_handleIRETURN_OPCODE_T_12_staticjvm_172</name>
+		</location>
+		<location id="id137" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sts_ID0_9_handleIRETURN_OPCODE_T_13_staticjvm_173</name>
+		</location>
+		<location id="id138" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sts_ID0_10_handleIRETURN_OPCODE_T_14_staticjvm_174</name>
+		</location>
+		<location id="id139" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID0_12_handleIRETURN_OPCODE_T_15_staticjvm_175</name>
+		</location>
+		<location id="id140" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbiw_ID0_11_handleIRETURN_OPCODE_T_16_staticjvm_176</name>
+		</location>
+		<location id="id141" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mul_ID0_14_handleIRETURN_OPCODE_T_17_staticjvm_177</name>
+		</location>
+		<location id="id142" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID0_13_handleIRETURN_OPCODE_T_18_staticjvm_178</name>
+		</location>
+		<location id="id143" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mul_ID0_16_handleIRETURN_OPCODE_T_19_staticjvm_179</name>
+		</location>
+		<location id="id144" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_15_handleIRETURN_OPCODE_T_20_staticjvm_180</name>
+		</location>
+		<location id="id145" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mul_ID0_18_handleIRETURN_OPCODE_T_21_staticjvm_181</name>
+		</location>
+		<location id="id146" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_17_handleIRETURN_OPCODE_T_22_staticjvm_182</name>
+		</location>
+		<location id="id147" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_eor_ID0_20_handleIRETURN_OPCODE_T_23_staticjvm_183</name>
+		</location>
+		<location id="id148" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_19_handleIRETURN_OPCODE_T_24_staticjvm_184</name>
+		</location>
+		<location id="id149" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbci_ID0_22_handleIRETURN_OPCODE_T_25_staticjvm_185</name>
+		</location>
+		<location id="id150" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_subi_ID0_21_handleIRETURN_OPCODE_T_26_staticjvm_186</name>
+		</location>
+		<location id="id151" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_24_handleIRETURN_OPCODE_T_27_staticjvm_187</name>
+		</location>
+		<location id="id152" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_23_handleIRETURN_OPCODE_T_28_staticjvm_188</name>
+		</location>
+		<location id="id153" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_26_handleIRETURN_OPCODE_T_29_staticjvm_189</name>
+		</location>
+		<location id="id154" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_25_handleIRETURN_OPCODE_T_30_staticjvm_190</name>
+		</location>
+		<location id="id155" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_29_handleIRETURN_OPCODE_T_31_staticjvm_191</name>
+		</location>
+		<location id="id156" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_30_handleIRETURN_OPCODE_T_32_staticjvm_192</name>
+		</location>
+		<location id="id157" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_27_handleIRETURN_OPCODE_T_33_staticjvm_193</name>
+		</location>
+		<location id="id158" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_28_handleIRETURN_OPCODE_T_34_staticjvm_194</name>
+		</location>
+		<location id="id159" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_33_handleIRETURN_OPCODE_T_35_staticjvm_195</name>
+		</location>
+		<location id="id160" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_34_handleIRETURN_OPCODE_T_36_staticjvm_196</name>
+		</location>
+		<location id="id161" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_31_handleIRETURN_OPCODE_T_37_staticjvm_197</name>
+		</location>
+		<location id="id162" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_32_handleIRETURN_OPCODE_T_38_staticjvm_198</name>
+		</location>
+		<location id="id163" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_37_handleIRETURN_OPCODE_T_39_staticjvm_199</name>
+		</location>
+		<location id="id164" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_38_handleIRETURN_OPCODE_T_40_staticjvm_200</name>
+		</location>
+		<location id="id165" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adiw_ID0_35_handleIRETURN_OPCODE_T_41_staticjvm_201</name>
+		</location>
+		<location id="id166" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_36_handleIRETURN_OPCODE_T_42_staticjvm_202</name>
+		</location>
+		<location id="id167" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_41_handleIRETURN_OPCODE_T_43_staticjvm_203</name>
+		</location>
+		<location id="id168" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_42_handleIRETURN_OPCODE_T_44_staticjvm_204</name>
+		</location>
+		<location id="id169" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_39_handleIRETURN_OPCODE_T_45_staticjvm_205</name>
+		</location>
+		<location id="id170" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID0_40_handleIRETURN_OPCODE_T_46_staticjvm_206</name>
+		</location>
+		<location id="id171" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID0_46_handleIRETURN_OPCODE_T_47_staticjvm_207</name>
+		</location>
+		<location id="id172" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID0_45_handleIRETURN_OPCODE_T_48_staticjvm_208</name>
+		</location>
+		<location id="id173" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_44_handleIRETURN_OPCODE_T_49_staticjvm_209</name>
+		</location>
+		<location id="id174" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_43_handleIRETURN_OPCODE_T_50_staticjvm_210</name>
+		</location>
+		<location id="id175" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID0_50_handleIRETURN_OPCODE_T_51_staticjvm_211</name>
+		</location>
+		<location id="id176" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID0_49_handleIRETURN_OPCODE_T_52_staticjvm_212</name>
+		</location>
+		<location id="id177" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID0_48_handleIRETURN_OPCODE_T_53_staticjvm_213</name>
+		</location>
+		<location id="id178" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID0_47_handleIRETURN_OPCODE_T_54_staticjvm_214</name>
+		</location>
+		<location id="id179" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID0_handleIRETURN_OPCODE_T_55_staticjvm_215</name>
+			<committed/>
+		</location>
+		<location id="id180" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ret_ID0_51_handleIRETURN_OPCODE_T_56_staticjvm_216</name>
+			<committed/>
+		</location>
+		<location id="id181" x="0" y="0">
+			<name x="0" y="0">Executing_staticjvm_218</name>
+			<committed/>
+		</location>
+		<location id="id182" x="0" y="0">
+			<name x="0" y="0">Return_staticjvm_219</name>
+			<committed/>
+		</location>
+		<location id="id183" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID0_staticjvm_220</name>
+		</location>
+		<location id="id184" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_0_staticjvm_221</name>
+		</location>
+		<location id="id185" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_1_staticjvm_222</name>
+		</location>
+		<location id="id186" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_2_staticjvm_223</name>
+		</location>
+		<location id="id187" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_3_staticjvm_224</name>
+		</location>
+		<location id="id188" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_4_staticjvm_225</name>
+		</location>
+		<location id="id189" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_5_staticjvm_226</name>
+		</location>
+		<location id="id190" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_lpm_ID0_6_staticjvm_227</name>
+		</location>
+		<location id="id191" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID0_7_staticjvm_228</name>
+		</location>
+		<location id="id192" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID0_8_staticjvm_229</name>
+		</location>
+		<location id="id193" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_9_staticjvm_230</name>
+		</location>
+		<location id="id194" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_10_staticjvm_231</name>
+		</location>
+		<location id="id195" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbci_ID0_12_staticjvm_232</name>
+		</location>
+		<location id="id196" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_subi_ID0_11_staticjvm_233</name>
+		</location>
+		<location id="id197" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_14_staticjvm_234</name>
+		</location>
+		<location id="id198" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_13_staticjvm_235</name>
+		</location>
+		<location id="id199" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_16_staticjvm_236</name>
+		</location>
+		<location id="id200" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mov_ID0_15_staticjvm_237</name>
+		</location>
+		<location id="id201" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_18_staticjvm_238</name>
+		</location>
+		<location id="id202" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adiw_ID0_17_staticjvm_239</name>
+		</location>
+		<location id="id203" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbci_ID0_20_staticjvm_240</name>
+		</location>
+		<location id="id204" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_subi_ID0_19_staticjvm_241</name>
+		</location>
+		<location id="id205" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_subi_ID0_22_staticjvm_242</name>
+		</location>
+		<location id="id206" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_21_staticjvm_243</name>
+		</location>
+		<location id="id207" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_24_staticjvm_244</name>
+		</location>
+		<location id="id208" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbci_ID0_23_staticjvm_245</name>
+		</location>
+		<location id="id209" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbci_ID0_26_staticjvm_246</name>
+		</location>
+		<location id="id210" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_subi_ID0_25_staticjvm_247</name>
+		</location>
+		<location id="id211" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbci_ID0_29_staticjvm_248</name>
+		</location>
+		<location id="id212" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID0_30_staticjvm_249</name>
+		</location>
+		<location id="id213" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_27_staticjvm_250</name>
+		</location>
+		<location id="id214" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_subi_ID0_28_staticjvm_251</name>
+		</location>
+		<location id="id215" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_33_staticjvm_252</name>
+		</location>
+		<location id="id216" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_34_staticjvm_253</name>
+		</location>
+		<location id="id217" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mov_ID0_31_staticjvm_254</name>
+		</location>
+		<location id="id218" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mov_ID0_32_staticjvm_255</name>
+		</location>
+		<location id="id219" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_eicall_ID0_35_staticjvm_256</name>
+			<committed/>
+		</location>
+		<location id="id220" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID0_staticjvm_257</name>
+			<committed/>
+		</location>
+		<location id="id221" x="0" y="0">
+			<name x="0" y="0">Executing_staticjvm_322</name>
+			<committed/>
+		</location>
+		<location id="id222" x="0" y="0">
+			<name x="0" y="0">Return_staticjvm_323</name>
+			<committed/>
+		</location>
+		<location id="id223" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID0_staticjvm_324</name>
+		</location>
+		<location id="id224" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_0_staticjvm_325</name>
+		</location>
+		<location id="id225" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_1_staticjvm_326</name>
+		</location>
+		<location id="id226" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_2_staticjvm_327</name>
+		</location>
+		<location id="id227" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_3_staticjvm_328</name>
+		</location>
+		<location id="id228" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_call_ID0_4_staticjvm_329</name>
+			<committed/>
+		</location>
+		<location id="id229" x="0" y="0">
+			<name x="0" y="0">Method_returned_ID0_4_staticjvm_330</name>
+			<committed/>
+		</location>
+		<location id="id230" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID0_staticjvm_331</name>
+			<committed/>
+		</location>
+		<location id="id231" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID1_staticjvm_332</name>
+		</location>
+		<location id="id232" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID1_0_staticjvm_333</name>
+		</location>
+		<location id="id233" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID1_1_staticjvm_334</name>
+		</location>
+		<location id="id234" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID1_3_staticjvm_335</name>
+		</location>
+		<location id="id235" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID1_2_staticjvm_336</name>
+		</location>
+		<location id="id236" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID1_staticjvm_337</name>
+			<committed/>
+		</location>
+		<location id="id237" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ret_ID1_4_staticjvm_338</name>
+			<committed/>
+		</location>
+		<location id="id238" x="0" y="0">
+			<name x="0" y="0">Executing_handleICONST_0_OPCODE_T_259_staticjvm_339</name>
+			<committed/>
+		</location>
+		<location id="id239" x="0" y="0">
+			<name x="0" y="0">Return_handleICONST_0_OPCODE_T_260_staticjvm_340</name>
+			<committed/>
+		</location>
+		<location id="id240" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID0_handleICONST_0_OPCODE_T_261_staticjvm_341</name>
+		</location>
+		<location id="id241" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_0_handleICONST_0_OPCODE_T_262_staticjvm_342</name>
+		</location>
+		<location id="id242" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_1_handleICONST_0_OPCODE_T_263_staticjvm_343</name>
+		</location>
+		<location id="id243" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_2_handleICONST_0_OPCODE_T_264_staticjvm_344</name>
+		</location>
+		<location id="id244" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_3_handleICONST_0_OPCODE_T_265_staticjvm_345</name>
+		</location>
+		<location id="id245" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_4_handleICONST_0_OPCODE_T_266_staticjvm_346</name>
+		</location>
+		<location id="id246" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_push_ID0_5_handleICONST_0_OPCODE_T_267_staticjvm_347</name>
+		</location>
+		<location id="id247" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_6_handleICONST_0_OPCODE_T_268_staticjvm_348</name>
+		</location>
+		<location id="id248" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_7_handleICONST_0_OPCODE_T_269_staticjvm_349</name>
+		</location>
+		<location id="id249" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_8_handleICONST_0_OPCODE_T_270_staticjvm_350</name>
+		</location>
+		<location id="id250" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_9_handleICONST_0_OPCODE_T_271_staticjvm_351</name>
+		</location>
+		<location id="id251" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID0_10_handleICONST_0_OPCODE_T_272_staticjvm_352</name>
+		</location>
+		<location id="id252" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_12_handleICONST_0_OPCODE_T_273_staticjvm_353</name>
+		</location>
+		<location id="id253" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_11_handleICONST_0_OPCODE_T_274_staticjvm_354</name>
+		</location>
+		<location id="id254" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_14_handleICONST_0_OPCODE_T_275_staticjvm_355</name>
+		</location>
+		<location id="id255" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_13_handleICONST_0_OPCODE_T_276_staticjvm_356</name>
+		</location>
+		<location id="id256" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_16_handleICONST_0_OPCODE_T_277_staticjvm_357</name>
+		</location>
+		<location id="id257" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_15_handleICONST_0_OPCODE_T_278_staticjvm_358</name>
+		</location>
+		<location id="id258" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_18_handleICONST_0_OPCODE_T_279_staticjvm_359</name>
+		</location>
+		<location id="id259" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_17_handleICONST_0_OPCODE_T_280_staticjvm_360</name>
+		</location>
+		<location id="id260" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adc_ID0_20_handleICONST_0_OPCODE_T_281_staticjvm_361</name>
+		</location>
+		<location id="id261" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_add_ID0_19_handleICONST_0_OPCODE_T_282_staticjvm_362</name>
+		</location>
+		<location id="id262" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID0_22_handleICONST_0_OPCODE_T_283_staticjvm_363</name>
+		</location>
+		<location id="id263" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID0_21_handleICONST_0_OPCODE_T_284_staticjvm_364</name>
+		</location>
+		<location id="id264" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbiw_ID0_24_handleICONST_0_OPCODE_T_285_staticjvm_365</name>
+		</location>
+		<location id="id265" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID0_23_handleICONST_0_OPCODE_T_286_staticjvm_366</name>
+		</location>
+		<location id="id266" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbrc_ID0_26_handleICONST_0_OPCODE_T_287_staticjvm_367</name>
+			<committed/>
+		</location>
+		<location id="id267" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_eor_ID0_25_handleICONST_0_OPCODE_T_288_staticjvm_368</name>
+		</location>
+		<location id="id268" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_com_ID1_0_handleICONST_0_OPCODE_T_289_staticjvm_369</name>
+			<committed/>
+		</location>
+		<location id="id269" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID1_handleICONST_0_OPCODE_T_290_staticjvm_370</name>
+			<committed/>
+		</location>
+		<location id="id270" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID0_handleICONST_0_OPCODE_T_291_staticjvm_371</name>
+			<committed/>
+		</location>
+		<location id="id271" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID1_handleICONST_0_OPCODE_T_292_staticjvm_372</name>
+		</location>
+		<location id="id272" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID2_1_handleICONST_0_OPCODE_T_293_staticjvm_373</name>
+		</location>
+		<location id="id273" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID2_2_handleICONST_0_OPCODE_T_294_staticjvm_374</name>
+		</location>
+		<location id="id274" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID2_handleICONST_0_OPCODE_T_295_staticjvm_375</name>
+		</location>
+		<location id="id275" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_mov_ID2_0_handleICONST_0_OPCODE_T_296_staticjvm_376</name>
+		</location>
+		<location id="id276" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_subi_ID2_5_handleICONST_0_OPCODE_T_297_staticjvm_377</name>
+		</location>
+		<location id="id277" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_sbci_ID2_6_handleICONST_0_OPCODE_T_298_staticjvm_378</name>
+		</location>
+		<location id="id278" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID2_3_handleICONST_0_OPCODE_T_299_staticjvm_379</name>
+		</location>
+		<location id="id279" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID2_4_handleICONST_0_OPCODE_T_300_staticjvm_380</name>
+		</location>
+		<location id="id280" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_movw_ID2_9_handleICONST_0_OPCODE_T_301_staticjvm_381</name>
+		</location>
+		<location id="id281" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ld_ID2_10_handleICONST_0_OPCODE_T_302_staticjvm_382</name>
+		</location>
+		<location id="id282" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID2_7_handleICONST_0_OPCODE_T_303_staticjvm_383</name>
+		</location>
+		<location id="id283" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID2_8_handleICONST_0_OPCODE_T_304_staticjvm_384</name>
+		</location>
+		<location id="id284" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_st_ID2_14_handleICONST_0_OPCODE_T_305_staticjvm_385</name>
+		</location>
+		<location id="id285" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_std_ID2_13_handleICONST_0_OPCODE_T_306_staticjvm_386</name>
+		</location>
+		<location id="id286" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_adiw_ID2_12_handleICONST_0_OPCODE_T_307_staticjvm_387</name>
+		</location>
+		<location id="id287" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldd_ID2_11_handleICONST_0_OPCODE_T_308_staticjvm_388</name>
+		</location>
+		<location id="id288" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_18_handleICONST_0_OPCODE_T_309_staticjvm_389</name>
+		</location>
+		<location id="id289" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_17_handleICONST_0_OPCODE_T_310_staticjvm_390</name>
+		</location>
+		<location id="id290" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_16_handleICONST_0_OPCODE_T_311_staticjvm_391</name>
+		</location>
+		<location id="id291" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ldi_ID2_15_handleICONST_0_OPCODE_T_312_staticjvm_392</name>
+		</location>
+		<location id="id292" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID2_22_handleICONST_0_OPCODE_T_313_staticjvm_393</name>
+		</location>
+		<location id="id293" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID2_21_handleICONST_0_OPCODE_T_314_staticjvm_394</name>
+		</location>
+		<location id="id294" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID2_20_handleICONST_0_OPCODE_T_315_staticjvm_395</name>
+		</location>
+		<location id="id295" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID2_19_handleICONST_0_OPCODE_T_316_staticjvm_396</name>
+		</location>
+		<location id="id296" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID2_handleICONST_0_OPCODE_T_317_staticjvm_397</name>
+			<committed/>
+		</location>
+		<location id="id297" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_ret_ID2_25_handleICONST_0_OPCODE_T_318_staticjvm_398</name>
+			<committed/>
+		</location>
+		<location id="id298" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID2_24_handleICONST_0_OPCODE_T_319_staticjvm_399</name>
+		</location>
+		<location id="id299" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_pop_ID2_23_handleICONST_0_OPCODE_T_320_staticjvm_400</name>
+		</location>
+		<location id="id300" x="0" y="0">
+			<name x="0" y="0">Executing_staticjvm_402</name>
+			<committed/>
+		</location>
+		<location id="id301" x="0" y="0">
+			<name x="0" y="0">Return_staticjvm_403</name>
+			<committed/>
+		</location>
+		<location id="id302" x="0" y="0">
+			<name x="0" y="0">BasicBlockBegin_ID0_staticjvm_404</name>
+		</location>
+		<location id="id303" x="0" y="0">
+			<name x="0" y="0">ASSEMBLY_rjmp_ID0_0_staticjvm_405</name>
+			<committed/>
+		</location>
+		<location id="id304" x="0" y="0">
+			<name x="0" y="0">BasicBlockEnd_ID0_staticjvm_406</name>
+			<committed/>
+		</location>
+		<init ref="id16"/>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="0" y="0">jvm_execute?</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id181"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id300"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id20"/>
+			<label kind="guard" x="0" y="0">jvm_instruction == JVM_ICONST_0</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id221"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id21"/>
+			<label kind="guard" x="0" y="0">jvm_instruction == JVM_IRETURN</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id22"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id19"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id27"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id34"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id35"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id37"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id36"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id39"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id38"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id41"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id40"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBIW</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id43"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id42"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id45"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id44"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id47"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id46"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id49"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id48"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id48"/>
+			<target ref="id51"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id51"/>
+			<target ref="id50"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id50"/>
+			<target ref="id54"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id55"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id52"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id52"/>
+			<target ref="id53"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id58"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id58"/>
+			<target ref="id59"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id59"/>
+			<target ref="id56"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id56"/>
+			<target ref="id57"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id57"/>
+			<target ref="id62"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id62"/>
+			<target ref="id63"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id63"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id60"/>
+			<target ref="id61"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_CALL</label>
+		</transition>
+		<transition>
+			<source ref="id61"/>
+			<target ref="id125"/>
+		</transition>
+		<transition>
+			<source ref="id66"/>
+			<target ref="id64"/>
+		</transition>
+		<transition>
+			<source ref="id65"/>
+			<target ref="id70"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDS</label>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id69"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDS</label>
+		</transition>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id68"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id68"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id67"/>
+			<target ref="id74"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MUL</label>
+		</transition>
+		<transition>
+			<source ref="id74"/>
+			<target ref="id73"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id72"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MUL</label>
+		</transition>
+		<transition>
+			<source ref="id72"/>
+			<target ref="id71"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id71"/>
+			<target ref="id78"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MUL</label>
+		</transition>
+		<transition>
+			<source ref="id78"/>
+			<target ref="id77"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id77"/>
+			<target ref="id76"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_EOR</label>
+		</transition>
+		<transition>
+			<source ref="id76"/>
+			<target ref="id75"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SUBI</label>
+		</transition>
+		<transition>
+			<source ref="id75"/>
+			<target ref="id82"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBCI</label>
+		</transition>
+		<transition>
+			<source ref="id82"/>
+			<target ref="id81"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id81"/>
+			<target ref="id80"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_AND</label>
+		</transition>
+		<transition>
+			<source ref="id80"/>
+			<target ref="id79"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_BREQ</label>
+		</transition>
+		<transition>
+			<source ref="id79"/>
+			<target ref="id87"/>
+		</transition>
+		<transition>
+			<source ref="id88"/>
+			<target ref="id89"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id89"/>
+			<target ref="id90"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id90"/>
+			<target ref="id83"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STS</label>
+		</transition>
+		<transition>
+			<source ref="id83"/>
+			<target ref="id84"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STS</label>
+		</transition>
+		<transition>
+			<source ref="id84"/>
+			<target ref="id85"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id85"/>
+			<target ref="id86"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id86"/>
+			<target ref="id95"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id95"/>
+			<target ref="id96"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id96"/>
+			<target ref="id97"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_RJMP</label>
+		</transition>
+		<transition>
+			<source ref="id97"/>
+			<target ref="id98"/>
+		</transition>
+		<transition>
+			<source ref="id91"/>
+			<target ref="id92"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id92"/>
+			<target ref="id93"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id93"/>
+			<target ref="id94"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id94"/>
+			<target ref="id104"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id104"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id103"/>
+			<target ref="id106"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id106"/>
+			<target ref="id105"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id105"/>
+			<target ref="id100"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id100"/>
+			<target ref="id99"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id99"/>
+			<target ref="id102"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id102"/>
+			<target ref="id101"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_RET</label>
+		</transition>
+		<transition>
+			<source ref="id101"/>
+			<target ref="id112"/>
+		</transition>
+		<transition>
+			<source ref="id111"/>
+			<target ref="id114"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id114"/>
+			<target ref="id113"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id113"/>
+			<target ref="id108"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOV</label>
+		</transition>
+		<transition>
+			<source ref="id108"/>
+			<target ref="id107"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADIW</label>
+		</transition>
+		<transition>
+			<source ref="id107"/>
+			<target ref="id110"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LPM</label>
+		</transition>
+		<transition>
+			<source ref="id110"/>
+			<target ref="id109"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id109"/>
+			<target ref="id121"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id121"/>
+			<target ref="id122"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id122"/>
+			<target ref="id119"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id119"/>
+			<target ref="id120"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id120"/>
+			<target ref="id117"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id117"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id118"/>
+			<target ref="id115"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id115"/>
+			<target ref="id116"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id116"/>
+			<target ref="id123"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id123"/>
+			<target ref="id124"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id24"/>
+		</transition>
+		<transition>
+			<source ref="id64"/>
+			<target ref="id65"/>
+		</transition>
+		<transition>
+			<source ref="id87"/>
+			<target ref="id88"/>
+		</transition>
+		<transition>
+			<source ref="id87"/>
+			<target ref="id111"/>
+		</transition>
+		<transition>
+			<source ref="id98"/>
+			<target ref="id91"/>
+		</transition>
+		<transition>
+			<source ref="id112"/>
+			<target ref="id23"/>
+		</transition>
+		<transition>
+			<source ref="id124"/>
+			<target ref="id91"/>
+		</transition>
+		<transition>
+			<source ref="id126"/>
+			<target ref="id66"/>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id128"/>
+			<target ref="id129"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id130"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id131"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id131"/>
+			<target ref="id132"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id132"/>
+			<target ref="id133"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id133"/>
+			<target ref="id134"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDS</label>
+		</transition>
+		<transition>
+			<source ref="id134"/>
+			<target ref="id135"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDS</label>
+		</transition>
+		<transition>
+			<source ref="id135"/>
+			<target ref="id136"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBIW</label>
+		</transition>
+		<transition>
+			<source ref="id136"/>
+			<target ref="id137"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STS</label>
+		</transition>
+		<transition>
+			<source ref="id137"/>
+			<target ref="id138"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STS</label>
+		</transition>
+		<transition>
+			<source ref="id138"/>
+			<target ref="id140"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBIW</label>
+		</transition>
+		<transition>
+			<source ref="id140"/>
+			<target ref="id139"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id139"/>
+			<target ref="id142"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id142"/>
+			<target ref="id141"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MUL</label>
+		</transition>
+		<transition>
+			<source ref="id141"/>
+			<target ref="id144"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id144"/>
+			<target ref="id143"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MUL</label>
+		</transition>
+		<transition>
+			<source ref="id143"/>
+			<target ref="id146"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id146"/>
+			<target ref="id145"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MUL</label>
+		</transition>
+		<transition>
+			<source ref="id145"/>
+			<target ref="id148"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id148"/>
+			<target ref="id147"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_EOR</label>
+		</transition>
+		<transition>
+			<source ref="id147"/>
+			<target ref="id150"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SUBI</label>
+		</transition>
+		<transition>
+			<source ref="id150"/>
+			<target ref="id149"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBCI</label>
+		</transition>
+		<transition>
+			<source ref="id149"/>
+			<target ref="id152"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id152"/>
+			<target ref="id151"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id151"/>
+			<target ref="id154"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id154"/>
+			<target ref="id153"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id153"/>
+			<target ref="id157"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id157"/>
+			<target ref="id158"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id158"/>
+			<target ref="id155"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id155"/>
+			<target ref="id156"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id156"/>
+			<target ref="id161"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id161"/>
+			<target ref="id162"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id162"/>
+			<target ref="id159"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id159"/>
+			<target ref="id160"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id160"/>
+			<target ref="id165"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADIW</label>
+		</transition>
+		<transition>
+			<source ref="id165"/>
+			<target ref="id166"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id166"/>
+			<target ref="id163"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id163"/>
+			<target ref="id164"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id164"/>
+			<target ref="id169"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id169"/>
+			<target ref="id170"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id170"/>
+			<target ref="id167"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id167"/>
+			<target ref="id168"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id168"/>
+			<target ref="id174"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id174"/>
+			<target ref="id173"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id173"/>
+			<target ref="id172"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id172"/>
+			<target ref="id171"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id171"/>
+			<target ref="id178"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id178"/>
+			<target ref="id177"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id177"/>
+			<target ref="id176"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id176"/>
+			<target ref="id175"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id175"/>
+			<target ref="id180"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_RET</label>
+		</transition>
+		<transition>
+			<source ref="id180"/>
+			<target ref="id179"/>
+		</transition>
+		<transition>
+			<source ref="id125"/>
+			<target ref="id127"/>
+		</transition>
+		<transition>
+			<source ref="id179"/>
+			<target ref="id126"/>
+		</transition>
+		<transition>
+			<source ref="id182"/>
+			<target ref="id18"/>
+		</transition>
+		<transition>
+			<source ref="id183"/>
+			<target ref="id184"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id184"/>
+			<target ref="id185"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id185"/>
+			<target ref="id186"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id186"/>
+			<target ref="id187"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id187"/>
+			<target ref="id188"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id188"/>
+			<target ref="id189"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id189"/>
+			<target ref="id190"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LPM</label>
+		</transition>
+		<transition>
+			<source ref="id190"/>
+			<target ref="id191"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id191"/>
+			<target ref="id192"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id192"/>
+			<target ref="id193"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id193"/>
+			<target ref="id194"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id194"/>
+			<target ref="id196"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SUBI</label>
+		</transition>
+		<transition>
+			<source ref="id196"/>
+			<target ref="id195"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBCI</label>
+		</transition>
+		<transition>
+			<source ref="id195"/>
+			<target ref="id198"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id198"/>
+			<target ref="id197"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id197"/>
+			<target ref="id200"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOV</label>
+		</transition>
+		<transition>
+			<source ref="id200"/>
+			<target ref="id199"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id199"/>
+			<target ref="id202"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADIW</label>
+		</transition>
+		<transition>
+			<source ref="id202"/>
+			<target ref="id201"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id201"/>
+			<target ref="id204"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SUBI</label>
+		</transition>
+		<transition>
+			<source ref="id204"/>
+			<target ref="id203"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBCI</label>
+		</transition>
+		<transition>
+			<source ref="id203"/>
+			<target ref="id206"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id206"/>
+			<target ref="id205"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SUBI</label>
+		</transition>
+		<transition>
+			<source ref="id205"/>
+			<target ref="id208"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBCI</label>
+		</transition>
+		<transition>
+			<source ref="id208"/>
+			<target ref="id207"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id207"/>
+			<target ref="id210"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SUBI</label>
+		</transition>
+		<transition>
+			<source ref="id210"/>
+			<target ref="id209"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBCI</label>
+		</transition>
+		<transition>
+			<source ref="id209"/>
+			<target ref="id213"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id213"/>
+			<target ref="id214"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SUBI</label>
+		</transition>
+		<transition>
+			<source ref="id214"/>
+			<target ref="id211"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBCI</label>
+		</transition>
+		<transition>
+			<source ref="id211"/>
+			<target ref="id212"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id212"/>
+			<target ref="id217"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOV</label>
+		</transition>
+		<transition>
+			<source ref="id217"/>
+			<target ref="id218"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOV</label>
+		</transition>
+		<transition>
+			<source ref="id218"/>
+			<target ref="id215"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id215"/>
+			<target ref="id216"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id216"/>
+			<target ref="id219"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_EICALL</label>
+		</transition>
+		<transition>
+			<source ref="id219"/>
+			<target ref="id220"/>
+		</transition>
+		<transition>
+			<source ref="id181"/>
+			<target ref="id183"/>
+		</transition>
+		<transition>
+			<source ref="id220"/>
+			<target ref="id182"/>
+		</transition>
+		<transition>
+			<source ref="id222"/>
+			<target ref="id19"/>
+		</transition>
+		<transition>
+			<source ref="id223"/>
+			<target ref="id224"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id224"/>
+			<target ref="id225"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id225"/>
+			<target ref="id226"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id226"/>
+			<target ref="id227"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id227"/>
+			<target ref="id228"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_CALL</label>
+		</transition>
+		<transition>
+			<source ref="id228"/>
+			<target ref="id238"/>
+		</transition>
+		<transition>
+			<source ref="id229"/>
+			<target ref="id230"/>
+		</transition>
+		<transition>
+			<source ref="id231"/>
+			<target ref="id232"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id232"/>
+			<target ref="id233"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id233"/>
+			<target ref="id235"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id235"/>
+			<target ref="id234"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id234"/>
+			<target ref="id237"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_RET</label>
+		</transition>
+		<transition>
+			<source ref="id237"/>
+			<target ref="id236"/>
+		</transition>
+		<transition>
+			<source ref="id221"/>
+			<target ref="id223"/>
+		</transition>
+		<transition>
+			<source ref="id230"/>
+			<target ref="id231"/>
+		</transition>
+		<transition>
+			<source ref="id236"/>
+			<target ref="id222"/>
+		</transition>
+		<transition>
+			<source ref="id239"/>
+			<target ref="id229"/>
+		</transition>
+		<transition>
+			<source ref="id240"/>
+			<target ref="id241"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id241"/>
+			<target ref="id242"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id242"/>
+			<target ref="id243"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id243"/>
+			<target ref="id244"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id244"/>
+			<target ref="id245"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id245"/>
+			<target ref="id246"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_PUSH</label>
+		</transition>
+		<transition>
+			<source ref="id246"/>
+			<target ref="id247"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id247"/>
+			<target ref="id248"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id248"/>
+			<target ref="id249"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id249"/>
+			<target ref="id250"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id250"/>
+			<target ref="id251"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id251"/>
+			<target ref="id253"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id253"/>
+			<target ref="id252"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id252"/>
+			<target ref="id255"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id255"/>
+			<target ref="id254"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id254"/>
+			<target ref="id257"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id257"/>
+			<target ref="id256"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id256"/>
+			<target ref="id259"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id259"/>
+			<target ref="id258"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id258"/>
+			<target ref="id261"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADD</label>
+		</transition>
+		<transition>
+			<source ref="id261"/>
+			<target ref="id260"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADC</label>
+		</transition>
+		<transition>
+			<source ref="id260"/>
+			<target ref="id263"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id263"/>
+			<target ref="id262"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id262"/>
+			<target ref="id265"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id265"/>
+			<target ref="id264"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBIW</label>
+		</transition>
+		<transition>
+			<source ref="id264"/>
+			<target ref="id267"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_EOR</label>
+		</transition>
+		<transition>
+			<source ref="id267"/>
+			<target ref="id266"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBRC</label>
+		</transition>
+		<transition>
+			<source ref="id266"/>
+			<target ref="id270"/>
+		</transition>
+		<transition>
+			<source ref="id271"/>
+			<target ref="id268"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_COM</label>
+		</transition>
+		<transition>
+			<source ref="id268"/>
+			<target ref="id269"/>
+		</transition>
+		<transition>
+			<source ref="id274"/>
+			<target ref="id275"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOV</label>
+		</transition>
+		<transition>
+			<source ref="id275"/>
+			<target ref="id272"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id272"/>
+			<target ref="id273"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id273"/>
+			<target ref="id278"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id278"/>
+			<target ref="id279"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id279"/>
+			<target ref="id276"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SUBI</label>
+		</transition>
+		<transition>
+			<source ref="id276"/>
+			<target ref="id277"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_SBCI</label>
+		</transition>
+		<transition>
+			<source ref="id277"/>
+			<target ref="id282"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id282"/>
+			<target ref="id283"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id283"/>
+			<target ref="id280"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_MOVW</label>
+		</transition>
+		<transition>
+			<source ref="id280"/>
+			<target ref="id281"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LD</label>
+		</transition>
+		<transition>
+			<source ref="id281"/>
+			<target ref="id287"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDD</label>
+		</transition>
+		<transition>
+			<source ref="id287"/>
+			<target ref="id286"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ADIW</label>
+		</transition>
+		<transition>
+			<source ref="id286"/>
+			<target ref="id285"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_STD</label>
+		</transition>
+		<transition>
+			<source ref="id285"/>
+			<target ref="id284"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_ST</label>
+		</transition>
+		<transition>
+			<source ref="id284"/>
+			<target ref="id291"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id291"/>
+			<target ref="id290"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id290"/>
+			<target ref="id289"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id289"/>
+			<target ref="id288"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_LDI</label>
+		</transition>
+		<transition>
+			<source ref="id288"/>
+			<target ref="id295"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id295"/>
+			<target ref="id294"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id294"/>
+			<target ref="id293"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id293"/>
+			<target ref="id292"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id292"/>
+			<target ref="id299"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id299"/>
+			<target ref="id298"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_POP</label>
+		</transition>
+		<transition>
+			<source ref="id298"/>
+			<target ref="id297"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_RET</label>
+		</transition>
+		<transition>
+			<source ref="id297"/>
+			<target ref="id296"/>
+		</transition>
+		<transition>
+			<source ref="id238"/>
+			<target ref="id240"/>
+		</transition>
+		<transition>
+			<source ref="id270"/>
+			<target ref="id271"/>
+		</transition>
+		<transition>
+			<source ref="id270"/>
+			<target ref="id274"/>
+		</transition>
+		<transition>
+			<source ref="id269"/>
+			<target ref="id274"/>
+		</transition>
+		<transition>
+			<source ref="id296"/>
+			<target ref="id239"/>
+		</transition>
+		<transition>
+			<source ref="id301"/>
+			<target ref="id16"/>
+		</transition>
+		<transition>
+			<source ref="id302"/>
+			<target ref="id303"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute!</label>
+			<label kind="assignment" x="0" y="0">assembly_instruction = ASSEMBLY_RJMP</label>
+		</transition>
+		<transition>
+			<source ref="id303"/>
+			<target ref="id304"/>
+		</transition>
+		<transition>
+			<source ref="id300"/>
+			<target ref="id302"/>
+		</transition>
+		<transition>
+			<source ref="id304"/>
+			<target ref="id301"/>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">hwinterface</name>
+		<location id="id305" x="0" y="0">
+			<name x="0" y="0">Idle</name>
+		</location>
+		<location id="id306" x="0" y="0">
+			<name x="0" y="0">ExecuteMetamoc</name>
+		</location>
+		<init ref="id305"/>
+		<transition>
+			<source ref="id305"/>
+			<target ref="id306"/>
+			<label kind="synchronisation" x="0" y="0">assembly_execute?</label>
+			<label kind="assignment" x="0" y="0">instrtype[PIPELINE_FETCH_STAGE] = assembly_instruction</label>
+		</transition>
+		<transition>
+			<source ref="id306"/>
+			<target ref="id305"/>
+			<label kind="synchronisation" x="0" y="0">fetch!</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">ExecuteStage</name>
+		<declaration>const int THIS = PIPELINE_EXECUTE_STAGE;
+int wait;
+clock x;
+
+void clear(int stage){
+    instrtype[stage] = INSTR_NONE;
+    instradr[stage] = INVALID_ADDRESS;
+}
+
+const int CYCLES_ADD=1;
+const int CYCLES_ADC=1;
+const int CYCLES_ADIW=2;
+const int CYCLES_SUB=1;
+const int CYCLES_SUBI=1;
+const int CYCLES_SBC=1;
+const int CYCLES_SBCI=1;
+const int CYCLES_SBIW=2;
+const int CYCLES_AND=1;
+const int CYCLES_ANDI=1;
+const int CYCLES_OR=1;
+const int CYCLES_ORI=1;
+const int CYCLES_EOR=1;
+const int CYCLES_COM=1;
+const int CYCLES_NEG=1;
+const int CYCLES_SBR=1;
+const int CYCLES_CBR=1;
+const int CYCLES_INC=1;
+const int CYCLES_DEC=1;
+const int CYCLES_TST=1;
+const int CYCLES_CLR=1;
+const int CYCLES_SER=1;
+const int CYCLES_MUL=2;
+const int CYCLES_MULS=2;
+const int CYCLES_MULSU=2;
+const int CYCLES_FMUL=2;
+const int CYCLES_FMULS=2;
+const int CYCLES_FMULSU=2;
+const int CYCLES_RJMP=2;
+const int CYCLES_IJMP=2;
+const int CYCLES_EIJMP=2;
+const int CYCLES_JMP=3;
+const int CYCLES_RCALL=4;
+const int CYCLES_ICALL=4;
+const int CYCLES_EICALL=4;
+const int CYCLES_CALL=5;
+const int CYCLES_RET=5;
+const int CYCLES_RETI=5;
+const int CYCLES_CPSE=3;
+const int CYCLES_CP=1;
+const int CYCLES_CPC=1;
+const int CYCLES_CPI=1;
+const int CYCLES_SBRC=3;
+const int CYCLES_SBRS=3;
+const int CYCLES_SBIC=3;
+const int CYCLES_SBIS=3;
+const int CYCLES_BRBS=2;
+const int CYCLES_BRBC=2;
+const int CYCLES_BREQ=2;
+const int CYCLES_BRNE=2;
+const int CYCLES_BRCS=2;
+const int CYCLES_BRCC=2;
+const int CYCLES_BRSH=2;
+const int CYCLES_BRLO=2;
+const int CYCLES_BRMI=2;
+const int CYCLES_BRPL=2;
+const int CYCLES_BRGE=2;
+const int CYCLES_BRLT=2;
+const int CYCLES_BRHS=2;
+const int CYCLES_BRHC=2;
+const int CYCLES_BRTS=2;
+const int CYCLES_BRTC=2;
+const int CYCLES_BRVS=2;
+const int CYCLES_BRVC=2;
+const int CYCLES_BRIE=2;
+const int CYCLES_BRID=2;
+const int CYCLES_SBI=2;
+const int CYCLES_CBI=2;
+const int CYCLES_LSL=1;
+const int CYCLES_LSR=1;
+const int CYCLES_ROL=1;
+const int CYCLES_ROR=1;
+const int CYCLES_ASR=1;
+const int CYCLES_SWAP=1;
+const int CYCLES_BSET=1;
+const int CYCLES_BCLR=1;
+const int CYCLES_BST=1;
+const int CYCLES_BLD=1;
+const int CYCLES_SEC=1;
+const int CYCLES_CLC=1;
+const int CYCLES_SEN=1;
+const int CYCLES_CLN=1;
+const int CYCLES_SEZ=1;
+const int CYCLES_CLZ=1;
+const int CYCLES_SEI=1;
+const int CYCLES_CLI=1;
+const int CYCLES_SES=1;
+const int CYCLES_CLS=1;
+const int CYCLES_SEV=1;
+const int CYCLES_CLV=1;
+const int CYCLES_SET=1;
+const int CYCLES_CLT=1;
+const int CYCLES_SEH=1;
+const int CYCLES_CLH=1;
+const int CYCLES_MOV=1;
+const int CYCLES_MOVW=1;
+const int CYCLES_LDI=1;
+const int CYCLES_LD=2;
+const int CYCLES_LDD=2;
+const int CYCLES_LDS=2;
+const int CYCLES_ST=2;
+const int CYCLES_STD=2;
+const int CYCLES_STS=2;
+const int CYCLES_LPM=3;
+const int CYCLES_ELPM=3;
+const int CYCLES_SPM=2147483647;
+const int CYCLES_IN=1;
+const int CYCLES_OUT=1;
+const int CYCLES_PUSH=2;
+const int CYCLES_POP=2;
+const int CYCLES_NOP=1;
+const int CYCLES_SLEEP=1;
+const int CYCLES_WDR=1;
+const int CYCLES_BREAK=2147483647;
+void set_wait()
+{
+	 if(instrtype[THIS] == ASSEMBLY_ADD)
+		 wait = CYCLES_ADD;return;
+	 if(instrtype[THIS] == ASSEMBLY_ADC)
+		 wait = CYCLES_ADC;return;
+	 if(instrtype[THIS] == ASSEMBLY_ADIW)
+		 wait = CYCLES_ADIW;return;
+	 if(instrtype[THIS] == ASSEMBLY_SUB)
+		 wait = CYCLES_SUB;return;
+	 if(instrtype[THIS] == ASSEMBLY_SUBI)
+		 wait = CYCLES_SUBI;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBC)
+		 wait = CYCLES_SBC;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBCI)
+		 wait = CYCLES_SBCI;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBIW)
+		 wait = CYCLES_SBIW;return;
+	 if(instrtype[THIS] == ASSEMBLY_AND)
+		 wait = CYCLES_AND;return;
+	 if(instrtype[THIS] == ASSEMBLY_ANDI)
+		 wait = CYCLES_ANDI;return;
+	 if(instrtype[THIS] == ASSEMBLY_OR)
+		 wait = CYCLES_OR;return;
+	 if(instrtype[THIS] == ASSEMBLY_ORI)
+		 wait = CYCLES_ORI;return;
+	 if(instrtype[THIS] == ASSEMBLY_EOR)
+		 wait = CYCLES_EOR;return;
+	 if(instrtype[THIS] == ASSEMBLY_COM)
+		 wait = CYCLES_COM;return;
+	 if(instrtype[THIS] == ASSEMBLY_NEG)
+		 wait = CYCLES_NEG;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBR)
+		 wait = CYCLES_SBR;return;
+	 if(instrtype[THIS] == ASSEMBLY_CBR)
+		 wait = CYCLES_CBR;return;
+	 if(instrtype[THIS] == ASSEMBLY_INC)
+		 wait = CYCLES_INC;return;
+	 if(instrtype[THIS] == ASSEMBLY_DEC)
+		 wait = CYCLES_DEC;return;
+	 if(instrtype[THIS] == ASSEMBLY_TST)
+		 wait = CYCLES_TST;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLR)
+		 wait = CYCLES_CLR;return;
+	 if(instrtype[THIS] == ASSEMBLY_SER)
+		 wait = CYCLES_SER;return;
+	 if(instrtype[THIS] == ASSEMBLY_MUL)
+		 wait = CYCLES_MUL;return;
+	 if(instrtype[THIS] == ASSEMBLY_MULS)
+		 wait = CYCLES_MULS;return;
+	 if(instrtype[THIS] == ASSEMBLY_MULSU)
+		 wait = CYCLES_MULSU;return;
+	 if(instrtype[THIS] == ASSEMBLY_FMUL)
+		 wait = CYCLES_FMUL;return;
+	 if(instrtype[THIS] == ASSEMBLY_FMULS)
+		 wait = CYCLES_FMULS;return;
+	 if(instrtype[THIS] == ASSEMBLY_FMULSU)
+		 wait = CYCLES_FMULSU;return;
+	 if(instrtype[THIS] == ASSEMBLY_RJMP)
+		 wait = CYCLES_RJMP;return;
+	 if(instrtype[THIS] == ASSEMBLY_IJMP)
+		 wait = CYCLES_IJMP;return;
+	 if(instrtype[THIS] == ASSEMBLY_EIJMP)
+		 wait = CYCLES_EIJMP;return;
+	 if(instrtype[THIS] == ASSEMBLY_JMP)
+		 wait = CYCLES_JMP;return;
+	 if(instrtype[THIS] == ASSEMBLY_RCALL)
+		 wait = CYCLES_RCALL;return;
+	 if(instrtype[THIS] == ASSEMBLY_ICALL)
+		 wait = CYCLES_ICALL;return;
+	 if(instrtype[THIS] == ASSEMBLY_EICALL)
+		 wait = CYCLES_EICALL;return;
+	 if(instrtype[THIS] == ASSEMBLY_CALL)
+		 wait = CYCLES_CALL;return;
+	 if(instrtype[THIS] == ASSEMBLY_RET)
+		 wait = CYCLES_RET;return;
+	 if(instrtype[THIS] == ASSEMBLY_RETI)
+		 wait = CYCLES_RETI;return;
+	 if(instrtype[THIS] == ASSEMBLY_CPSE)
+		 wait = CYCLES_CPSE;return;
+	 if(instrtype[THIS] == ASSEMBLY_CP)
+		 wait = CYCLES_CP;return;
+	 if(instrtype[THIS] == ASSEMBLY_CPC)
+		 wait = CYCLES_CPC;return;
+	 if(instrtype[THIS] == ASSEMBLY_CPI)
+		 wait = CYCLES_CPI;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBRC)
+		 wait = CYCLES_SBRC;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBRS)
+		 wait = CYCLES_SBRS;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBIC)
+		 wait = CYCLES_SBIC;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBIS)
+		 wait = CYCLES_SBIS;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRBS)
+		 wait = CYCLES_BRBS;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRBC)
+		 wait = CYCLES_BRBC;return;
+	 if(instrtype[THIS] == ASSEMBLY_BREQ)
+		 wait = CYCLES_BREQ;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRNE)
+		 wait = CYCLES_BRNE;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRCS)
+		 wait = CYCLES_BRCS;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRCC)
+		 wait = CYCLES_BRCC;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRSH)
+		 wait = CYCLES_BRSH;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRLO)
+		 wait = CYCLES_BRLO;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRMI)
+		 wait = CYCLES_BRMI;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRPL)
+		 wait = CYCLES_BRPL;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRGE)
+		 wait = CYCLES_BRGE;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRLT)
+		 wait = CYCLES_BRLT;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRHS)
+		 wait = CYCLES_BRHS;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRHC)
+		 wait = CYCLES_BRHC;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRTS)
+		 wait = CYCLES_BRTS;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRTC)
+		 wait = CYCLES_BRTC;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRVS)
+		 wait = CYCLES_BRVS;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRVC)
+		 wait = CYCLES_BRVC;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRIE)
+		 wait = CYCLES_BRIE;return;
+	 if(instrtype[THIS] == ASSEMBLY_BRID)
+		 wait = CYCLES_BRID;return;
+	 if(instrtype[THIS] == ASSEMBLY_SBI)
+		 wait = CYCLES_SBI;return;
+	 if(instrtype[THIS] == ASSEMBLY_CBI)
+		 wait = CYCLES_CBI;return;
+	 if(instrtype[THIS] == ASSEMBLY_LSL)
+		 wait = CYCLES_LSL;return;
+	 if(instrtype[THIS] == ASSEMBLY_LSR)
+		 wait = CYCLES_LSR;return;
+	 if(instrtype[THIS] == ASSEMBLY_ROL)
+		 wait = CYCLES_ROL;return;
+	 if(instrtype[THIS] == ASSEMBLY_ROR)
+		 wait = CYCLES_ROR;return;
+	 if(instrtype[THIS] == ASSEMBLY_ASR)
+		 wait = CYCLES_ASR;return;
+	 if(instrtype[THIS] == ASSEMBLY_SWAP)
+		 wait = CYCLES_SWAP;return;
+	 if(instrtype[THIS] == ASSEMBLY_BSET)
+		 wait = CYCLES_BSET;return;
+	 if(instrtype[THIS] == ASSEMBLY_BCLR)
+		 wait = CYCLES_BCLR;return;
+	 if(instrtype[THIS] == ASSEMBLY_BST)
+		 wait = CYCLES_BST;return;
+	 if(instrtype[THIS] == ASSEMBLY_BLD)
+		 wait = CYCLES_BLD;return;
+	 if(instrtype[THIS] == ASSEMBLY_SEC)
+		 wait = CYCLES_SEC;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLC)
+		 wait = CYCLES_CLC;return;
+	 if(instrtype[THIS] == ASSEMBLY_SEN)
+		 wait = CYCLES_SEN;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLN)
+		 wait = CYCLES_CLN;return;
+	 if(instrtype[THIS] == ASSEMBLY_SEZ)
+		 wait = CYCLES_SEZ;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLZ)
+		 wait = CYCLES_CLZ;return;
+	 if(instrtype[THIS] == ASSEMBLY_SEI)
+		 wait = CYCLES_SEI;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLI)
+		 wait = CYCLES_CLI;return;
+	 if(instrtype[THIS] == ASSEMBLY_SES)
+		 wait = CYCLES_SES;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLS)
+		 wait = CYCLES_CLS;return;
+	 if(instrtype[THIS] == ASSEMBLY_SEV)
+		 wait = CYCLES_SEV;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLV)
+		 wait = CYCLES_CLV;return;
+	 if(instrtype[THIS] == ASSEMBLY_SET)
+		 wait = CYCLES_SET;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLT)
+		 wait = CYCLES_CLT;return;
+	 if(instrtype[THIS] == ASSEMBLY_SEH)
+		 wait = CYCLES_SEH;return;
+	 if(instrtype[THIS] == ASSEMBLY_CLH)
+		 wait = CYCLES_CLH;return;
+	 if(instrtype[THIS] == ASSEMBLY_MOV)
+		 wait = CYCLES_MOV;return;
+	 if(instrtype[THIS] == ASSEMBLY_MOVW)
+		 wait = CYCLES_MOVW;return;
+	 if(instrtype[THIS] == ASSEMBLY_LDI)
+		 wait = CYCLES_LDI;return;
+	 if(instrtype[THIS] == ASSEMBLY_LD)
+		 wait = CYCLES_LD;return;
+	 if(instrtype[THIS] == ASSEMBLY_LDD)
+		 wait = CYCLES_LDD;return;
+	 if(instrtype[THIS] == ASSEMBLY_LDS)
+		 wait = CYCLES_LDS;return;
+	 if(instrtype[THIS] == ASSEMBLY_ST)
+		 wait = CYCLES_ST;return;
+	 if(instrtype[THIS] == ASSEMBLY_STD)
+		 wait = CYCLES_STD;return;
+	 if(instrtype[THIS] == ASSEMBLY_STS)
+		 wait = CYCLES_STS;return;
+	 if(instrtype[THIS] == ASSEMBLY_LPM)
+		 wait = CYCLES_LPM;return;
+	 if(instrtype[THIS] == ASSEMBLY_ELPM)
+		 wait = CYCLES_ELPM;return;
+	 if(instrtype[THIS] == ASSEMBLY_SPM)
+		 wait = CYCLES_SPM;return;
+	 if(instrtype[THIS] == ASSEMBLY_IN)
+		 wait = CYCLES_IN;return;
+	 if(instrtype[THIS] == ASSEMBLY_OUT)
+		 wait = CYCLES_OUT;return;
+	 if(instrtype[THIS] == ASSEMBLY_PUSH)
+		 wait = CYCLES_PUSH;return;
+	 if(instrtype[THIS] == ASSEMBLY_POP)
+		 wait = CYCLES_POP;return;
+	 if(instrtype[THIS] == ASSEMBLY_NOP)
+		 wait = CYCLES_NOP;return;
+	 if(instrtype[THIS] == ASSEMBLY_SLEEP)
+		 wait = CYCLES_SLEEP;return;
+	 if(instrtype[THIS] == ASSEMBLY_WDR)
+		 wait = CYCLES_WDR;return;
+	 if(instrtype[THIS] == ASSEMBLY_BREAK)
+		 wait = CYCLES_BREAK;return;
+}</declaration>
+		<location id="id307" x="32" y="96">
+		</location>
+		<location id="id308" x="-136" y="-16">
+			<label kind="invariant" x="-184" y="-48">x&lt;=wait</label>
+		</location>
+		<init ref="id307"/>
+		<transition>
+			<source ref="id307"/>
+			<target ref="id308"/>
+			<label kind="synchronisation" x="0" y="-16">execute?</label>
+			<label kind="assignment" x="0" y="0">set_wait(), x=0</label>
+			<nail x="32" y="-16"/>
+		</transition>
+		<transition>
+			<source ref="id308"/>
+			<target ref="id307"/>
+			<label kind="guard" x="-168" y="16">x==wait</label>
+			<label kind="assignment" x="-168" y="32">clear(THIS)</label>
+			<nail x="-136" y="96"/>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">FetchStage</name>
+		<declaration>const int THIS = PIPELINE_FETCH_STAGE;
+const int NEXT = PIPELINE_EXECUTE_STAGE;
+clock x;
+
+void move(int from, int to){
+    instrtype[to] = instrtype[from];
+    instradr[to] = instradr[from];
+    instrtype[from] = INSTR_NONE;
+    instradr[from] = INVALID_ADDRESS;
+}
+
+void initialise(){
+    int stage;
+    for (stage = 0; stage &lt; PIPELINE_STAGES; stage++) {
+        instrtype[stage] = INSTR_NONE;
+        instradr[stage] = INVALID_ADDRESS;
+    }
+}</declaration>
+		<location id="id309" x="104" y="248">
+			<committed/>
+		</location>
+		<location id="id310" x="102" y="167">
+		</location>
+		<location id="id311" x="-40" y="168">
+			<label kind="invariant" x="-50" y="183">x&lt;=1</label>
+		</location>
+		<location id="id312" x="-40" y="16">
+		</location>
+		<init ref="id309"/>
+		<transition>
+			<source ref="id309"/>
+			<target ref="id310"/>
+			<label kind="assignment" x="104" y="208">initialise()</label>
+		</transition>
+		<transition>
+			<source ref="id310"/>
+			<target ref="id311"/>
+			<label kind="synchronisation" x="8" y="168">fetch?</label>
+			<label kind="assignment" x="8" y="184">x=0</label>
+		</transition>
+		<transition>
+			<source ref="id311"/>
+			<target ref="id312"/>
+			<label kind="guard" x="-88" y="104">x==1</label>
+		</transition>
+		<transition>
+			<source ref="id312"/>
+			<target ref="id310"/>
+			<label kind="synchronisation" x="0" y="64">execute!</label>
+			<label kind="assignment" x="0" y="80">move(THIS,NEXT)</label>
+		</transition>
+	</template>
+	<system>//Initialization
+//Periodic Threads
+Template_0001_1 = Template_0001(1);
+PeriodicThread1 = PeriodicThread(1, 240, 240, 0);
+Template_0001_2 = Template_0001(2);
+PeriodicThread2 = PeriodicThread(2, 240, 240, 0);
+Template_0001_3 = Template_0001(3);
+PeriodicThread3 = PeriodicThread(3, 240, 240, 0);
+Template_0001_4 = Template_0001(4);
+PeriodicThread4 = PeriodicThread(4, 240, 240, 0);
+Template_0001_5 = Template_0001(5);
+PeriodicThread5 = PeriodicThread(5, 240, 240, 0);
+Template_0001_6 = Template_0001(6);
+PeriodicThread6 = PeriodicThread(6, 240, 240, 0);
+Template_0001_7 = Template_0001(7);
+PeriodicThread7 = PeriodicThread(7, 240, 240, 0);
+Template_0001_8 = Template_0001(8);
+PeriodicThread8 = PeriodicThread(8, 240, 240, 0);
+Template_0001_9 = Template_0001(9);
+PeriodicThread9 = PeriodicThread(9, 240, 240, 0);
+
+
+
+system 
+	FPS_scheduler,
+	PeriodicThread9&lt;Template_0001_9&lt;
+	PeriodicThread8&lt;Template_0001_8&lt;
+	PeriodicThread7&lt;Template_0001_7&lt;
+	PeriodicThread6&lt;Template_0001_6&lt;
+	PeriodicThread5&lt;Template_0001_5&lt;
+	PeriodicThread4&lt;Template_0001_4&lt;
+	PeriodicThread3&lt;Template_0001_3&lt;
+	PeriodicThread2&lt;Template_0001_2&lt;
+	PeriodicThread1&lt;Template_0001_1,
+	staticjvm &lt;
+	hwinterface &lt;
+	FetchStage&lt;
+	ExecuteStage;</system>
+	<queries>
+		<query>
+			<formula>A[] not (PeriodicThread1.DeadlineOverrun || PeriodicThread2.DeadlineOverrun || PeriodicThread3.DeadlineOverrun || PeriodicThread4.DeadlineOverrun || PeriodicThread5.DeadlineOverrun || PeriodicThread6.DeadlineOverrun || PeriodicThread7.DeadlineOverrun || PeriodicThread8.DeadlineOverrun || PeriodicThread9.DeadlineOverrun)</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

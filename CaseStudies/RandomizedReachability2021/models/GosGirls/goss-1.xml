@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here. 
+clock t;
+clock totalTime;
+
+typedef int[0,2147000000] c_t;
+c_t calls = 0;
+
+const int PERSONS = 8;
+const int allSecrets = ((1 &lt;&lt; PERSONS)-1);
+
+typedef int[0,PERSONS-1] person_t;
+
+broadcast chan call[person_t], rejected[person_t], hangup[person_t], called[allSecrets+1], caller[allSecrets+1];
+
+</declaration>
+	<template>
+		<name x="5" y="5">Person</name>
+		<parameter>const person_t id</parameter>
+		<declaration>// Place local declarations here.
+
+clock time;
+
+int secrets = 1 &lt;&lt; id;
+
+int callID = -1;
+
+void gossip(int newInfo){ secrets |= newInfo; }
+
+int getSecrets(){ return secrets; }
+
+</declaration>
+		<location id="id0" x="-1181" y="-1428">
+			<committed/>
+		</location>
+		<location id="id1" x="-1835" y="-1428" color="#00ff00">
+			<name x="-1861" y="-1462">Free</name>
+		</location>
+		<location id="id2" x="-1427" y="-1428" color="#ff0000">
+			<name x="-1436" y="-1462">Busy</name>
+			<label kind="invariant" x="-1436" y="-1411">time &lt;= 60</label>
+		</location>
+		<location id="id3" x="-1716" y="-1572">
+			<committed/>
+		</location>
+		<location id="id4" x="-1724" y="-1275">
+		</location>
+		<location id="id5" x="-1546" y="-1275">
+			<committed/>
+		</location>
+		<location id="id6" x="-1546" y="-1572">
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-1614" y="-1394">time == 60</label>
+			<label kind="synchronisation" x="-1623" y="-1377">hangup[callID]!</label>
+			<label kind="assignment" x="-1632" y="-1360">callID = -1, calls++</label>
+			<nail x="-1623" y="-1394"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-1725" y="-1335">rejected[callID]?</label>
+			<label kind="assignment" x="-1725" y="-1318">callID = -1</label>
+			<nail x="-1742" y="-1369"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-1342" y="-1479">rejected[id]!</label>
+			<nail x="-1308" y="-1454"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-1326" y="-1402">call[id]?</label>
+			<nail x="-1308" y="-1403"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id2"/>
+			<label kind="select" x="-1478" y="-1360">e : int[0, allSecrets]</label>
+			<label kind="synchronisation" x="-1495" y="-1343">caller[e]?</label>
+			<label kind="assignment" x="-1504" y="-1326">gossip(e)</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-1504" y="-1539">caller[getSecrets()]!</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-1699" y="-1275">called[getSecrets()]!</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id6"/>
+			<label kind="select" x="-1699" y="-1632">e : int[0, allSecrets]</label>
+			<label kind="synchronisation" x="-1665" y="-1615">called[e]?</label>
+			<label kind="assignment" x="-1665" y="-1598">gossip(e)</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-1801" y="-1539">call[id]?</label>
+			<label kind="assignment" x="-1887" y="-1521">callID = id, time = 0</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="select" x="-1903" y="-1360">e : person_t</label>
+			<label kind="guard" x="-1860" y="-1343">e != id</label>
+			<label kind="synchronisation" x="-1843" y="-1326">call[e]!</label>
+			<label kind="assignment" x="-1887" y="-1309">callID = e, time = 0</label>
+			<nail x="-1818" y="-1335"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-1673" y="-1513">hangup[callID]?</label>
+			<label kind="assignment" x="-1657" y="-1496">callID = -1</label>
+			<nail x="-1623" y="-1471"/>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+
+// List one or more processes to be composed into a system.
+system Person;
+</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt;forall(e : person_t) Person(e).secrets == allSecrets &amp;&amp; Person(e).Free &amp;&amp; totalTime &lt;= 1500</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+const int N = 8;         // # persons
+typedef int[0,N-1] id_t;
+
+chan gossip[N], hangup[N];
+
+int known[N] = { 1, 2, 4, 8, 16, 32, 64, 128 }; // , 16, 32, 64, 128
+int maxGossip = (1&lt;&lt;N)-1;
+typedef int[0,2147000000] c_t;
+c_t gossipCount = 0;
+
+
+const int callLength = 60;
+bool callStarted = false;
+clock totalClock;
+
+bool allKnowAll()
+{
+    return forall (id : id_t) known[id] == maxGossip;
+}
+
+void exchange(id_t p1, id_t p2)
+{
+    known[p1] |= known[p2];
+    known[p2] |= known[p1];
+    gossipCount++;
+}</declaration>
+	<template>
+		<name>Scenario1</name>
+		<parameter>const id_t id</parameter>
+		<declaration>id_t inCallWith;
+clock callClock;</declaration>
+		<location id="id0" x="-119" y="-51">
+		</location>
+		<location id="id1" x="-119" y="-229">
+			<name x="-136" y="-263">done</name>
+		</location>
+		<location id="id2" x="136" y="-51">
+			<name x="51" y="-59">made_call</name>
+			<label kind="invariant" x="153" y="-59">callClock &lt;= callLength</label>
+		</location>
+		<location id="id3" x="-373" y="-51">
+			<name x="-356" y="-59">got_call</name>
+			<label kind="invariant" x="-552" y="-59">callClock &lt;= callLength</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-51" y="-127">callClock == callLength</label>
+			<label kind="synchronisation" x="-51" y="-110">hangup[id]?</label>
+			<nail x="136" y="-93"/>
+			<nail x="-59" y="-93"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-365" y="-8">callClock == callLength</label>
+			<label kind="synchronisation" x="-365" y="8">hangup[inCallWith]!</label>
+			<nail x="-373" y="-8"/>
+			<nail x="-178" y="-8"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-110" y="-221">allKnowAll()</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-51" y="8">!allKnowAll()</label>
+			<label kind="synchronisation" x="-51" y="-8">gossip[id]!</label>
+			<label kind="assignment" x="-51" y="25">callClock = 0</label>
+			<nail x="-59" y="-9"/>
+			<nail x="136" y="-8"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id3"/>
+			<label kind="select" x="-365" y="-195">e : id_t</label>
+			<label kind="guard" x="-365" y="-178">id == e-1 || id == e+1</label>
+			<label kind="synchronisation" x="-365" y="-161">gossip[e]?</label>
+			<label kind="assignment" x="-365" y="-144">exchange(id, e),
+inCallWith = e,
+callClock = 0</label>
+			<nail x="-179" y="-93"/>
+			<nail x="-373" y="-93"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Scenario2</name>
+		<parameter>const id_t id</parameter>
+		<declaration>id_t inCallWith;
+clock callClock;</declaration>
+		<location id="id4" x="-161" y="-51">
+			<name x="-144" y="-60">got_call</name>
+			<label kind="invariant" x="-340" y="-60">callClock &lt;= callLength</label>
+		</location>
+		<location id="id5" x="34" y="-51">
+		</location>
+		<location id="id6" x="34" y="-246">
+			<name x="17" y="-280">done</name>
+		</location>
+		<location id="id7" x="229" y="-51">
+			<name x="144" y="-60">made_call</name>
+			<label kind="invariant" x="246" y="-60">callClock &lt;= callLength</label>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-153" y="0">callClock == callLength</label>
+			<label kind="synchronisation" x="-153" y="17">hangup[inCallWith]!</label>
+			<nail x="-161" y="-9"/>
+			<nail x="-34" y="-9"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id5"/>
+			<label kind="guard" x="93" y="-136">callClock == callLength</label>
+			<label kind="synchronisation" x="93" y="-119">hangup[id]?</label>
+			<nail x="229" y="-93"/>
+			<nail x="93" y="-93"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="42" y="-229">allKnowAll()</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id7"/>
+			<label kind="guard" x="93" y="8">!allKnowAll()</label>
+			<label kind="synchronisation" x="93" y="-9">gossip[id]!</label>
+			<label kind="assignment" x="93" y="25">callClock = 0</label>
+			<nail x="94" y="-9"/>
+			<nail x="229" y="-9"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="select" x="-153" y="-187">e : id_t</label>
+			<label kind="synchronisation" x="-153" y="-170">gossip[e]?</label>
+			<label kind="assignment" x="-153" y="-153">exchange(id, e),
+inCallWith = e,
+callClock = 0</label>
+			<nail x="-34" y="-93"/>
+			<nail x="-161" y="-93"/>
+		</transition>
+	</template>
+	<template>
+		<name>Scenario3</name>
+		<parameter>const id_t id</parameter>
+		<declaration>id_t inCallWith;
+clock callClock;</declaration>
+		<location id="id8" x="204" y="68">
+			<name x="119" y="60">made_call</name>
+			<label kind="invariant" x="221" y="60">callClock &lt;= callLength</label>
+		</location>
+		<location id="id9" x="-51" y="68">
+		</location>
+		<location id="id10" x="-305" y="68">
+			<name x="-288" y="60">got_call</name>
+			<label kind="invariant" x="-484" y="60">callClock &lt;= callLength</label>
+		</location>
+		<location id="id11" x="-51" y="-110">
+			<name x="-68" y="-144">done</name>
+		</location>
+		<init ref="id9"/>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="17" y="-8">callClock == callLength</label>
+			<label kind="synchronisation" x="17" y="9">hangup[id]?</label>
+			<nail x="204" y="26"/>
+			<nail x="9" y="26"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-297" y="111">callClock == callLength</label>
+			<label kind="synchronisation" x="-297" y="127">hangup[inCallWith]!</label>
+			<nail x="-305" y="111"/>
+			<nail x="-110" y="111"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id11"/>
+			<label kind="guard" x="-42" y="-102">allKnowAll()</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="guard" x="17" y="127">!allKnowAll()</label>
+			<label kind="synchronisation" x="17" y="111">gossip[id]!</label>
+			<label kind="assignment" x="17" y="144">callClock = 0</label>
+			<nail x="9" y="110"/>
+			<nail x="204" y="111"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="select" x="-297" y="-76">e : id_t</label>
+			<label kind="guard" x="-297" y="-59">id == (e-1) % N || id == (e+1) % N</label>
+			<label kind="synchronisation" x="-297" y="-42">gossip[e]?</label>
+			<label kind="assignment" x="-297" y="-25">exchange(id, e),
+inCallWith = e,
+callClock = 0</label>
+			<nail x="-111" y="26"/>
+			<nail x="-305" y="26"/>
+		</transition>
+	</template>
+	<template>
+		<name>Scenario4</name>
+		<parameter>const id_t id</parameter>
+		<declaration>id_t inCallWith;
+clock callClock;</declaration>
+		<location id="id12" x="-51" y="34">
+		</location>
+		<location id="id13" x="-51" y="-161">
+			<name x="-68" y="-195">done</name>
+		</location>
+		<location id="id14" x="144" y="34">
+			<name x="59" y="25">made_call</name>
+			<label kind="invariant" x="161" y="25">callClock &lt;= callLength</label>
+		</location>
+		<location id="id15" x="-246" y="34">
+			<name x="-229" y="25">got_call</name>
+			<label kind="invariant" x="-425" y="25">callClock &lt;= callLength</label>
+		</location>
+		<init ref="id12"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-238" y="85">callClock == callLength</label>
+			<label kind="synchronisation" x="-238" y="102">hangup[inCallWith]!</label>
+			<nail x="-246" y="76"/>
+			<nail x="-119" y="76"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="guard" x="8" y="-68">callClock == callLength</label>
+			<label kind="synchronisation" x="8" y="-51">hangup[id]?</label>
+			<label kind="assignment" x="8" y="-34">callStarted = false</label>
+			<nail x="144" y="-8"/>
+			<nail x="8" y="-8"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-246" y="-144">allKnowAll() &amp;&amp; !callStarted</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id14"/>
+			<label kind="guard" x="8" y="93">!allKnowAll() &amp;&amp; !callStarted</label>
+			<label kind="synchronisation" x="8" y="76">gossip[id]!</label>
+			<label kind="assignment" x="8" y="110">callStarted = true,
+callClock = 0</label>
+			<nail x="9" y="76"/>
+			<nail x="144" y="76"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id15"/>
+			<label kind="select" x="-238" y="-102">e : id_t</label>
+			<label kind="synchronisation" x="-238" y="-85">gossip[e]?</label>
+			<label kind="assignment" x="-238" y="-68">exchange(id, e),
+inCallWith = e,
+callClock = 0</label>
+			<nail x="-119" y="-8"/>
+			<nail x="-246" y="-8"/>
+		</transition>
+	</template>
+	<system>//system Scenario1;
+
+system Scenario2;
+
+//system Scenario3;
+
+//system Scenario4;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; forall (id:id_t) Scenario2(id).done &amp;&amp; totalClock &lt;= 500</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

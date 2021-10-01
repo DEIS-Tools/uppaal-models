@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>const int N = 8;              // Number of Gossip Girls
+const int CALL_DURATION = 60; // Duration of a phone call
+
+typedef int[0, N-1] id_t;
+typedef int[0, 2] setup_t;
+
+// Specify which type of rules the girls should follow:
+// direct, liniarChain, circularChain
+//   0          1             2
+const setup_t SETUP_TYPE = 0;
+
+// Number of calls in total and total time spent
+typedef int[0,2147000000] c_t;
+c_t calls = 0;
+clock totalTime;
+
+// Matrix of who knows what.
+int knows[N][N];
+
+// Used for storing the girl to call (so the phone knows).
+id_t calleeAddress;
+
+chan call, pickUp[N];
+
+void exchangeSecrets(id_t caller, id_t callee, bool isCaller) {
+    int i;
+
+    if (!isCaller) {
+        return;
+    }
+
+    for(i = 0; i &lt; N; i++) {
+        knows[caller][i] |= knows[callee][i];
+        knows[callee][i] |= knows[caller][i];
+    }
+}</declaration>
+	<template>
+		<name x="5" y="5">GossipGirl</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock c;
+bool isCaller = false;
+id_t callee;
+
+bool checkCallee(id_t callee) {
+    if (SETUP_TYPE == 1){ // Liniar chain 
+        return (callee == id + 1) || (callee == id - 1);
+    }
+
+    if (SETUP_TYPE == 2){ // Circular chain
+        return (callee == (id + 1) % N) || (callee == (id - 1) % N);
+    }
+
+    return callee != id; // Directly
+}</declaration>
+		<location id="id0" x="0" y="-578" color="#ffa500">
+			<name x="8" y="-612">Idle</name>
+		</location>
+		<location id="id1" x="340" y="-578" color="#00ff00">
+			<name x="357" y="-603">Talking</name>
+			<label kind="invariant" x="357" y="-586">c &lt;= CALL_DURATION</label>
+		</location>
+		<location id="id2" x="-170" y="-578">
+			<name x="-187" y="-612">Begin</name>
+			<committed/>
+		</location>
+		<init ref="id2"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-144" y="-603">knows[id][id] = 1</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="76" y="-595">c == CALL_DURATION</label>
+			<label kind="assignment" x="76" y="-578">exchangeSecrets(id, callee, isCaller)</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="136" y="-680">pickUp[id]?</label>
+			<label kind="assignment" x="136" y="-663">c = 0,
+isCaller = false</label>
+			<nail x="0" y="-646"/>
+			<nail x="340" y="-646"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="select" x="102" y="-527">randomAddress : id_t</label>
+			<label kind="guard" x="102" y="-510">checkCallee(randomAddress)</label>
+			<label kind="synchronisation" x="102" y="-493">call!</label>
+			<label kind="assignment" x="102" y="-476">c = 0,
+calleeAddress = randomAddress,
+callee = randomAddress,
+isCaller = true</label>
+			<nail x="0" y="-510"/>
+			<nail x="340" y="-510"/>
+		</transition>
+	</template>
+	<template>
+		<name>ConsecutivePhone</name>
+		<declaration>clock c;</declaration>
+		<location id="id3" x="0" y="0" color="#ffa500">
+			<name x="-25" y="17">Ready</name>
+		</location>
+		<location id="id4" x="204" y="0" color="#00ffff">
+			<name x="178" y="17">Calling</name>
+			<urgent/>
+		</location>
+		<location id="id5" x="408" y="0" color="#00ff00">
+			<name x="391" y="17">InUse</name>
+			<label kind="invariant" x="391" y="34">c &lt;= CALL_DURATION</label>
+		</location>
+		<init ref="id3"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id3"/>
+			<label kind="guard" x="136" y="-85">c == CALL_DURATION</label>
+			<nail x="408" y="-68"/>
+			<nail x="0" y="-68"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="229" y="-17">pickUp[calleeAddress]!</label>
+			<label kind="assignment" x="289" y="0">c = 0</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="76" y="-17">call?</label>
+			<label kind="assignment" x="76" y="0">calls++</label>
+		</transition>
+	</template>
+	<template>
+		<name>ConcurrentPhone</name>
+		<location id="id6" x="-204" y="-34" color="#ffa500">
+			<name x="-229" y="-17">Ready</name>
+		</location>
+		<location id="id7" x="0" y="-34" color="#00ffff">
+			<name x="-17" y="-17">Calling</name>
+			<urgent/>
+		</location>
+		<location id="id8" x="204" y="-34" color="#00ff00">
+			<name x="187" y="-17">InUse</name>
+			<urgent/>
+		</location>
+		<init ref="id6"/>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<nail x="204" y="-102"/>
+			<nail x="-204" y="-102"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="17" y="-51">pickUp[calleeAddress]!</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-119" y="-51">call?</label>
+			<label kind="assignment" x="-127" y="-34">calls++</label>
+		</transition>
+	</template>
+	<system>//system GossipGirl, ConsecutivePhone; // Only one phone available
+system GossipGirl, ConcurrentPhone;     // Everyone can always make a phone call</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; forall(a : id_t) forall(b : id_t) knows[a][b] == 1 &amp;&amp; totalTime &lt;=1000</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

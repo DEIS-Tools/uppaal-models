@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// CONSTANTS
+const int LINEAR_CHAIN = 1, CIRCULAR_CHAIN = 2, TOTAL_GRAPH = 3;
+
+// ***********************************
+// SIMULATION PARAMETERS (TWEAK THESE)
+// ***********************************
+// Number of girls in the simulation
+const int GIRLS = 6;
+// The topology scenario
+const int SCENARIO = TOTAL_GRAPH;
+// The max calls active at the phone central (Scenario 4 specifies 1)
+const int CENTRAL_LIMIT = 100;
+
+//SIMULATION VARIABLES
+clock time;
+typedef int[0, GIRLS - 1] girl_t;
+chan call[GIRLS], stop[GIRLS];
+chan connect, disconnect;
+const int all_secrets = (1 &lt;&lt; GIRLS) - 1;
+int chat;
+typedef int[0,2147000000] c_t;</declaration>
+	<template>
+		<name x="5" y="5">Girl</name>
+		<parameter>const girl_t id</parameter>
+		<declaration>clock call_time;
+int secrets;
+girl_t talking_to;
+
+int neighbours;
+
+int flag(girl_t girl) {
+    return 1 &lt;&lt; girl;
+}
+
+bool is_neigbour(girl_t other) {
+    return (neighbours &amp; flag(other)) &gt; 0;
+}
+
+// Linear Graph (Scenario 1)
+void linear_neighbours() {
+    int left = id - 1,
+       right = id + 1;
+    if(left &gt;= 0) {
+        neighbours |= flag(left);
+    }
+    if(right &lt;= GIRLS - 1) {
+        neighbours |= flag(right);
+    }
+}
+
+
+// Total Graph (Scenario 2)
+void total_neighbours() {
+    for (i : girl_t) {
+        neighbours |= 1 &lt;&lt; i;
+    }
+}
+
+
+// Circular Chain Graph (Scenario 3)
+void circular_neighbours() {
+    int left = (GIRLS + id - 1) % GIRLS,
+       right = (GIRLS + id + 1) % GIRLS;
+    if(left &gt;= 0) {
+        neighbours |= flag(left);
+    }
+    if(right &lt;= GIRLS - 1) {
+        neighbours |= flag(right);
+    }
+}
+
+void set_neighbours() {
+    if (SCENARIO == LINEAR_CHAIN) {
+        linear_neighbours();
+    }
+    else if (SCENARIO == CIRCULAR_CHAIN) {
+        circular_neighbours();
+    }
+    else if (SCENARIO == TOTAL_GRAPH) {
+        total_neighbours();
+    }
+}</declaration>
+		<location id="id0" x="0" y="0">
+			<name x="-25" y="25">Waiting</name>
+		</location>
+		<location id="id1" x="0" y="-136">
+			<committed/>
+		</location>
+		<location id="id2" x="-374" y="0">
+			<name x="-442" y="-8">CallOut</name>
+		</location>
+		<location id="id3" x="238" y="0">
+			<name x="255" y="-8">CallIn</name>
+			<label kind="invariant" x="255" y="-25">call_time &lt;= 60</label>
+		</location>
+		<location id="id4" x="-170" y="34">
+			<name x="-195" y="51">Connecting</name>
+			<committed/>
+		</location>
+		<location id="id5" x="-170" y="0">
+			<name x="-195" y="-42">Disconnecting</name>
+			<committed/>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-127" y="-17">disconnect!</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-119" y="34">connect!</label>
+			<nail x="-34" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<label kind="guard" x="85" y="-34">call_time &gt;= 60</label>
+			<label kind="synchronisation" x="85" y="-17">stop[id]!</label>
+			<label kind="assignment" x="85" y="-68">chat = secrets,
+call_time = 0</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-323" y="-17">stop[talking_to]?</label>
+			<label kind="assignment" x="-323" y="-51">secrets |= chat,
+talking_to = 0</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="85" y="34">call[id]?</label>
+			<label kind="assignment" x="85" y="51">secrets |= chat,
+call_time = 0</label>
+			<nail x="34" y="34"/>
+			<nail x="204" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="select" x="-331" y="34">other : girl_t</label>
+			<label kind="guard" x="-331" y="102">is_neigbour(other)</label>
+			<label kind="synchronisation" x="-331" y="51">call[other]!</label>
+			<label kind="assignment" x="-331" y="68">talking_to = other,
+chat = secrets</label>
+			<nail x="-340" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="8" y="-119">secrets = flag(id),
+set_neighbours()</label>
+		</transition>
+	</template>
+	<template>
+		<name>Central</name>
+		<declaration>c_t total_calls = 0;
+c_t current_calls;</declaration>
+		<location id="id6" x="0" y="0">
+		</location>
+		<init ref="id6"/>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="68" y="0">disconnect?</label>
+			<label kind="assignment" x="68" y="17">current_calls -= 1</label>
+			<nail x="68" y="0"/>
+			<nail x="68" y="34"/>
+			<nail x="34" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-289" y="51">current_calls &lt; CENTRAL_LIMIT</label>
+			<label kind="synchronisation" x="-144" y="0">connect?</label>
+			<label kind="assignment" x="-204" y="17">current_calls += 1,
+total_calls += 1</label>
+			<nail x="-68" y="0"/>
+			<nail x="-68" y="68"/>
+			<nail x="0" y="68"/>
+		</transition>
+	</template>
+	<system>system Girl, Central;
+
+gantt {
+    Girl(i : girl_t): Girl(i).CallOut -&gt; 1,
+                      Girl(i).CallIn -&gt; 2;
+}</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; Girl(0).secrets == 3 &amp;&amp; Girl(1).secrets == 3 &amp;&amp; Girl(2).secrets == 60 &amp;&amp; Girl(3).secrets == 60 &amp;&amp; Girl(4).secrets == 60 &amp;&amp; Girl(5).secrets == 60</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
