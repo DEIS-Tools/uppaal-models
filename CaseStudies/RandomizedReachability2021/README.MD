@@ -1,6 +1,6 @@
 # Randomized Reachability Analysis in UPPAAL: Fast Error Detection in Timed Systems
 
-_**Schedulability of Herschel-Planck Revisited Using Statistical Model Checking**_, Kiviriga A., Larsen K.G., Nyman U. (2021) Randomized Reachability Analysis in Uppaal: Fast Error Detection in Timed Systems. In: Lluch Lafuente A., Mavridou A. (eds) Formal Methods for Industrial Critical Systems. FMICS 2021. Lecture Notes in Computer Science, vol 12863. Springer, Cham. [[DOI]](https://doi.org/10.1007/978-3-030-85248-1_9) [[Springer]](https://link.springer.com/chapter/10.1007/978-3-030-85248-1_9)
+_**Randomized Reachability Analysis in Uppaal: Fast Error Detection in Timed Systems**_, Kiviriga A., Larsen K.G., Nyman U. (2021). In: Lluch Lafuente A., Mavridou A. (eds) Formal Methods for Industrial Critical Systems. FMICS 2021. Lecture Notes in Computer Science, vol 12863. Springer, Cham. [[DOI]](https://doi.org/10.1007/978-3-030-85248-1_9) [[Springer]](https://link.springer.com/chapter/10.1007/978-3-030-85248-1_9)
 
 ## Abstract
 
