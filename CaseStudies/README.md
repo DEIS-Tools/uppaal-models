@@ -15,3 +15,5 @@ Marius Mikučionis, Kim G. Larsen and Brian Nielsen. Quasimodo Industrial Handbo
 
 _**[Schedulability Analysis Using Uppaal: Herschel-Planck Case Study](HerschelPlanck2010)**_
 Marius Mikučionis, Kim Guldstrand Larsen, Jacob Illum Rasmussen, Brian Nielsen, Arne Skou, Palm Steen Ulrik, Jan Storbank Pedersen, Poul Hougaard. _Proceedings of the 4th international conference on Leveraging applications of formal methods, verification, and validation (ISOLA 2010)_, October 2010, Springer-Verlag, ISBN 3-642-16560-5, 978-3-642-16560-3. [[DOI](https://doi.org/10.1007/978-3-642-16561-0_21)]
+
+_**Schedulability of Herschel-Planck Revisited Using Statistical Model Checking**_, Kiviriga A., Larsen K.G., Nyman U. (2021) Randomized Reachability Analysis in Uppaal: Fast Error Detection in Timed Systems. In: Lluch Lafuente A., Mavridou A. (eds) Formal Methods for Industrial Critical Systems. FMICS 2021. Lecture Notes in Computer Science, vol 12863. Springer, Cham. [[DOI]](https://doi.org/10.1007/978-3-030-85248-1_9)
