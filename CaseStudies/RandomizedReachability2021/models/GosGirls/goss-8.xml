@@ -1,0 +1,658 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+const int N = 8; // # Girls
+
+typedef int[0,N-1] id_t;
+
+int[0,1] senderArray[N];
+
+chan call[N], secret[N];
+
+clock time;
+
+
+</declaration>
+	<template>
+		<name x="5" y="5">GirlNeighbour</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock x;
+id_t InCallWith;
+bool allSecretsKnown = false;
+int[0,1] localArray[N] = {0,0,0,0,0};
+int[0,1] outsideArray[N];
+
+// Allow only neighbours to receive calls
+bool neighbour(id_t callID, id_t receiveID)
+{
+    // Check if the caller Id and receiver Id are the same
+    if(receiveID != callID){
+        
+        // The last girl cannot call a girl that has a higher index
+        if(callID &lt;= N)
+        {
+            if(receiveID == callID+1)
+            {
+                return true;
+            }
+        }
+
+        // The first girl cannot call a girl that has a lower index
+        if(callID &gt;= 1)
+        {
+            if(receiveID == callID-1)
+            {
+                return true;
+            }    
+        }
+    }
+    return false;
+}
+
+// Do not allow a caller to call one self
+bool legalID(id_t callID, id_t receiveID){
+    
+    if(receiveID != callID)
+    {
+        return true;
+    }
+    return false;
+}
+
+void initialArray(id_t id){
+    
+    if(localArray[id] != 1){
+        localArray[id] = 1;
+    }
+}
+
+void HaveSecrets(){
+    
+    int i = 0;
+    int count = 0;
+
+    for(i = 0; i &lt;= N-1; i++){
+        localArray[i] = localArray[i] | outsideArray[i];
+    }
+
+    for(i = 0; i &lt;= N-1; i++){
+        if(localArray[i] == 1){
+            count++;
+        }
+    }
+
+    if(count == N){
+        allSecretsKnown = true;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</declaration>
+		<location id="id0" x="-8" y="-357">
+			<name x="17" y="-374">SecretReceived</name>
+			<committed/>
+		</location>
+		<location id="id1" x="-535" y="-255">
+			<name x="-603" y="-263">Calling</name>
+		</location>
+		<location id="id2" x="-8" y="-255">
+			<name x="17" y="-263">Receive</name>
+		</location>
+		<location id="id3" x="-280" y="-255">
+			<name x="-297" y="-238">Ready</name>
+		</location>
+		<location id="id4" x="-535" y="-357">
+			<name x="-637" y="-374">SecretGiven</name>
+			<committed/>
+		</location>
+		<location id="id5" x="-280" y="-357">
+			<name x="-314" y="-391">CallEnded</name>
+		</location>
+		<init ref="id3"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id3"/>
+			<label kind="assignment" x="-374" y="-323">HaveSecrets()</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-204" y="-408">secret[InCallWith]!</label>
+			<label kind="assignment" x="-204" y="-391">senderArray = localArray</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="17" y="-331">secret[InCallWith]?</label>
+			<label kind="assignment" x="17" y="-314">outsideArray = senderArray</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-705" y="-323">secret[id]!</label>
+			<label kind="assignment" x="-705" y="-306">senderArray = localArray</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-501" y="-408">secret[id]?</label>
+			<label kind="assignment" x="-501" y="-391">outsideArray = senderArray</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-476" y="-238">call[id]!</label>
+			<label kind="assignment" x="-476" y="-221">initialArray(id)</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="select" x="-204" y="-247">e: id_t</label>
+			<label kind="guard" x="-204" y="-230">neighbour(e, id)</label>
+			<label kind="synchronisation" x="-204" y="-213">call[e]?</label>
+			<label kind="assignment" x="-204" y="-196">InCallWith = e,
+initialArray(id)</label>
+		</transition>
+	</template>
+	<template>
+		<name>GirlTotal</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock x;
+id_t InCallWith;
+bool allSecretsKnown = false;
+int[0,1] localArray[N] = {0,0,0,0,0,0,0,0};
+int[0,1] outsideArray[N];
+
+// Allow only neighbours to receive calls
+bool neighbour(id_t callID, id_t receiveID)
+{
+    // Check if the caller Id and receiver Id are the same
+    if(receiveID != callID){
+        
+        // The last girl cannot call a girl that has a higher index
+        if(callID &lt;= N)
+        {
+            if(receiveID == callID+1)
+            {
+                return true;
+            }
+        }
+
+        // The first girl cannot call a girl that has a lower index
+        if(callID &gt;= 1)
+        {
+            if(receiveID == callID-1)
+            {
+                return true;
+            }    
+        }
+    }
+    return false;
+}
+
+// Do not allow a caller to call one self
+bool legalID(id_t callID, id_t receiveID){
+    
+    if(receiveID != callID)
+    {
+        return true;
+    }
+    return false;
+}
+
+void initialArray(id_t id){
+    
+    if(localArray[id] != 1){
+        localArray[id] = 1;
+    }
+}
+
+void HaveSecrets(){
+    
+    int i = 0;
+    int count = 0;
+
+    for(i = 0; i &lt;= N-1; i++){
+        localArray[i] = localArray[i] | outsideArray[i];
+    }
+
+    for(i = 0; i &lt;= N-1; i++){
+        if(localArray[i] == 1){
+            count++;
+        }
+    }
+
+    if(count == N){
+        allSecretsKnown = true;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</declaration>
+		<location id="id6" x="42" y="-289">
+			<name x="67" y="-306">SecretReceived</name>
+			<committed/>
+		</location>
+		<location id="id7" x="-485" y="-187">
+			<name x="-553" y="-195">Calling</name>
+		</location>
+		<location id="id8" x="42" y="-187">
+			<name x="67" y="-195">Receive</name>
+		</location>
+		<location id="id9" x="-230" y="-187">
+			<name x="-247" y="-170">Ready</name>
+		</location>
+		<location id="id10" x="-485" y="-289">
+			<name x="-587" y="-306">SecretGiven</name>
+			<committed/>
+		</location>
+		<location id="id11" x="-230" y="-289">
+			<name x="-264" y="-323">CallEnded</name>
+		</location>
+		<init ref="id9"/>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id9"/>
+			<label kind="assignment" x="-324" y="-255">HaveSecrets()</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-154" y="-340">secret[InCallWith]!</label>
+			<label kind="assignment" x="-154" y="-323">senderArray = localArray</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="67" y="-263">secret[InCallWith]?</label>
+			<label kind="assignment" x="67" y="-246">outsideArray = senderArray</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-655" y="-255">secret[id]!</label>
+			<label kind="assignment" x="-655" y="-238">senderArray = localArray</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-451" y="-340">secret[id]?</label>
+			<label kind="assignment" x="-451" y="-323">outsideArray = senderArray</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-426" y="-170">call[id]!</label>
+			<label kind="assignment" x="-426" y="-153">initialArray(id)</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="select" x="-154" y="-179">e: id_t</label>
+			<label kind="guard" x="-154" y="-162">legalID(e,id)</label>
+			<label kind="synchronisation" x="-154" y="-145">call[e]?</label>
+			<label kind="assignment" x="-154" y="-128">InCallWith = e,
+initialArray(id)</label>
+		</transition>
+	</template>
+	<template>
+		<name>GirlNeighbourTime</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock x;
+id_t InCallWith;
+bool allSecretsKnown = false;
+int[0,1] localArray[N] = {0,0,0,0,0};
+int[0,1] outsideArray[N];
+
+// Allow only neighbours to receive calls
+bool neighbour(id_t callID, id_t receiveID)
+{
+    // Check if the caller Id and receiver Id are the same
+    if(receiveID != callID){
+        
+        // The last girl cannot call a girl that has a higher index
+        if(callID &lt;= N)
+        {
+            if(receiveID == callID+1)
+            {
+                return true;
+            }
+        }
+
+        // The first girl cannot call a girl that has a lower index
+        if(callID &gt;= 1)
+        {
+            if(receiveID == callID-1)
+            {
+                return true;
+            }    
+        }
+    }
+    return false;
+}
+
+// Do not allow a caller to call one self
+bool legalID(id_t callID, id_t receiveID){
+    
+    if(receiveID != callID)
+    {
+        return true;
+    }
+    return false;
+}
+
+void initialArray(id_t id){
+    
+    if(localArray[id] != 1){
+        localArray[id] = 1;
+    }
+}
+
+void HaveSecrets(){
+    
+    int i = 0;
+    int count = 0;
+
+    for(i = 0; i &lt;= N-1; i++){
+        localArray[i] = localArray[i] | outsideArray[i];
+    }
+
+    for(i = 0; i &lt;= N-1; i++){
+        if(localArray[i] == 1){
+            count++;
+        }
+    }
+
+    if(count == N){
+        allSecretsKnown = true;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</declaration>
+		<location id="id12" x="17" y="-323">
+			<name x="42" y="-340">SecretReceived</name>
+			<committed/>
+		</location>
+		<location id="id13" x="-510" y="-221">
+			<name x="-578" y="-229">Calling</name>
+		</location>
+		<location id="id14" x="17" y="-221">
+			<name x="42" y="-229">Receive</name>
+		</location>
+		<location id="id15" x="-255" y="-221">
+			<name x="-272" y="-204">Ready</name>
+		</location>
+		<location id="id16" x="-510" y="-323">
+			<name x="-612" y="-340">SecretGiven</name>
+			<committed/>
+		</location>
+		<location id="id17" x="-255" y="-323">
+			<name x="-289" y="-357">CallEnded</name>
+			<label kind="invariant" x="-281" y="-374">x &lt;= 60</label>
+		</location>
+		<init ref="id15"/>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-349" y="-306">x &gt;= 60</label>
+			<label kind="assignment" x="-349" y="-289">HaveSecrets()</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="-179" y="-383">secret[InCallWith]!</label>
+			<label kind="assignment" x="-179" y="-366">senderArray = localArray,
+x=0</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="42" y="-297">secret[InCallWith]?</label>
+			<label kind="assignment" x="42" y="-280">outsideArray = senderArray</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-680" y="-289">secret[id]!</label>
+			<label kind="assignment" x="-680" y="-272">senderArray = localArray</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="-476" y="-383">secret[id]?</label>
+			<label kind="assignment" x="-476" y="-366">outsideArray = senderArray,
+x=0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-451" y="-204">call[id]!</label>
+			<label kind="assignment" x="-451" y="-187">initialArray(id)</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="select" x="-179" y="-213">e: id_t</label>
+			<label kind="guard" x="-179" y="-196">neighbour(e,id)</label>
+			<label kind="synchronisation" x="-179" y="-179">call[e]?</label>
+			<label kind="assignment" x="-179" y="-162">InCallWith = e,
+initialArray(id)</label>
+		</transition>
+	</template>
+	<template>
+		<name>GirlTotalTime</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock x;
+id_t InCallWith;
+bool allSecretsKnown = false;
+int[0,1] localArray[N] = {0,0,0,0,0,0,0,0};
+int[0,1] outsideArray[N];
+
+// Allow only neighbours to receive calls
+bool neighbour(id_t callID, id_t receiveID)
+{
+    // Check if the caller Id and receiver Id are the same
+    if(receiveID != callID){
+        
+        // The last girl cannot call a girl that has a higher index
+        if(callID &lt;= N)
+        {
+            if(receiveID == callID+1)
+            {
+                return true;
+            }
+        }
+
+        // The first girl cannot call a girl that has a lower index
+        if(callID &gt;= 1)
+        {
+            if(receiveID == callID-1)
+            {
+                return true;
+            }    
+        }
+    }
+    return false;
+}
+
+// Do not allow a caller to call one self
+bool legalID(id_t callID, id_t receiveID){
+    
+    if(receiveID != callID)
+    {
+        return true;
+    }
+    return false;
+}
+
+void initialArray(id_t id){
+    
+    if(localArray[id] != 1){
+        localArray[id] = 1;
+    }
+}
+
+void HaveSecrets(){
+    
+    int i = 0;
+    int count = 0;
+
+    for(i = 0; i &lt;= N-1; i++){
+        localArray[i] = localArray[i] | outsideArray[i];
+    }
+
+    for(i = 0; i &lt;= N-1; i++){
+        if(localArray[i] == 1){
+            count++;
+        }
+    }
+
+    if(count == N){
+        allSecretsKnown = true;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</declaration>
+		<location id="id18" x="127" y="-170">
+			<name x="152" y="-187">SecretReceived</name>
+			<committed/>
+		</location>
+		<location id="id19" x="-400" y="-68">
+			<name x="-468" y="-76">Calling</name>
+		</location>
+		<location id="id20" x="127" y="-68">
+			<name x="152" y="-76">Receive</name>
+		</location>
+		<location id="id21" x="-145" y="-68">
+			<name x="-162" y="-51">Ready</name>
+		</location>
+		<location id="id22" x="-400" y="-170">
+			<name x="-502" y="-187">SecretGiven</name>
+			<committed/>
+		</location>
+		<location id="id23" x="-145" y="-170">
+			<name x="-179" y="-204">CallEnded</name>
+			<label kind="invariant" x="-171" y="-221">x &lt;= 60</label>
+		</location>
+		<init ref="id21"/>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-239" y="-153">x &gt;= 60</label>
+			<label kind="assignment" x="-239" y="-136">HaveSecrets()</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="-69" y="-230">secret[InCallWith]!</label>
+			<label kind="assignment" x="-69" y="-213">senderArray = localArray,
+x=0</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="152" y="-144">secret[InCallWith]?</label>
+			<label kind="assignment" x="152" y="-127">outsideArray = senderArray</label>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-570" y="-136">secret[id]!</label>
+			<label kind="assignment" x="-570" y="-119">senderArray = localArray</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="-366" y="-230">secret[id]?</label>
+			<label kind="assignment" x="-366" y="-213">outsideArray = senderArray,
+x=0</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="-341" y="-51">call[id]!</label>
+			<label kind="assignment" x="-341" y="-34">initialArray(id)</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="select" x="-69" y="-60">e: id_t</label>
+			<label kind="guard" x="-69" y="-43">legalID(e,id)</label>
+			<label kind="synchronisation" x="-69" y="-26">call[e]?</label>
+			<label kind="assignment" x="-69" y="-9">InCallWith = e,
+initialArray(id)</label>
+		</transition>
+	</template>
+	<system>// List one or more processes to be composed into a system.
+system GirlTotalTime;
+    </system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; forall(i:id_t) GirlTotalTime(i).allSecretsKnown &amp;&amp; time &lt;= 500</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

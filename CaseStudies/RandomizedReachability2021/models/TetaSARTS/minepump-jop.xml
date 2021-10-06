@@ -1,0 +1,3040 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>//
+broadcast chan GO; //
+clock globalClock;
+const int periodicThreads = 2;
+const int schedulerID = 0;
+const int exerciseBound = 120000;
+bool synchronized = false;
+
+const int totalThreads = periodicThreads;
+typedef int[1,periodicThreads] PeriodicID;
+typedef int[1,totalThreads] ThreadID;
+int running[totalThreads+1];
+//Scheduler
+bool schedulable[ThreadID];
+bool blocked[ThreadID];
+chan run[ThreadID];
+// bools for synchronization
+
+
+void runScheduler(){
+	int i;
+	for (i = 0; i &lt;= totalThreads; i++){
+		running[i] = 0;
+	}
+	running[schedulerID] = 1;
+}
+
+int monitorDepth = 0;
+void monitorEnter(){
+	synchronized = true;
+	monitorDepth++;
+}
+
+void monitorExit(){
+	monitorDepth--;
+	if (monitorDepth == 0){
+		synchronized = false;
+		for(i:ThreadID) {
+			blocked[i] = false;
+		}
+		runScheduler();
+	}
+}
+
+//
+
+/*
+* This is for the FPS-scheduler
+*/
+int selectedThreadPriority = -1;
+
+void enqueue_task(ThreadID tid, const int pri) {
+	if(pri &lt; selectedThreadPriority) {
+		return;
+	} else if(pri &gt;= selectedThreadPriority) {
+		int i;
+		if(synchronized){
+		    blocked[tid] = true;
+	    } else {
+	    	for(i = 0; i &lt;= totalThreads; i++){
+		    	running[i] = 0;
+	       	}
+	        running[schedulerID] = 1;
+		}
+	}
+}
+
+void dequeue_task(ThreadID tid) {
+	int i;
+	if(synchronized){
+		    blocked[tid] = true;
+	} else {
+		for(i = 0; i &lt;= totalThreads; i++){
+			running[i] = 0;
+		}
+		running[schedulerID] = 1;
+	}
+}
+/*
+* End of FPS-scheduler
+*/
+
+
+//
+chan chan_0001[ThreadID]; //minepump.actuators.WaterpumpActuator.start()V
+chan chan_0002[ThreadID]; //minepump.actuators.WaterpumpActuator.emergencyStop(Z)V
+chan chan_0003[ThreadID]; //minepump.sensors.MethaneSensor.isCriticalMethaneLevelReached()Z
+chan chan_0004[ThreadID]; //minepump.sensors.MethaneSensor.conductMeasurement()I
+chan chan_0005[ThreadID]; //minepump.sensors.MethaneSensor.isBrickMethane(I)Z
+chan chan_0006[ThreadID]; //minepump.sensors.MethaneSensor$MeasurementHistory.addMeasurement(I)V
+chan chan_0007[ThreadID]; //minepump.sensors.MethaneSensor.isBrickWater(I)Z
+chan chan_0008[ThreadID]; //minepump.sensors.MethaneSensor$MeasurementHistory.getMethaneLevel()I
+chan chan_0009[ThreadID]; //minepump.sensors.HighWaterSensor.conductMeasurement()I
+chan chan_0010[ThreadID]; //minepump.sensors.HighWaterSensor.criticalWaterLevel()Z
+chan chan_0011[ThreadID]; //minepump.sensors.LowWaterSensor.conductMeasurement()I
+chan chan_0012[ThreadID]; //minepump.sensors.LowWaterSensor.criticalWaterLevel()Z
+bool notImplementedMethods = false;
+bool loopAnnotationNotSet = false;
+
+int threadPriority[ThreadID] = {2, 1};</declaration>
+	<template>
+		<name x="0" y="0">FPS_scheduler</name>
+		<declaration>//
+
+/*
+* The scheduler_wcet constant needs to be set according to the specific scheduler used
+*/
+const int scheduler_wcet = 1;
+int selectedThread;
+clock executionTime;
+
+void select_thread(){
+		int i;
+		selectedThread = -1;
+		selectedThreadPriority = -1;
+		for(i:ThreadID){
+			if(schedulable[i] &amp;&amp; threadPriority[i] &gt; selectedThreadPriority){
+				selectedThread = i;
+				selectedThreadPriority = threadPriority[i];
+			}
+		}
+
+		for (i = 0; i &lt;= totalThreads; i++){
+			running[i] = 0;
+		}
+		running[selectedThread] = 1;
+}
+
+void idle(){
+		int i;
+		for (i = 0; i &lt;= totalThreads; i++){
+			running[i] = 0;
+		}
+		selectedThreadPriority = -1;
+}</declaration>
+		<location id="id0" x="296" y="-48">
+			<committed/>
+		</location>
+		<location id="id1" x="296" y="-160">
+			<name x="296" y="-160">Running</name>
+			<label kind="invariant" x="296" y="-195">executionTime &lt;= scheduler_wcet &amp;&amp;
+executionTime' == running[schedulerID]</label>
+		</location>
+		<location id="id2" x="32" y="-48">
+			<name x="32" y="-48">finishedHyperPeriod</name>
+			<committed/>
+		</location>
+		<location id="id3" x="296" y="-280">
+			<name x="296" y="-280">schedule</name>
+			<committed/>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="296" y="-119">GO!</label>
+			<label kind="assignment" x="296" y="-104">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<nail x="2" y="-78"/>
+			<nail x="62" y="-78"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="64" y="-104">globalClock &gt;= exerciseBound</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="196" y="-220">executionTime == scheduler_wcet &amp;&amp;
+globalClock &lt; exerciseBound</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="guard" x="54" y="-325">!exists(i:ThreadID)schedulable[i]</label>
+			<label kind="assignment" x="54" y="-310">idle(),
+executionTime = 0</label>
+			<nail x="32" y="-280"/>
+			<nail x="32" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="guard" x="372" y="-325">exists(i:ThreadID)schedulable[i]</label>
+			<label kind="assignment" x="372" y="-310">select_thread(),
+executionTime = 0</label>
+			<nail x="568" y="-280"/>
+			<nail x="568" y="-160"/>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">PeriodicThread</name>
+		<parameter>const PeriodicID pID, const int period, const int deadline, const int offset</parameter>
+		<declaration>//
+clock releasedTime;</declaration>
+		<location id="id4" x="-160" y="-176">
+		</location>
+		<location id="id5" x="-160" y="-80">
+			<name x="-160" y="-80">CheckForOffset</name>
+			<label kind="invariant" x="-160" y="-100">releasedTime &lt;= offset</label>
+		</location>
+		<location id="id6" x="-160" y="0">
+			<committed/>
+		</location>
+		<location id="id7" x="360" y="0">
+			<name x="360" y="0">ReadyToBeScheduled</name>
+			<committed/>
+		</location>
+		<location id="id8" x="360" y="136">
+			<name x="360" y="136">ExecutingThread</name>
+		</location>
+		<location id="id9" x="360" y="272">
+			<name x="360" y="272">DONE</name>
+			<label kind="invariant" x="360" y="252">releasedTime &lt;= period</label>
+		</location>
+		<location id="id10" x="56" y="136">
+			<name x="56" y="136">DeadlineOverrun</name>
+			<committed/>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-180" y="-143">GO?</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-160" y="-40">releasedTime == offset</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="assignment" x="50" y="10">schedulable[pID] = true,
+releasedTime = 0,
+enqueue_task(pID, threadPriority[pID])</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="370" y="68">run[pID]!</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="guard" x="148" y="116">releasedTime &gt; deadline</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="370" y="174">releasedTime &lt;= deadline</label>
+			<label kind="synchronisation" x="370" y="189">run[pID]?</label>
+			<label kind="assignment" x="370" y="204">schedulable[pID] = false,
+dequeue_task(pID)</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id6"/>
+			<label kind="guard" x="60" y="252">releasedTime == period</label>
+			<nail x="-160" y="272"/>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0001</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.actuators.WaterpumpActuator.start()V</declaration>
+		<location id="id11" x="0" y="250">
+			<name x="-15" y="220">return0</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 21 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: return[177](1)</label>
+		</location>
+		<location id="id12" x="0" y="125">
+			<name x="-15" y="95">Empty1</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id13" x="150" y="375">
+			<name x="135" y="345">Empty2</name>
+			<label kind="invariant" x="135" y="330">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id14" x="0" y="0">
+			<name x="-15" y="-30">minepump_actuators_WaterpumpActuator_start_V_init3</name>
+			<label kind="comments" x="0" y="0">minepump.actuators.WaterpumpActuator.start()V</label>
+		</location>
+		<init ref="id14"/>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id13"/>
+			<label kind="guard" x="45" y="282">executionTime == 21</label>
+			<label kind="assignment" x="45" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0001[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="guard" x="45" y="158">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="173">chan_0001[tID]!</label>
+			<label kind="assignment" x="45" y="188">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0002</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.actuators.WaterpumpActuator.emergencyStop(Z)V</declaration>
+		<location id="id15" x="0" y="250">
+			<name x="-15" y="220">return4</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 21 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: return[177](1)</label>
+		</location>
+		<location id="id16" x="0" y="125">
+			<name x="-15" y="95">Empty5</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id17" x="150" y="375">
+			<name x="135" y="345">Empty6</name>
+			<label kind="invariant" x="135" y="330">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id18" x="0" y="0">
+			<name x="-15" y="-30">minepump_actuators_WaterpumpActuator_emergencyStop_Z_V_init7</name>
+			<label kind="comments" x="0" y="0">minepump.actuators.WaterpumpActuator.emergencyStop(Z)V</label>
+		</location>
+		<init ref="id18"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id17"/>
+			<label kind="guard" x="45" y="282">executionTime == 21</label>
+			<label kind="assignment" x="45" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0002[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id18"/>
+			<label kind="guard" x="45" y="158">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="173">chan_0002[tID]!</label>
+			<label kind="assignment" x="45" y="188">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0003</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.MethaneSensor.isCriticalMethaneLevelReached()Z</declaration>
+		<location id="id19" x="0" y="250">
+			<name x="-15" y="220">aload_08</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: aload_0[42](1)</label>
+		</location>
+		<location id="id20" x="0" y="375">
+			<name x="-15" y="345">MethodCalling_conductMeasurement9</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">1: invokevirtual[182](3) 64</label>
+		</location>
+		<location id="id21" x="0" y="500">
+			<name x="-15" y="470">running_conductMeasurement10</name>
+		</location>
+		<location id="id22" x="0" y="625">
+			<name x="-15" y="595">returningFrom_conductMeasurement11</name>
+			<label kind="invariant" x="-15" y="580">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id23" x="0" y="875">
+			<name x="-15" y="845">MethodCalling_isBrickMethane12</name>
+			<label kind="invariant" x="-15" y="830">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">7: invokevirtual[182](3) 41</label>
+		</location>
+		<location id="id24" x="0" y="1000">
+			<name x="-15" y="970">running_isBrickMethane13</name>
+		</location>
+		<location id="id25" x="0" y="1125">
+			<name x="-15" y="1095">returningFrom_isBrickMethane14</name>
+			<label kind="invariant" x="-15" y="1080">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id26" x="0" y="1250">
+			<name x="-15" y="1220">ifeq15</name>
+			<label kind="invariant" x="-15" y="1205">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">10: ifeq[153](3) -&gt; aload_0</label>
+		</location>
+		<location id="id27" x="200" y="1500">
+			<name x="185" y="1470">ifeq16</name>
+			<label kind="invariant" x="185" y="1455">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">17: ifeq[153](3) -&gt; aload_0</label>
+		</location>
+		<location id="id28" x="200" y="1750">
+			<name x="185" y="1720">MethodCalling_addMeasurement17</name>
+			<label kind="invariant" x="185" y="1705">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">25: invokevirtual[182](3) 66</label>
+		</location>
+		<location id="id29" x="200" y="1875">
+			<name x="185" y="1845">running_addMeasurement18</name>
+		</location>
+		<location id="id30" x="200" y="2000">
+			<name x="185" y="1970">returningFrom_addMeasurement19</name>
+			<label kind="invariant" x="185" y="1955">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id31" x="200" y="2250">
+			<name x="185" y="2220">goto20</name>
+			<label kind="invariant" x="185" y="2205">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">33: goto[167](3) -&gt; aload_0</label>
+		</location>
+		<location id="id32" x="0" y="1375">
+			<name x="-15" y="1345">aload_021</name>
+			<label kind="invariant" x="-15" y="1330">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">36: aload_0[42](1)</label>
+		</location>
+		<location id="id33" x="0" y="1500">
+			<name x="-15" y="1470">iload_122</name>
+			<label kind="invariant" x="-15" y="1455">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">37: iload_1[27](1)</label>
+		</location>
+		<location id="id34" x="0" y="1625">
+			<name x="-15" y="1595">MethodCalling_isBrickWater23</name>
+			<label kind="invariant" x="-15" y="1580">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">38: invokevirtual[182](3) 43</label>
+		</location>
+		<location id="id35" x="0" y="1750">
+			<name x="-15" y="1720">running_isBrickWater24</name>
+		</location>
+		<location id="id36" x="0" y="1875">
+			<name x="-15" y="1845">returningFrom_isBrickWater25</name>
+			<label kind="invariant" x="-15" y="1830">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id37" x="0" y="2000">
+			<name x="-15" y="1970">ifeq26</name>
+			<label kind="invariant" x="-15" y="1955">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">41: ifeq[153](3) -&gt; aload_0</label>
+		</location>
+		<location id="id38" x="200" y="2250">
+			<name x="185" y="2220">ifeq27</name>
+			<label kind="invariant" x="185" y="2205">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">48: ifeq[153](3) -&gt; aload_0</label>
+		</location>
+		<location id="id39" x="200" y="2500">
+			<name x="185" y="2470">MethodCalling_addMeasurement28</name>
+			<label kind="invariant" x="185" y="2455">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">56: invokevirtual[182](3) 66</label>
+		</location>
+		<location id="id40" x="200" y="2625">
+			<name x="185" y="2595">running_addMeasurement29</name>
+		</location>
+		<location id="id41" x="200" y="2750">
+			<name x="185" y="2720">returningFrom_addMeasurement30</name>
+			<label kind="invariant" x="185" y="2705">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id42" x="200" y="3000">
+			<name x="185" y="2970">goto31</name>
+			<label kind="invariant" x="185" y="2955">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">64: goto[167](3) -&gt; aload_0</label>
+		</location>
+		<location id="id43" x="0" y="2125">
+			<name x="-15" y="2095">aload_032</name>
+			<label kind="invariant" x="-15" y="2080">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">67: aload_0[42](1)</label>
+		</location>
+		<location id="id44" x="0" y="2375">
+			<name x="-15" y="2345">aload_033</name>
+			<label kind="invariant" x="-15" y="2330">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">72: aload_0[42](1)</label>
+		</location>
+		<location id="id45" x="0" y="2500">
+			<name x="-15" y="2470">getfield34</name>
+			<label kind="invariant" x="-15" y="2455">executionTime &lt;= 13 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">73: getfield[180](3) 59</label>
+		</location>
+		<location id="id46" x="0" y="2625">
+			<name x="-15" y="2595">MethodCalling_getMethaneLevel35</name>
+			<label kind="invariant" x="-15" y="2580">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">76: invokevirtual[182](3) 69</label>
+		</location>
+		<location id="id47" x="0" y="2750">
+			<name x="-15" y="2720">running_getMethaneLevel36</name>
+		</location>
+		<location id="id48" x="0" y="2875">
+			<name x="-15" y="2845">returningFrom_getMethaneLevel37</name>
+			<label kind="invariant" x="-15" y="2830">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id49" x="0" y="3125">
+			<name x="-15" y="3095">if_icmplt38</name>
+			<label kind="invariant" x="-15" y="3080">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">83: if_icmplt[161](3) -&gt; iconst_0</label>
+		</location>
+		<location id="id50" x="0" y="3250">
+			<name x="-15" y="3220">iconst_039</name>
+			<label kind="invariant" x="-15" y="3205">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">88: iconst_0[3](1)</label>
+		</location>
+		<location id="id51" x="0" y="3375">
+			<name x="-15" y="3345">ireturn40</name>
+			<label kind="invariant" x="-15" y="3330">executionTime &lt;= 23 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">89: ireturn[172](1)</label>
+		</location>
+		<location id="id52" x="0" y="125">
+			<name x="-15" y="95">Empty41</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id53" x="150" y="3500">
+			<name x="135" y="3470">Empty42</name>
+			<label kind="invariant" x="135" y="3455">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id54" x="0" y="750">
+			<name x="-15" y="720">istore_143</name>
+			<label kind="invariant" x="-15" y="705">executionTime &lt;= 3 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">4: istore_1[60](1)
+   5: aload_0[42](1)
+   6: iload_1[27](1)</label>
+		</location>
+		<location id="id55" x="200" y="1375">
+			<name x="185" y="1345">aload_044</name>
+			<label kind="invariant" x="185" y="1330">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">13: aload_0[42](1)
+  14: getfield[180](3) 50</label>
+		</location>
+		<location id="id56" x="200" y="1625">
+			<name x="185" y="1595">aload_045</name>
+			<label kind="invariant" x="185" y="1580">executionTime &lt;= 15 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">20: aload_0[42](1)
+  21: getfield[180](3) 59
+  24: iconst_0[3](1)</label>
+		</location>
+		<location id="id57" x="200" y="2125">
+			<name x="185" y="2095">aload_046</name>
+			<label kind="invariant" x="185" y="2080">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">44: aload_0[42](1)
+  45: getfield[180](3) 50</label>
+		</location>
+		<location id="id58" x="200" y="2125">
+			<name x="185" y="2095">aload_047</name>
+			<label kind="invariant" x="185" y="2080">executionTime &lt;= 17 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">28: aload_0[42](1)
+  29: iconst_0[3](1)
+  30: putfield[181](3) 50</label>
+		</location>
+		<location id="id59" x="0" y="2250">
+			<name x="-15" y="2220">iconst_148</name>
+			<label kind="invariant" x="-15" y="2205">executionTime &lt;= 16 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">68: iconst_1[4](1)
+  69: putfield[181](3) 50</label>
+		</location>
+		<location id="id60" x="200" y="2375">
+			<name x="185" y="2345">aload_049</name>
+			<label kind="invariant" x="185" y="2330">executionTime &lt;= 15 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">51: aload_0[42](1)
+  52: getfield[180](3) 59
+  55: iconst_1[4](1)</label>
+		</location>
+		<location id="id61" x="200" y="2875">
+			<name x="185" y="2845">aload_050</name>
+			<label kind="invariant" x="185" y="2830">executionTime &lt;= 17 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">59: aload_0[42](1)
+  60: iconst_0[3](1)
+  61: putfield[181](3) 50</label>
+		</location>
+		<location id="id62" x="0" y="3000">
+			<name x="-15" y="2970">aload_051</name>
+			<label kind="invariant" x="-15" y="2955">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">79: aload_0[42](1)
+  80: getfield[180](3) 52</label>
+		</location>
+		<location id="id63" x="200" y="3250">
+			<name x="185" y="3220">iconst_152</name>
+			<label kind="invariant" x="185" y="3205">executionTime &lt;= 24 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">86: iconst_1[4](1)
+  87: ireturn[172](1)</label>
+		</location>
+		<location id="id64" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_MethaneSensor_isCriticalMethaneLevelReached_Z_init53</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.MethaneSensor.isCriticalMethaneLevelReached()Z</label>
+		</location>
+		<init ref="id64"/>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-30" y="282">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-30" y="407">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="422">chan_0004[tID]!</label>
+			<label kind="assignment" x="-30" y="437">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-30" y="532">chan_0004[tID]?</label>
+			<label kind="assignment" x="-30" y="547">executionTime = 0,
+methodSwitchCost = 44</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id54"/>
+			<label kind="guard" x="-30" y="657">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="guard" x="-30" y="907">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="922">chan_0005[tID]!</label>
+			<label kind="assignment" x="-30" y="937">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="-30" y="1032">chan_0005[tID]?</label>
+			<label kind="assignment" x="-30" y="1047">executionTime = 0,
+methodSwitchCost = 44</label>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id26"/>
+			<label kind="guard" x="-30" y="1157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="1172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id32"/>
+			<label kind="guard" x="-30" y="1282">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id55"/>
+			<label kind="guard" x="70" y="1282">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id32"/>
+			<label kind="guard" x="70" y="1408">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1423">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id56"/>
+			<label kind="guard" x="170" y="1532">executionTime == 4</label>
+			<label kind="assignment" x="170" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id29"/>
+			<label kind="guard" x="170" y="1782">executionTime == 102</label>
+			<label kind="synchronisation" x="170" y="1797">chan_0006[tID]!</label>
+			<label kind="assignment" x="170" y="1812">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="170" y="1907">chan_0006[tID]?</label>
+			<label kind="assignment" x="170" y="1922">executionTime = 0,
+methodSwitchCost = 45</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id58"/>
+			<label kind="guard" x="170" y="2032">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="170" y="2047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id44"/>
+			<label kind="guard" x="70" y="2282">executionTime == 4</label>
+			<label kind="assignment" x="70" y="2297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-30" y="1407">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id34"/>
+			<label kind="guard" x="-30" y="1532">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id35"/>
+			<label kind="guard" x="-30" y="1657">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="1672">chan_0007[tID]!</label>
+			<label kind="assignment" x="-30" y="1687">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id36"/>
+			<label kind="synchronisation" x="-30" y="1782">chan_0007[tID]?</label>
+			<label kind="assignment" x="-30" y="1797">executionTime = 0,
+methodSwitchCost = 44</label>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id37"/>
+			<label kind="guard" x="-30" y="1907">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="1922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id43"/>
+			<label kind="guard" x="-30" y="2032">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="2047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id57"/>
+			<label kind="guard" x="70" y="2032">executionTime == 4</label>
+			<label kind="assignment" x="70" y="2047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id43"/>
+			<label kind="guard" x="70" y="2158">executionTime == 4</label>
+			<label kind="assignment" x="70" y="2173">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id60"/>
+			<label kind="guard" x="170" y="2282">executionTime == 4</label>
+			<label kind="assignment" x="170" y="2297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id40"/>
+			<label kind="guard" x="170" y="2532">executionTime == 102</label>
+			<label kind="synchronisation" x="170" y="2547">chan_0006[tID]!</label>
+			<label kind="assignment" x="170" y="2562">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id41"/>
+			<label kind="synchronisation" x="170" y="2657">chan_0006[tID]?</label>
+			<label kind="assignment" x="170" y="2672">executionTime = 0,
+methodSwitchCost = 45</label>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id61"/>
+			<label kind="guard" x="170" y="2782">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="170" y="2797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id44"/>
+			<label kind="guard" x="70" y="2658">executionTime == 4</label>
+			<label kind="assignment" x="70" y="2673">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id59"/>
+			<label kind="guard" x="-30" y="2157">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="2172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id45"/>
+			<label kind="guard" x="-30" y="2407">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="2422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id46"/>
+			<label kind="guard" x="-30" y="2532">executionTime == 13</label>
+			<label kind="assignment" x="-30" y="2547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id47"/>
+			<label kind="guard" x="-30" y="2657">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="2672">chan_0008[tID]!</label>
+			<label kind="assignment" x="-30" y="2687">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="synchronisation" x="-30" y="2782">chan_0008[tID]?</label>
+			<label kind="assignment" x="-30" y="2797">executionTime = 0,
+methodSwitchCost = 44</label>
+		</transition>
+		<transition>
+			<source ref="id48"/>
+			<target ref="id62"/>
+			<label kind="guard" x="-30" y="2907">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="2922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id50"/>
+			<label kind="guard" x="-30" y="3157">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="3172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id63"/>
+			<label kind="guard" x="70" y="3157">executionTime == 4</label>
+			<label kind="assignment" x="70" y="3172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id50"/>
+			<target ref="id51"/>
+			<label kind="guard" x="-30" y="3282">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="3297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id51"/>
+			<target ref="id53"/>
+			<label kind="guard" x="45" y="3407">executionTime == 23</label>
+			<label kind="assignment" x="45" y="3422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id52"/>
+			<target ref="id19"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id23"/>
+			<label kind="guard" x="-30" y="782">executionTime == 3</label>
+			<label kind="assignment" x="-30" y="797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id27"/>
+			<label kind="guard" x="170" y="1407">executionTime == 14</label>
+			<label kind="assignment" x="170" y="1422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id56"/>
+			<target ref="id28"/>
+			<label kind="guard" x="170" y="1657">executionTime == 15</label>
+			<label kind="assignment" x="170" y="1672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id57"/>
+			<target ref="id38"/>
+			<label kind="guard" x="170" y="2157">executionTime == 14</label>
+			<label kind="assignment" x="170" y="2172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id58"/>
+			<target ref="id31"/>
+			<label kind="guard" x="170" y="2157">executionTime == 17</label>
+			<label kind="assignment" x="170" y="2172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id59"/>
+			<target ref="id44"/>
+			<label kind="guard" x="-30" y="2282">executionTime == 16</label>
+			<label kind="assignment" x="-30" y="2297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id60"/>
+			<target ref="id39"/>
+			<label kind="guard" x="170" y="2407">executionTime == 15</label>
+			<label kind="assignment" x="170" y="2422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id61"/>
+			<target ref="id42"/>
+			<label kind="guard" x="170" y="2907">executionTime == 17</label>
+			<label kind="assignment" x="170" y="2922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id62"/>
+			<target ref="id49"/>
+			<label kind="guard" x="-30" y="3032">executionTime == 14</label>
+			<label kind="assignment" x="-30" y="3047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id63"/>
+			<target ref="id53"/>
+			<label kind="guard" x="145" y="3345">executionTime == 24</label>
+			<label kind="assignment" x="145" y="3360">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id64"/>
+			<target ref="id52"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0003[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 17</label>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id64"/>
+			<label kind="guard" x="45" y="1720">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="1735">chan_0003[tID]!</label>
+			<label kind="assignment" x="45" y="1750">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0004</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.MethaneSensor.conductMeasurement()I</declaration>
+		<location id="id65" x="0" y="125">
+			<name x="-15" y="95">Empty74</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id66" x="150" y="375">
+			<name x="135" y="345">Empty75</name>
+			<label kind="invariant" x="135" y="330">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id67" x="0" y="250">
+			<name x="-15" y="220">iconst_076</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 24 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: iconst_0[3](1)
+   1: ireturn[172](1)</label>
+		</location>
+		<location id="id68" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_MethaneSensor_conductMeasurement_I_init77</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.MethaneSensor.conductMeasurement()I</label>
+		</location>
+		<init ref="id68"/>
+		<transition>
+			<source ref="id65"/>
+			<target ref="id67"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id67"/>
+			<target ref="id66"/>
+			<label kind="guard" x="45" y="282">executionTime == 24</label>
+			<label kind="assignment" x="45" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id68"/>
+			<target ref="id65"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0004[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id66"/>
+			<target ref="id68"/>
+			<label kind="guard" x="45" y="158">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="173">chan_0004[tID]!</label>
+			<label kind="assignment" x="45" y="188">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0005</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.MethaneSensor.isBrickMethane(I)Z</declaration>
+		<location id="id69" x="0" y="375">
+			<name x="-15" y="345">if_icmplt54</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">4: if_icmplt[161](3) -&gt; iconst_0</label>
+		</location>
+		<location id="id70" x="200" y="625">
+			<name x="185" y="595">if_icmpgt55</name>
+			<label kind="invariant" x="185" y="580">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">11: if_icmpgt[163](3) -&gt; iconst_0</label>
+		</location>
+		<location id="id71" x="0" y="500">
+			<name x="-15" y="470">iconst_056</name>
+			<label kind="invariant" x="-15" y="455">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">16: iconst_0[3](1)</label>
+		</location>
+		<location id="id72" x="0" y="625">
+			<name x="-15" y="595">ireturn57</name>
+			<label kind="invariant" x="-15" y="580">executionTime &lt;= 23 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">17: ireturn[172](1)</label>
+		</location>
+		<location id="id73" x="0" y="125">
+			<name x="-15" y="95">Empty58</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id74" x="150" y="750">
+			<name x="135" y="720">Empty59</name>
+			<label kind="invariant" x="135" y="705">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id75" x="0" y="250">
+			<name x="-15" y="220">iload_160</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: iload_1[27](1)
+   1: sipush[17](3) 147</label>
+		</location>
+		<location id="id76" x="200" y="500">
+			<name x="185" y="470">iload_161</name>
+			<label kind="invariant" x="185" y="455">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">7: iload_1[27](1)
+   8: sipush[17](3) 160</label>
+		</location>
+		<location id="id77" x="200" y="750">
+			<name x="185" y="720">iconst_162</name>
+			<label kind="invariant" x="185" y="705">executionTime &lt;= 24 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">14: iconst_1[4](1)
+  15: ireturn[172](1)</label>
+		</location>
+		<location id="id78" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_MethaneSensor_isBrickMethane_I_Z_init63</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.MethaneSensor.isBrickMethane(I)Z</label>
+		</location>
+		<init ref="id78"/>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id71"/>
+			<label kind="guard" x="-30" y="407">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id76"/>
+			<label kind="guard" x="70" y="407">executionTime == 4</label>
+			<label kind="assignment" x="70" y="422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id71"/>
+			<label kind="guard" x="70" y="533">executionTime == 4</label>
+			<label kind="assignment" x="70" y="548">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id77"/>
+			<label kind="guard" x="170" y="657">executionTime == 4</label>
+			<label kind="assignment" x="170" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id71"/>
+			<target ref="id72"/>
+			<label kind="guard" x="-30" y="532">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id72"/>
+			<target ref="id74"/>
+			<label kind="guard" x="45" y="657">executionTime == 23</label>
+			<label kind="assignment" x="45" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id75"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id75"/>
+			<target ref="id69"/>
+			<label kind="guard" x="-30" y="282">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id76"/>
+			<target ref="id70"/>
+			<label kind="guard" x="170" y="532">executionTime == 4</label>
+			<label kind="assignment" x="170" y="547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id77"/>
+			<target ref="id74"/>
+			<label kind="guard" x="145" y="720">executionTime == 24</label>
+			<label kind="assignment" x="145" y="735">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id78"/>
+			<target ref="id73"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0005[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id74"/>
+			<target ref="id78"/>
+			<label kind="guard" x="45" y="345">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="360">chan_0005[tID]!</label>
+			<label kind="assignment" x="45" y="375">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0006</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.MethaneSensor$MeasurementHistory.addMeasurement(I)V</declaration>
+		<location id="id79" x="0" y="375">
+			<name x="-15" y="345">if_icmpne78</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">29: if_icmpne[160](3) -&gt; return</label>
+		</location>
+		<location id="id80" x="0" y="500">
+			<name x="-15" y="470">return79</name>
+			<label kind="invariant" x="-15" y="455">executionTime &lt;= 21 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">37: return[177](1)</label>
+		</location>
+		<location id="id81" x="0" y="125">
+			<name x="-15" y="95">Empty80</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id82" x="150" y="625">
+			<name x="135" y="595">Empty81</name>
+			<label kind="invariant" x="135" y="580">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id83" x="0" y="250">
+			<name x="-15" y="220">aload_082</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 109 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: aload_0[42](1)
+   1: getfield[180](3) 22
+   4: aload_0[42](1)
+   5: getfield[180](3) 20
+   8: iload_1[27](1)
+   9: iastore[79](1)
+  10: aload_0[42](1)
+  11: dup[89](1)
+  12: getfield[180](3) 20
+  15: iconst_1[4](1)
+  16: iadd[96](1)
+  17: putfield[181](3) 20
+  20: aload_0[42](1)
+  21: getfield[180](3) 20
+  24: aload_0[42](1)
+  25: getfield[180](3) 22
+  28: arraylength[190](1)</label>
+		</location>
+		<location id="id84" x="200" y="500">
+			<name x="185" y="470">aload_083</name>
+			<label kind="invariant" x="185" y="455">executionTime &lt;= 17 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">32: aload_0[42](1)
+  33: iconst_0[3](1)
+  34: putfield[181](3) 20</label>
+		</location>
+		<location id="id85" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_MethaneSensor_MeasurementHistory_addMeasurement_I_V_init84</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.MethaneSensor$MeasurementHistory.addMeasurement(I)V</label>
+		</location>
+		<init ref="id85"/>
+		<transition>
+			<source ref="id79"/>
+			<target ref="id80"/>
+			<label kind="guard" x="-30" y="407">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id79"/>
+			<target ref="id84"/>
+			<label kind="guard" x="70" y="407">executionTime == 4</label>
+			<label kind="assignment" x="70" y="422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id80"/>
+			<target ref="id82"/>
+			<label kind="guard" x="45" y="532">executionTime == 21</label>
+			<label kind="assignment" x="45" y="547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id81"/>
+			<target ref="id83"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id83"/>
+			<target ref="id79"/>
+			<label kind="guard" x="-30" y="282">executionTime == 109</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id84"/>
+			<target ref="id80"/>
+			<label kind="guard" x="70" y="470">executionTime == 17</label>
+			<label kind="assignment" x="70" y="485">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id85"/>
+			<target ref="id81"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0006[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id82"/>
+			<target ref="id85"/>
+			<label kind="guard" x="45" y="283">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="298">chan_0006[tID]!</label>
+			<label kind="assignment" x="45" y="313">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0007</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.MethaneSensor.isBrickWater(I)Z</declaration>
+		<location id="id86" x="0" y="375">
+			<name x="-15" y="345">if_icmplt64</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">4: if_icmplt[161](3) -&gt; iconst_0</label>
+		</location>
+		<location id="id87" x="200" y="625">
+			<name x="185" y="595">if_icmpgt65</name>
+			<label kind="invariant" x="185" y="580">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">11: if_icmpgt[163](3) -&gt; iconst_0</label>
+		</location>
+		<location id="id88" x="0" y="500">
+			<name x="-15" y="470">iconst_066</name>
+			<label kind="invariant" x="-15" y="455">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">16: iconst_0[3](1)</label>
+		</location>
+		<location id="id89" x="0" y="625">
+			<name x="-15" y="595">ireturn67</name>
+			<label kind="invariant" x="-15" y="580">executionTime &lt;= 23 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">17: ireturn[172](1)</label>
+		</location>
+		<location id="id90" x="0" y="125">
+			<name x="-15" y="95">Empty68</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id91" x="150" y="750">
+			<name x="135" y="720">Empty69</name>
+			<label kind="invariant" x="135" y="705">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id92" x="0" y="250">
+			<name x="-15" y="220">iload_170</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: iload_1[27](1)
+   1: sipush[17](3) 132</label>
+		</location>
+		<location id="id93" x="200" y="500">
+			<name x="185" y="470">iload_171</name>
+			<label kind="invariant" x="185" y="455">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">7: iload_1[27](1)
+   8: sipush[17](3) 146</label>
+		</location>
+		<location id="id94" x="200" y="750">
+			<name x="185" y="720">iconst_172</name>
+			<label kind="invariant" x="185" y="705">executionTime &lt;= 24 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">14: iconst_1[4](1)
+  15: ireturn[172](1)</label>
+		</location>
+		<location id="id95" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_MethaneSensor_isBrickWater_I_Z_init73</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.MethaneSensor.isBrickWater(I)Z</label>
+		</location>
+		<init ref="id95"/>
+		<transition>
+			<source ref="id86"/>
+			<target ref="id88"/>
+			<label kind="guard" x="-30" y="407">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id86"/>
+			<target ref="id93"/>
+			<label kind="guard" x="70" y="407">executionTime == 4</label>
+			<label kind="assignment" x="70" y="422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id87"/>
+			<target ref="id88"/>
+			<label kind="guard" x="70" y="533">executionTime == 4</label>
+			<label kind="assignment" x="70" y="548">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id87"/>
+			<target ref="id94"/>
+			<label kind="guard" x="170" y="657">executionTime == 4</label>
+			<label kind="assignment" x="170" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id88"/>
+			<target ref="id89"/>
+			<label kind="guard" x="-30" y="532">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id89"/>
+			<target ref="id91"/>
+			<label kind="guard" x="45" y="657">executionTime == 23</label>
+			<label kind="assignment" x="45" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id90"/>
+			<target ref="id92"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id92"/>
+			<target ref="id86"/>
+			<label kind="guard" x="-30" y="282">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id93"/>
+			<target ref="id87"/>
+			<label kind="guard" x="170" y="532">executionTime == 4</label>
+			<label kind="assignment" x="170" y="547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id94"/>
+			<target ref="id91"/>
+			<label kind="guard" x="145" y="720">executionTime == 24</label>
+			<label kind="assignment" x="145" y="735">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id95"/>
+			<target ref="id90"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0007[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id91"/>
+			<target ref="id95"/>
+			<label kind="guard" x="45" y="345">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="360">chan_0007[tID]!</label>
+			<label kind="assignment" x="45" y="375">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0008</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+int loopBound0 = 0;
+
+// minepump.sensors.MethaneSensor$MeasurementHistory.getMethaneLevel()I</declaration>
+		<location id="id96" x="0" y="375">
+			<name x="-15" y="345">goto85</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">4: goto[167](3) -&gt; iload_2</label>
+		</location>
+		<location id="id97" x="0" y="875">
+			<name x="-15" y="845">aload_086</name>
+			<label kind="invariant" x="-15" y="830">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">7: aload_0[42](1)
+
+
+loopTargetLocation</label>
+		</location>
+		<location id="id98" x="0" y="1125">
+			<name x="-15" y="1095">if_icmpne87</name>
+			<label kind="invariant" x="-15" y="1080">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">14: if_icmpne[160](3) -&gt; iinc 2 1</label>
+		</location>
+		<location id="id99" x="200" y="1250">
+			<name x="185" y="1220">iinc88</name>
+			<label kind="invariant" x="185" y="1205">executionTime &lt;= 8 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">17: iinc[132](3) 1 1</label>
+		</location>
+		<location id="id100" x="150" y="1250">
+			<name x="135" y="1220">iinc89</name>
+			<label kind="invariant" x="135" y="1205">executionTime &lt;= 8 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">20: iinc[132](3) 2 1</label>
+		</location>
+		<location id="id101" x="0" y="500">
+			<name x="-15" y="470">iload_290</name>
+			<label kind="invariant" x="-15" y="455">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">23: iload_2[28](1)</label>
+		</location>
+		<location id="id102" x="0" y="750">
+			<name x="-15" y="720">if_icmplt91</name>
+			<label kind="invariant" x="-15" y="705">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">28: if_icmplt[161](3) -&gt; aload_0
+
+
+loopLocation
+
+exitLocation</label>
+		</location>
+		<location id="id103" x="0" y="125">
+			<name x="-15" y="95">Empty92</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id104" x="200" y="1000">
+			<name x="185" y="970">Empty93</name>
+			<label kind="invariant" x="185" y="955">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id105" x="0" y="250">
+			<name x="-15" y="220">iconst_094</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: iconst_0[3](1)
+   1: istore_1[60](1)
+   2: iconst_0[3](1)
+   3: istore_2[61](1)</label>
+		</location>
+		<location id="id106" x="0" y="625">
+			<name x="-15" y="595">aload_095</name>
+			<label kind="invariant" x="-15" y="580">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">24: aload_0[42](1)
+  25: getfield[180](3) 24</label>
+		</location>
+		<location id="id107" x="200" y="875">
+			<name x="185" y="845">iload_196</name>
+			<label kind="invariant" x="185" y="830">executionTime &lt;= 24 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">31: iload_1[27](1)
+  32: ireturn[172](1)
+
+
+exitReturnLocation</label>
+		</location>
+		<location id="id108" x="0" y="1000">
+			<name x="-15" y="970">getfield97</name>
+			<label kind="invariant" x="-15" y="955">executionTime &lt;= 25 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">8: getfield[180](3) 22
+  11: iload_2[28](1)
+  12: iaload[46](1)
+  13: iconst_1[4](1)</label>
+		</location>
+		<location id="id109" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_MethaneSensor_MeasurementHistory_getMethaneLevel_I_init98</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.MethaneSensor$MeasurementHistory.getMethaneLevel()I</label>
+		</location>
+		<init ref="id109"/>
+		<transition>
+			<source ref="id96"/>
+			<target ref="id101"/>
+			<label kind="guard" x="-30" y="407">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id97"/>
+			<target ref="id108"/>
+			<label kind="guard" x="-30" y="907">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id98"/>
+			<target ref="id100"/>
+			<label kind="guard" x="45" y="1157">executionTime == 4</label>
+			<label kind="assignment" x="45" y="1172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id98"/>
+			<target ref="id99"/>
+			<label kind="guard" x="70" y="1157">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id99"/>
+			<target ref="id100"/>
+			<label kind="guard" x="145" y="1220">executionTime == 8</label>
+			<label kind="assignment" x="145" y="1235">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id100"/>
+			<target ref="id101"/>
+			<label kind="guard" x="45" y="845">executionTime == 8</label>
+			<label kind="assignment" x="45" y="860">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id101"/>
+			<target ref="id106"/>
+			<label kind="guard" x="-30" y="532">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id102"/>
+			<target ref="id97"/>
+			<label kind="guard" x="-30" y="782">executionTime == 4 &amp;&amp; 
+loopBound0 &lt; -1</label>
+			<label kind="assignment" x="-30" y="812">executionTime = 0,
+loopBound0++</label>
+		</transition>
+		<transition>
+			<source ref="id102"/>
+			<target ref="id107"/>
+			<label kind="guard" x="70" y="782">executionTime == 4 &amp;&amp; 
+loopBound0 == 0</label>
+			<label kind="assignment" x="70" y="812">executionTime = 0,
+loopBound0 = 0,
+loopAnnotationNotSet = true</label>
+		</transition>
+		<transition>
+			<source ref="id103"/>
+			<target ref="id105"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id105"/>
+			<target ref="id96"/>
+			<label kind="guard" x="-30" y="282">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id106"/>
+			<target ref="id102"/>
+			<label kind="guard" x="-30" y="657">executionTime == 14</label>
+			<label kind="assignment" x="-30" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id107"/>
+			<target ref="id104"/>
+			<label kind="guard" x="170" y="907">executionTime == 24</label>
+			<label kind="assignment" x="170" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id108"/>
+			<target ref="id98"/>
+			<label kind="guard" x="-30" y="1032">executionTime == 25</label>
+			<label kind="assignment" x="-30" y="1047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id109"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0008[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id104"/>
+			<target ref="id109"/>
+			<label kind="guard" x="70" y="470">executionTime == 0</label>
+			<label kind="synchronisation" x="70" y="485">chan_0008[tID]!</label>
+			<label kind="assignment" x="70" y="500">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0009</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.HighWaterSensor.conductMeasurement()I</declaration>
+		<location id="id110" x="0" y="125">
+			<name x="-15" y="95">Empty99</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id111" x="150" y="375">
+			<name x="135" y="345">Empty100</name>
+			<label kind="invariant" x="135" y="330">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id112" x="0" y="250">
+			<name x="-15" y="220">iconst_0101</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 24 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: iconst_0[3](1)
+   1: ireturn[172](1)</label>
+		</location>
+		<location id="id113" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_HighWaterSensor_conductMeasurement_I_init102</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.HighWaterSensor.conductMeasurement()I</label>
+		</location>
+		<init ref="id113"/>
+		<transition>
+			<source ref="id110"/>
+			<target ref="id112"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id112"/>
+			<target ref="id111"/>
+			<label kind="guard" x="45" y="282">executionTime == 24</label>
+			<label kind="assignment" x="45" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id113"/>
+			<target ref="id110"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0009[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id111"/>
+			<target ref="id113"/>
+			<label kind="guard" x="45" y="158">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="173">chan_0009[tID]!</label>
+			<label kind="assignment" x="45" y="188">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0010</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.HighWaterSensor.criticalWaterLevel()Z</declaration>
+		<location id="id114" x="0" y="250">
+			<name x="-15" y="220">aload_0103</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: aload_0[42](1)</label>
+		</location>
+		<location id="id115" x="0" y="375">
+			<name x="-15" y="345">MethodCalling_conductMeasurement104</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">1: invokevirtual[182](3) 57</label>
+		</location>
+		<location id="id116" x="0" y="500">
+			<name x="-15" y="470">running_conductMeasurement105</name>
+		</location>
+		<location id="id117" x="0" y="625">
+			<name x="-15" y="595">returningFrom_conductMeasurement106</name>
+			<label kind="invariant" x="-15" y="580">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id118" x="0" y="875">
+			<name x="-15" y="845">if_icmple107</name>
+			<label kind="invariant" x="-15" y="830">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">8: if_icmple[164](3) -&gt; aload_0</label>
+		</location>
+		<location id="id119" x="200" y="1125">
+			<name x="185" y="1095">ifne108</name>
+			<label kind="invariant" x="185" y="1080">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">15: ifne[154](3) -&gt; iload_1</label>
+		</location>
+		<location id="id120" x="400" y="1375">
+			<name x="385" y="1345">goto109</name>
+			<label kind="invariant" x="385" y="1330">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">33: goto[167](3) -&gt; aload_0</label>
+		</location>
+		<location id="id121" x="200" y="1250">
+			<name x="185" y="1220">iload_1110</name>
+			<label kind="invariant" x="185" y="1205">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">36: iload_1[27](1)</label>
+		</location>
+		<location id="id122" x="200" y="1500">
+			<name x="185" y="1470">if_icmpgt111</name>
+			<label kind="invariant" x="185" y="1455">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">44: if_icmpgt[163](3) -&gt; aload_0</label>
+		</location>
+		<location id="id123" x="400" y="1750">
+			<name x="385" y="1720">if_icmplt112</name>
+			<label kind="invariant" x="385" y="1705">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">55: if_icmplt[161](3) -&gt; aload_0</label>
+		</location>
+		<location id="id124" x="400" y="2000">
+			<name x="385" y="1970">goto113</name>
+			<label kind="invariant" x="385" y="1955">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">68: goto[167](3) -&gt; aload_0</label>
+		</location>
+		<location id="id125" x="200" y="1625">
+			<name x="185" y="1595">aload_0114</name>
+			<label kind="invariant" x="185" y="1580">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">71: aload_0[42](1)</label>
+		</location>
+		<location id="id126" x="200" y="1875">
+			<name x="185" y="1845">goto115</name>
+			<label kind="invariant" x="185" y="1830">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">76: goto[167](3) -&gt; aload_0</label>
+		</location>
+		<location id="id127" x="0" y="1000">
+			<name x="-15" y="970">aload_0116</name>
+			<label kind="invariant" x="-15" y="955">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">79: aload_0[42](1)</label>
+		</location>
+		<location id="id128" x="0" y="1250">
+			<name x="-15" y="1220">aload_0117</name>
+			<label kind="invariant" x="-15" y="1205">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">84: aload_0[42](1)</label>
+		</location>
+		<location id="id129" x="0" y="1500">
+			<name x="-15" y="1470">if_icmplt118</name>
+			<label kind="invariant" x="-15" y="1455">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">92: if_icmplt[161](3) -&gt; iconst_0</label>
+		</location>
+		<location id="id130" x="0" y="1625">
+			<name x="-15" y="1595">iconst_0119</name>
+			<label kind="invariant" x="-15" y="1580">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">102: iconst_0[3](1)</label>
+		</location>
+		<location id="id131" x="0" y="1750">
+			<name x="-15" y="1720">ireturn120</name>
+			<label kind="invariant" x="-15" y="1705">executionTime &lt;= 23 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">103: ireturn[172](1)</label>
+		</location>
+		<location id="id132" x="0" y="125">
+			<name x="-15" y="95">Empty121</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id133" x="150" y="1875">
+			<name x="135" y="1845">Empty122</name>
+			<label kind="invariant" x="135" y="1830">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id134" x="0" y="750">
+			<name x="-15" y="720">istore_1123</name>
+			<label kind="invariant" x="-15" y="705">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">4: istore_1[60](1)
+   5: iload_1[27](1)
+   6: bipush[16](2) 120</label>
+		</location>
+		<location id="id135" x="200" y="1000">
+			<name x="185" y="970">aload_0124</name>
+			<label kind="invariant" x="185" y="955">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">11: aload_0[42](1)
+  12: getfield[180](3) 59</label>
+		</location>
+		<location id="id136" x="0" y="1125">
+			<name x="-15" y="1095">iconst_0125</name>
+			<label kind="invariant" x="-15" y="1080">executionTime &lt;= 16 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">80: iconst_0[3](1)
+  81: putfield[181](3) 59</label>
+		</location>
+		<location id="id137" x="400" y="1250">
+			<name x="385" y="1220">aload_0126</name>
+			<label kind="invariant" x="385" y="1205">executionTime &lt;= 49 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">18: aload_0[42](1)
+  19: iload_1[27](1)
+  20: putfield[181](3) 52
+  23: aload_0[42](1)
+  24: dup[89](1)
+  25: getfield[180](3) 59
+  28: iconst_1[4](1)
+  29: iadd[96](1)
+  30: putfield[181](3) 59</label>
+		</location>
+		<location id="id138" x="0" y="1375">
+			<name x="-15" y="1345">getfield127</name>
+			<label kind="invariant" x="-15" y="1330">executionTime &lt;= 27 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">85: getfield[180](3) 59
+  88: aload_0[42](1)
+  89: getfield[180](3) 50</label>
+		</location>
+		<location id="id139" x="200" y="1375">
+			<name x="185" y="1345">aload_0128</name>
+			<label kind="invariant" x="185" y="1330">executionTime &lt;= 17 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">37: aload_0[42](1)
+  38: getfield[180](3) 52
+  41: bipush[16](2) 50
+  43: iadd[96](1)</label>
+		</location>
+		<location id="id140" x="200" y="1625">
+			<name x="185" y="1595">aload_0129</name>
+			<label kind="invariant" x="185" y="1580">executionTime &lt;= 41 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">95: aload_0[42](1)
+  96: iconst_0[3](1)
+  97: putfield[181](3) 59
+ 100: iconst_1[4](1)
+ 101: ireturn[172](1)</label>
+		</location>
+		<location id="id141" x="400" y="1625">
+			<name x="385" y="1595">iload_1130</name>
+			<label kind="invariant" x="385" y="1580">executionTime &lt;= 18 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">47: iload_1[27](1)
+  48: aload_0[42](1)
+  49: getfield[180](3) 52
+  52: bipush[16](2) 50
+  54: isub[100](1)</label>
+		</location>
+		<location id="id142" x="200" y="1750">
+			<name x="185" y="1720">iconst_0131</name>
+			<label kind="invariant" x="185" y="1705">executionTime &lt;= 16 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">72: iconst_0[3](1)
+  73: putfield[181](3) 59</label>
+		</location>
+		<location id="id143" x="400" y="1875">
+			<name x="385" y="1845">aload_0132</name>
+			<label kind="invariant" x="385" y="1830">executionTime &lt;= 32 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">58: aload_0[42](1)
+  59: dup[89](1)
+  60: getfield[180](3) 59
+  63: iconst_1[4](1)
+  64: iadd[96](1)
+  65: putfield[181](3) 59</label>
+		</location>
+		<location id="id144" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_HighWaterSensor_criticalWaterLevel_Z_init133</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.HighWaterSensor.criticalWaterLevel()Z</label>
+		</location>
+		<init ref="id144"/>
+		<transition>
+			<source ref="id114"/>
+			<target ref="id115"/>
+			<label kind="guard" x="-30" y="282">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id115"/>
+			<target ref="id116"/>
+			<label kind="guard" x="-30" y="407">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="422">chan_0009[tID]!</label>
+			<label kind="assignment" x="-30" y="437">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id116"/>
+			<target ref="id117"/>
+			<label kind="synchronisation" x="-30" y="532">chan_0009[tID]?</label>
+			<label kind="assignment" x="-30" y="547">executionTime = 0,
+methodSwitchCost = 50</label>
+		</transition>
+		<transition>
+			<source ref="id117"/>
+			<target ref="id134"/>
+			<label kind="guard" x="-30" y="657">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id118"/>
+			<target ref="id127"/>
+			<label kind="guard" x="-30" y="907">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id118"/>
+			<target ref="id135"/>
+			<label kind="guard" x="70" y="907">executionTime == 4</label>
+			<label kind="assignment" x="70" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id119"/>
+			<target ref="id121"/>
+			<label kind="guard" x="170" y="1157">executionTime == 4</label>
+			<label kind="assignment" x="170" y="1172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id119"/>
+			<target ref="id137"/>
+			<label kind="guard" x="270" y="1157">executionTime == 4</label>
+			<label kind="assignment" x="270" y="1172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id120"/>
+			<target ref="id128"/>
+			<label kind="guard" x="170" y="1283">executionTime == 4</label>
+			<label kind="assignment" x="170" y="1298">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id121"/>
+			<target ref="id139"/>
+			<label kind="guard" x="170" y="1282">executionTime == 1</label>
+			<label kind="assignment" x="170" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id122"/>
+			<target ref="id125"/>
+			<label kind="guard" x="170" y="1532">executionTime == 4</label>
+			<label kind="assignment" x="170" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id122"/>
+			<target ref="id141"/>
+			<label kind="guard" x="270" y="1532">executionTime == 4</label>
+			<label kind="assignment" x="270" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id123"/>
+			<target ref="id125"/>
+			<label kind="guard" x="270" y="1658">executionTime == 4</label>
+			<label kind="assignment" x="270" y="1673">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id123"/>
+			<target ref="id143"/>
+			<label kind="guard" x="370" y="1782">executionTime == 4</label>
+			<label kind="assignment" x="370" y="1797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id124"/>
+			<target ref="id128"/>
+			<label kind="guard" x="170" y="1595">executionTime == 4</label>
+			<label kind="assignment" x="170" y="1610">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id125"/>
+			<target ref="id142"/>
+			<label kind="guard" x="170" y="1657">executionTime == 1</label>
+			<label kind="assignment" x="170" y="1672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id126"/>
+			<target ref="id128"/>
+			<label kind="guard" x="70" y="1533">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1548">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id136"/>
+			<label kind="guard" x="-30" y="1032">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id128"/>
+			<target ref="id138"/>
+			<label kind="guard" x="-30" y="1282">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id130"/>
+			<label kind="guard" x="-30" y="1532">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id140"/>
+			<label kind="guard" x="70" y="1532">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id131"/>
+			<label kind="guard" x="-30" y="1657">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id131"/>
+			<target ref="id133"/>
+			<label kind="guard" x="45" y="1782">executionTime == 23</label>
+			<label kind="assignment" x="45" y="1797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id132"/>
+			<target ref="id114"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id134"/>
+			<target ref="id118"/>
+			<label kind="guard" x="-30" y="782">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id135"/>
+			<target ref="id119"/>
+			<label kind="guard" x="170" y="1032">executionTime == 14</label>
+			<label kind="assignment" x="170" y="1047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id136"/>
+			<target ref="id128"/>
+			<label kind="guard" x="-30" y="1157">executionTime == 16</label>
+			<label kind="assignment" x="-30" y="1172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id137"/>
+			<target ref="id120"/>
+			<label kind="guard" x="370" y="1282">executionTime == 49</label>
+			<label kind="assignment" x="370" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id138"/>
+			<target ref="id129"/>
+			<label kind="guard" x="-30" y="1407">executionTime == 27</label>
+			<label kind="assignment" x="-30" y="1422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id139"/>
+			<target ref="id122"/>
+			<label kind="guard" x="170" y="1407">executionTime == 17</label>
+			<label kind="assignment" x="170" y="1422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id140"/>
+			<target ref="id133"/>
+			<label kind="guard" x="145" y="1720">executionTime == 41</label>
+			<label kind="assignment" x="145" y="1735">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id141"/>
+			<target ref="id123"/>
+			<label kind="guard" x="370" y="1657">executionTime == 18</label>
+			<label kind="assignment" x="370" y="1672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id142"/>
+			<target ref="id126"/>
+			<label kind="guard" x="170" y="1782">executionTime == 16</label>
+			<label kind="assignment" x="170" y="1797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id143"/>
+			<target ref="id124"/>
+			<label kind="guard" x="370" y="1907">executionTime == 32</label>
+			<label kind="assignment" x="370" y="1922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id144"/>
+			<target ref="id132"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0010[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 23</label>
+		</transition>
+		<transition>
+			<source ref="id133"/>
+			<target ref="id144"/>
+			<label kind="guard" x="45" y="908">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="923">chan_0010[tID]!</label>
+			<label kind="assignment" x="45" y="938">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0011</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.LowWaterSensor.conductMeasurement()I</declaration>
+		<location id="id145" x="0" y="125">
+			<name x="-15" y="95">Empty134</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id146" x="150" y="375">
+			<name x="135" y="345">Empty135</name>
+			<label kind="invariant" x="135" y="330">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id147" x="0" y="250">
+			<name x="-15" y="220">iconst_0136</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 24 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: iconst_0[3](1)
+   1: ireturn[172](1)</label>
+		</location>
+		<location id="id148" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_LowWaterSensor_conductMeasurement_I_init137</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.LowWaterSensor.conductMeasurement()I</label>
+		</location>
+		<init ref="id148"/>
+		<transition>
+			<source ref="id145"/>
+			<target ref="id147"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id147"/>
+			<target ref="id146"/>
+			<label kind="guard" x="45" y="282">executionTime == 24</label>
+			<label kind="assignment" x="45" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id148"/>
+			<target ref="id145"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0011[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id146"/>
+			<target ref="id148"/>
+			<label kind="guard" x="45" y="158">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="173">chan_0011[tID]!</label>
+			<label kind="assignment" x="45" y="188">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0012</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.sensors.LowWaterSensor.criticalWaterLevel()Z</declaration>
+		<location id="id149" x="0" y="250">
+			<name x="-15" y="220">aload_0138</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: aload_0[42](1)</label>
+		</location>
+		<location id="id150" x="0" y="375">
+			<name x="-15" y="345">MethodCalling_conductMeasurement139</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">1: invokevirtual[182](3) 52</label>
+		</location>
+		<location id="id151" x="0" y="500">
+			<name x="-15" y="470">running_conductMeasurement140</name>
+		</location>
+		<location id="id152" x="0" y="625">
+			<name x="-15" y="595">returningFrom_conductMeasurement141</name>
+			<label kind="invariant" x="-15" y="580">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id153" x="0" y="875">
+			<name x="-15" y="845">if_icmple142</name>
+			<label kind="invariant" x="-15" y="830">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">8: if_icmple[164](3) -&gt; aload_0</label>
+		</location>
+		<location id="id154" x="0" y="1000">
+			<name x="-15" y="970">aload_0143</name>
+			<label kind="invariant" x="-15" y="955">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">18: aload_0[42](1)</label>
+		</location>
+		<location id="id155" x="0" y="1250">
+			<name x="-15" y="1220">if_icmplt144</name>
+			<label kind="invariant" x="-15" y="1205">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">36: if_icmplt[161](3) -&gt; iconst_0</label>
+		</location>
+		<location id="id156" x="0" y="1375">
+			<name x="-15" y="1345">iconst_0145</name>
+			<label kind="invariant" x="-15" y="1330">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">41: iconst_0[3](1)</label>
+		</location>
+		<location id="id157" x="0" y="1500">
+			<name x="-15" y="1470">ireturn146</name>
+			<label kind="invariant" x="-15" y="1455">executionTime &lt;= 23 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">42: ireturn[172](1)</label>
+		</location>
+		<location id="id158" x="0" y="125">
+			<name x="-15" y="95">Empty147</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id159" x="150" y="1625">
+			<name x="135" y="1595">Empty148</name>
+			<label kind="invariant" x="135" y="1580">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id160" x="0" y="750">
+			<name x="-15" y="720">istore_1149</name>
+			<label kind="invariant" x="-15" y="705">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">4: istore_1[60](1)
+   5: iload_1[27](1)
+   6: bipush[16](2) 120</label>
+		</location>
+		<location id="id161" x="200" y="1000">
+			<name x="185" y="970">aload_0150</name>
+			<label kind="invariant" x="185" y="955">executionTime &lt;= 41 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">11: aload_0[42](1)
+  12: iconst_0[3](1)
+  13: putfield[181](3) 54
+  16: iconst_0[3](1)
+  17: ireturn[172](1)</label>
+		</location>
+		<location id="id162" x="0" y="1125">
+			<name x="-15" y="1095">dup151</name>
+			<label kind="invariant" x="-15" y="1080">executionTime &lt;= 59 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">19: dup[89](1)
+  20: getfield[180](3) 54
+  23: iconst_1[4](1)
+  24: iadd[96](1)
+  25: putfield[181](3) 54
+  28: aload_0[42](1)
+  29: getfield[180](3) 54
+  32: aload_0[42](1)
+  33: getfield[180](3) 47</label>
+		</location>
+		<location id="id163" x="200" y="1375">
+			<name x="185" y="1345">iconst_1152</name>
+			<label kind="invariant" x="185" y="1330">executionTime &lt;= 24 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">39: iconst_1[4](1)
+  40: ireturn[172](1)</label>
+		</location>
+		<location id="id164" x="0" y="0">
+			<name x="-15" y="-30">minepump_sensors_LowWaterSensor_criticalWaterLevel_Z_init153</name>
+			<label kind="comments" x="0" y="0">minepump.sensors.LowWaterSensor.criticalWaterLevel()Z</label>
+		</location>
+		<init ref="id164"/>
+		<transition>
+			<source ref="id149"/>
+			<target ref="id150"/>
+			<label kind="guard" x="-30" y="282">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id150"/>
+			<target ref="id151"/>
+			<label kind="guard" x="-30" y="407">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="422">chan_0011[tID]!</label>
+			<label kind="assignment" x="-30" y="437">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id151"/>
+			<target ref="id152"/>
+			<label kind="synchronisation" x="-30" y="532">chan_0011[tID]?</label>
+			<label kind="assignment" x="-30" y="547">executionTime = 0,
+methodSwitchCost = 20</label>
+		</transition>
+		<transition>
+			<source ref="id152"/>
+			<target ref="id160"/>
+			<label kind="guard" x="-30" y="657">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id153"/>
+			<target ref="id154"/>
+			<label kind="guard" x="-30" y="907">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id153"/>
+			<target ref="id161"/>
+			<label kind="guard" x="70" y="907">executionTime == 4</label>
+			<label kind="assignment" x="70" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id154"/>
+			<target ref="id162"/>
+			<label kind="guard" x="-30" y="1032">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id155"/>
+			<target ref="id156"/>
+			<label kind="guard" x="-30" y="1282">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id155"/>
+			<target ref="id163"/>
+			<label kind="guard" x="70" y="1282">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id156"/>
+			<target ref="id157"/>
+			<label kind="guard" x="-30" y="1407">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id157"/>
+			<target ref="id159"/>
+			<label kind="guard" x="45" y="1532">executionTime == 23</label>
+			<label kind="assignment" x="45" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id158"/>
+			<target ref="id149"/>
+			<label kind="guard" x="-30" y="157">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id160"/>
+			<target ref="id153"/>
+			<label kind="guard" x="-30" y="782">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id161"/>
+			<target ref="id159"/>
+			<label kind="guard" x="145" y="1282">executionTime == 41</label>
+			<label kind="assignment" x="145" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id162"/>
+			<target ref="id155"/>
+			<label kind="guard" x="-30" y="1157">executionTime == 59</label>
+			<label kind="assignment" x="-30" y="1172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id163"/>
+			<target ref="id159"/>
+			<label kind="guard" x="145" y="1470">executionTime == 24</label>
+			<label kind="assignment" x="145" y="1485">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id164"/>
+			<target ref="id158"/>
+			<label kind="synchronisation" x="-30" y="32">chan_0012[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0,
+methodSwitchCost = 0</label>
+		</transition>
+		<transition>
+			<source ref="id159"/>
+			<target ref="id164"/>
+			<label kind="guard" x="45" y="783">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="798">chan_0012[tID]!</label>
+			<label kind="assignment" x="45" y="813">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0013</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.scj.PeriodicMethaneDetectionEventHandler.run()Z</declaration>
+		<location id="id165" x="0" y="375">
+			<name x="-15" y="345">MethodCalling_isCriticalMethaneLevelReached154</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">4: invokevirtual[182](3) 27</label>
+		</location>
+		<location id="id166" x="0" y="500">
+			<name x="-15" y="470">running_isCriticalMethaneLevelReached155</name>
+		</location>
+		<location id="id167" x="0" y="625">
+			<name x="-15" y="595">returningFrom_isCriticalMethaneLevelReached156</name>
+			<label kind="invariant" x="-15" y="580">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id168" x="0" y="750">
+			<name x="-15" y="720">ifeq157</name>
+			<label kind="invariant" x="-15" y="705">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">7: ifeq[153](3) -&gt; aload_0</label>
+		</location>
+		<location id="id169" x="200" y="1000">
+			<name x="185" y="970">MethodCalling_emergencyStop158</name>
+			<label kind="invariant" x="185" y="955">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">15: invokevirtual[182](3) 32</label>
+		</location>
+		<location id="id170" x="200" y="1125">
+			<name x="185" y="1095">running_emergencyStop159</name>
+		</location>
+		<location id="id171" x="200" y="1250">
+			<name x="185" y="1220">returningFrom_emergencyStop160</name>
+			<label kind="invariant" x="185" y="1205">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id172" x="200" y="1375">
+			<name x="185" y="1345">goto161</name>
+			<label kind="invariant" x="185" y="1330">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">18: goto[167](3) -&gt; iconst_1</label>
+		</location>
+		<location id="id173" x="0" y="875">
+			<name x="-15" y="845">aload_0162</name>
+			<label kind="invariant" x="-15" y="830">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">21: aload_0[42](1)</label>
+		</location>
+		<location id="id174" x="0" y="1125">
+			<name x="-15" y="1095">MethodCalling_emergencyStop163</name>
+			<label kind="invariant" x="-15" y="1080">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">26: invokevirtual[182](3) 32</label>
+		</location>
+		<location id="id175" x="0" y="1250">
+			<name x="-15" y="1220">running_emergencyStop164</name>
+		</location>
+		<location id="id176" x="0" y="1375">
+			<name x="-15" y="1345">returningFrom_emergencyStop165</name>
+			<label kind="invariant" x="-15" y="1330">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id177" x="0" y="1500">
+			<name x="-15" y="1470">iconst_1166</name>
+			<label kind="invariant" x="-15" y="1455">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">29: iconst_1[4](1)</label>
+		</location>
+		<location id="id178" x="0" y="1625">
+			<name x="-15" y="1595">ireturn167</name>
+			<label kind="invariant" x="-15" y="1580">executionTime &lt;= 23 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">30: ireturn[172](1)</label>
+		</location>
+		<location id="id179" x="0" y="125">
+			<name x="-15" y="95">Empty168</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id180" x="150" y="1750">
+			<name x="135" y="1720">Empty169</name>
+			<label kind="invariant" x="135" y="1705">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id181" x="0" y="250">
+			<name x="-15" y="220">aload_0170</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: aload_0[42](1)
+   1: getfield[180](3) 15</label>
+		</location>
+		<location id="id182" x="200" y="875">
+			<name x="185" y="845">aload_0171</name>
+			<label kind="invariant" x="185" y="830">executionTime &lt;= 15 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">10: aload_0[42](1)
+  11: getfield[180](3) 17
+  14: iconst_1[4](1)</label>
+		</location>
+		<location id="id183" x="0" y="1000">
+			<name x="-15" y="970">getfield172</name>
+			<label kind="invariant" x="-15" y="955">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">22: getfield[180](3) 17
+  25: iconst_0[3](1)</label>
+		</location>
+		<location id="id184" x="0" y="0">
+			<name x="-15" y="-30">minepump_scj_PeriodicMethaneDetectionEventHandler_run_Z_init173</name>
+			<label kind="comments" x="0" y="0">minepump.scj.PeriodicMethaneDetectionEventHandler.run()Z</label>
+		</location>
+		<init ref="id184"/>
+		<transition>
+			<source ref="id165"/>
+			<target ref="id166"/>
+			<label kind="guard" x="-30" y="407">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="422">chan_0003[tID]!</label>
+			<label kind="assignment" x="-30" y="437">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id166"/>
+			<target ref="id167"/>
+			<label kind="synchronisation" x="-30" y="532">chan_0003[tID]?</label>
+			<label kind="assignment" x="-30" y="547">executionTime = 0,
+methodSwitchCost = 14</label>
+		</transition>
+		<transition>
+			<source ref="id167"/>
+			<target ref="id168"/>
+			<label kind="guard" x="-30" y="657">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id168"/>
+			<target ref="id173"/>
+			<label kind="guard" x="-30" y="782">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id168"/>
+			<target ref="id182"/>
+			<label kind="guard" x="70" y="782">executionTime == 4</label>
+			<label kind="assignment" x="70" y="797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id169"/>
+			<target ref="id170"/>
+			<label kind="guard" x="170" y="1032">executionTime == 102</label>
+			<label kind="synchronisation" x="170" y="1047">chan_0002[tID]!</label>
+			<label kind="assignment" x="170" y="1062">executionTime = 0,
+monitorEnter()</label>
+		</transition>
+		<transition>
+			<source ref="id170"/>
+			<target ref="id171"/>
+			<label kind="synchronisation" x="170" y="1157">chan_0002[tID]?</label>
+			<label kind="assignment" x="170" y="1172">monitorExit(),
+executionTime = 0,
+methodSwitchCost = 15</label>
+		</transition>
+		<transition>
+			<source ref="id171"/>
+			<target ref="id172"/>
+			<label kind="guard" x="170" y="1282">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="170" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id172"/>
+			<target ref="id177"/>
+			<label kind="guard" x="70" y="1407">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id173"/>
+			<target ref="id183"/>
+			<label kind="guard" x="-30" y="907">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id174"/>
+			<target ref="id175"/>
+			<label kind="guard" x="-30" y="1157">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="1172">chan_0002[tID]!</label>
+			<label kind="assignment" x="-30" y="1187">executionTime = 0,
+monitorEnter()</label>
+		</transition>
+		<transition>
+			<source ref="id175"/>
+			<target ref="id176"/>
+			<label kind="synchronisation" x="-30" y="1282">chan_0002[tID]?</label>
+			<label kind="assignment" x="-30" y="1297">monitorExit(),
+executionTime = 0,
+methodSwitchCost = 15</label>
+		</transition>
+		<transition>
+			<source ref="id176"/>
+			<target ref="id177"/>
+			<label kind="guard" x="-30" y="1407">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="1422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id177"/>
+			<target ref="id178"/>
+			<label kind="guard" x="-30" y="1532">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id178"/>
+			<target ref="id180"/>
+			<label kind="guard" x="45" y="1657">executionTime == 23</label>
+			<label kind="assignment" x="45" y="1672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id179"/>
+			<target ref="id181"/>
+			<label kind="guard" x="-30" y="157">executionTime == 0</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id181"/>
+			<target ref="id165"/>
+			<label kind="guard" x="-30" y="282">executionTime == 14</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id182"/>
+			<target ref="id169"/>
+			<label kind="guard" x="170" y="907">executionTime == 15</label>
+			<label kind="assignment" x="170" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id183"/>
+			<target ref="id174"/>
+			<label kind="guard" x="-30" y="1032">executionTime == 14</label>
+			<label kind="assignment" x="-30" y="1047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id184"/>
+			<target ref="id179"/>
+			<label kind="synchronisation" x="-30" y="32">run[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id180"/>
+			<target ref="id184"/>
+			<label kind="guard" x="45" y="845">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="860">run[tID]!</label>
+			<label kind="assignment" x="45" y="875">executionTime = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="0" y="0">Template_0014</name>
+		<parameter>const ThreadID tID</parameter>
+		<declaration>//
+clock executionTime;
+int methodSwitchCost = 0;
+
+// minepump.scj.PeriodicWaterLevelDetectionEventHandler.run()Z</declaration>
+		<location id="id185" x="0" y="375">
+			<name x="-15" y="345">MethodCalling_criticalWaterLevel174</name>
+			<label kind="invariant" x="-15" y="330">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">4: invokevirtual[182](3) 31</label>
+		</location>
+		<location id="id186" x="0" y="500">
+			<name x="-15" y="470">running_criticalWaterLevel175</name>
+		</location>
+		<location id="id187" x="0" y="625">
+			<name x="-15" y="595">returningFrom_criticalWaterLevel176</name>
+			<label kind="invariant" x="-15" y="580">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id188" x="0" y="750">
+			<name x="-15" y="720">ifeq177</name>
+			<label kind="invariant" x="-15" y="705">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">7: ifeq[153](3) -&gt; aload_0</label>
+		</location>
+		<location id="id189" x="200" y="1000">
+			<name x="185" y="970">MethodCalling_emergencyStop178</name>
+			<label kind="invariant" x="185" y="955">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">15: invokevirtual[182](3) 36</label>
+		</location>
+		<location id="id190" x="200" y="1125">
+			<name x="185" y="1095">running_emergencyStop179</name>
+		</location>
+		<location id="id191" x="200" y="1250">
+			<name x="185" y="1220">returningFrom_emergencyStop180</name>
+			<label kind="invariant" x="185" y="1205">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id192" x="200" y="1375">
+			<name x="185" y="1345">goto181</name>
+			<label kind="invariant" x="185" y="1330">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">18: goto[167](3) -&gt; iconst_1</label>
+		</location>
+		<location id="id193" x="0" y="875">
+			<name x="-15" y="845">aload_0182</name>
+			<label kind="invariant" x="-15" y="830">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">21: aload_0[42](1)</label>
+		</location>
+		<location id="id194" x="0" y="1000">
+			<name x="-15" y="970">getfield183</name>
+			<label kind="invariant" x="-15" y="955">executionTime &lt;= 13 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">22: getfield[180](3) 19</label>
+		</location>
+		<location id="id195" x="0" y="1125">
+			<name x="-15" y="1095">MethodCalling_criticalWaterLevel184</name>
+			<label kind="invariant" x="-15" y="1080">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">25: invokevirtual[182](3) 42</label>
+		</location>
+		<location id="id196" x="0" y="1250">
+			<name x="-15" y="1220">running_criticalWaterLevel185</name>
+		</location>
+		<location id="id197" x="0" y="1375">
+			<name x="-15" y="1345">returningFrom_criticalWaterLevel186</name>
+			<label kind="invariant" x="-15" y="1330">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id198" x="0" y="1500">
+			<name x="-15" y="1470">ifeq187</name>
+			<label kind="invariant" x="-15" y="1455">executionTime &lt;= 4 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">28: ifeq[153](3) -&gt; iconst_1</label>
+		</location>
+		<location id="id199" x="200" y="1750">
+			<name x="185" y="1720">MethodCalling_start188</name>
+			<label kind="invariant" x="185" y="1705">executionTime &lt;= 102 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">35: invokevirtual[182](3) 45</label>
+		</location>
+		<location id="id200" x="200" y="1875">
+			<name x="185" y="1845">running_start189</name>
+		</location>
+		<location id="id201" x="200" y="2000">
+			<name x="185" y="1970">returningFrom_start190</name>
+			<label kind="invariant" x="185" y="1955">executionTime &lt;= methodSwitchCost &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id202" x="0" y="1625">
+			<name x="-15" y="1595">iconst_1191</name>
+			<label kind="invariant" x="-15" y="1580">executionTime &lt;= 1 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">38: iconst_1[4](1)</label>
+		</location>
+		<location id="id203" x="0" y="1750">
+			<name x="-15" y="1720">ireturn192</name>
+			<label kind="invariant" x="-15" y="1705">executionTime &lt;= 23 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">39: ireturn[172](1)</label>
+		</location>
+		<location id="id204" x="0" y="125">
+			<name x="-15" y="95">Empty193</name>
+			<label kind="invariant" x="-15" y="80">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id205" x="150" y="1875">
+			<name x="135" y="1845">Empty194</name>
+			<label kind="invariant" x="135" y="1830">executionTime &lt;= 0 &amp;&amp;
+executionTime' == running[tID]</label>
+		</location>
+		<location id="id206" x="0" y="250">
+			<name x="-15" y="220">aload_0195</name>
+			<label kind="invariant" x="-15" y="205">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">0: aload_0[42](1)
+   1: getfield[180](3) 17</label>
+		</location>
+		<location id="id207" x="200" y="875">
+			<name x="185" y="845">aload_0196</name>
+			<label kind="invariant" x="185" y="830">executionTime &lt;= 15 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">10: aload_0[42](1)
+  11: getfield[180](3) 21
+  14: iconst_1[4](1)</label>
+		</location>
+		<location id="id208" x="200" y="1625">
+			<name x="185" y="1595">aload_0197</name>
+			<label kind="invariant" x="185" y="1580">executionTime &lt;= 14 &amp;&amp;
+executionTime' == running[tID]</label>
+			<label kind="comments" x="0" y="0">31: aload_0[42](1)
+  32: getfield[180](3) 21</label>
+		</location>
+		<location id="id209" x="0" y="0">
+			<name x="-15" y="-30">minepump_scj_PeriodicWaterLevelDetectionEventHandler_run_Z_init198</name>
+			<label kind="comments" x="0" y="0">minepump.scj.PeriodicWaterLevelDetectionEventHandler.run()Z</label>
+		</location>
+		<init ref="id209"/>
+		<transition>
+			<source ref="id185"/>
+			<target ref="id186"/>
+			<label kind="guard" x="-30" y="407">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="422">chan_0010[tID]!</label>
+			<label kind="assignment" x="-30" y="437">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id186"/>
+			<target ref="id187"/>
+			<label kind="synchronisation" x="-30" y="532">chan_0010[tID]?</label>
+			<label kind="assignment" x="-30" y="547">executionTime = 0,
+methodSwitchCost = 18</label>
+		</transition>
+		<transition>
+			<source ref="id187"/>
+			<target ref="id188"/>
+			<label kind="guard" x="-30" y="657">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id188"/>
+			<target ref="id193"/>
+			<label kind="guard" x="-30" y="782">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id188"/>
+			<target ref="id207"/>
+			<label kind="guard" x="70" y="782">executionTime == 4</label>
+			<label kind="assignment" x="70" y="797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id189"/>
+			<target ref="id190"/>
+			<label kind="guard" x="170" y="1032">executionTime == 102</label>
+			<label kind="synchronisation" x="170" y="1047">chan_0002[tID]!</label>
+			<label kind="assignment" x="170" y="1062">executionTime = 0,
+monitorEnter()</label>
+		</transition>
+		<transition>
+			<source ref="id190"/>
+			<target ref="id191"/>
+			<label kind="synchronisation" x="170" y="1157">chan_0002[tID]?</label>
+			<label kind="assignment" x="170" y="1172">monitorExit(),
+executionTime = 0,
+methodSwitchCost = 19</label>
+		</transition>
+		<transition>
+			<source ref="id191"/>
+			<target ref="id192"/>
+			<label kind="guard" x="170" y="1282">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="170" y="1297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id192"/>
+			<target ref="id202"/>
+			<label kind="guard" x="70" y="1470">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1485">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id193"/>
+			<target ref="id194"/>
+			<label kind="guard" x="-30" y="907">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id194"/>
+			<target ref="id195"/>
+			<label kind="guard" x="-30" y="1032">executionTime == 13</label>
+			<label kind="assignment" x="-30" y="1047">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id195"/>
+			<target ref="id196"/>
+			<label kind="guard" x="-30" y="1157">executionTime == 102</label>
+			<label kind="synchronisation" x="-30" y="1172">chan_0012[tID]!</label>
+			<label kind="assignment" x="-30" y="1187">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id196"/>
+			<target ref="id197"/>
+			<label kind="synchronisation" x="-30" y="1282">chan_0012[tID]?</label>
+			<label kind="assignment" x="-30" y="1297">executionTime = 0,
+methodSwitchCost = 18</label>
+		</transition>
+		<transition>
+			<source ref="id197"/>
+			<target ref="id198"/>
+			<label kind="guard" x="-30" y="1407">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="-30" y="1422">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id198"/>
+			<target ref="id202"/>
+			<label kind="guard" x="-30" y="1532">executionTime == 4</label>
+			<label kind="assignment" x="-30" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id198"/>
+			<target ref="id208"/>
+			<label kind="guard" x="70" y="1532">executionTime == 4</label>
+			<label kind="assignment" x="70" y="1547">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id199"/>
+			<target ref="id200"/>
+			<label kind="guard" x="170" y="1782">executionTime == 102</label>
+			<label kind="synchronisation" x="170" y="1797">chan_0001[tID]!</label>
+			<label kind="assignment" x="170" y="1812">executionTime = 0,
+monitorEnter()</label>
+		</transition>
+		<transition>
+			<source ref="id200"/>
+			<target ref="id201"/>
+			<label kind="synchronisation" x="170" y="1907">chan_0001[tID]?</label>
+			<label kind="assignment" x="170" y="1922">monitorExit(),
+executionTime = 0,
+methodSwitchCost = 19</label>
+		</transition>
+		<transition>
+			<source ref="id201"/>
+			<target ref="id202"/>
+			<label kind="guard" x="70" y="1783">executionTime == methodSwitchCost</label>
+			<label kind="assignment" x="70" y="1798">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id202"/>
+			<target ref="id203"/>
+			<label kind="guard" x="-30" y="1657">executionTime == 1</label>
+			<label kind="assignment" x="-30" y="1672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id203"/>
+			<target ref="id205"/>
+			<label kind="guard" x="45" y="1782">executionTime == 23</label>
+			<label kind="assignment" x="45" y="1797">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id204"/>
+			<target ref="id206"/>
+			<label kind="guard" x="-30" y="157">executionTime == 0</label>
+			<label kind="assignment" x="-30" y="172">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id206"/>
+			<target ref="id185"/>
+			<label kind="guard" x="-30" y="282">executionTime == 14</label>
+			<label kind="assignment" x="-30" y="297">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id207"/>
+			<target ref="id189"/>
+			<label kind="guard" x="170" y="907">executionTime == 15</label>
+			<label kind="assignment" x="170" y="922">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id208"/>
+			<target ref="id199"/>
+			<label kind="guard" x="170" y="1657">executionTime == 14</label>
+			<label kind="assignment" x="170" y="1672">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id209"/>
+			<target ref="id204"/>
+			<label kind="synchronisation" x="-30" y="32">run[tID]?</label>
+			<label kind="assignment" x="-30" y="47">executionTime = 0</label>
+		</transition>
+		<transition>
+			<source ref="id205"/>
+			<target ref="id209"/>
+			<label kind="guard" x="45" y="908">executionTime == 0</label>
+			<label kind="synchronisation" x="45" y="923">run[tID]!</label>
+			<label kind="assignment" x="45" y="938">executionTime = 0</label>
+		</transition>
+	</template>
+	<system>//Initialization
+Template_0001_threads(const ThreadID tID) = Template_0001(tID);
+Template_0002_threads(const ThreadID tID) = Template_0002(tID);
+Template_0003_threads(const ThreadID tID) = Template_0003(tID);
+Template_0004_threads(const ThreadID tID) = Template_0004(tID);
+Template_0005_threads(const ThreadID tID) = Template_0005(tID);
+Template_0006_threads(const ThreadID tID) = Template_0006(tID);
+Template_0007_threads(const ThreadID tID) = Template_0007(tID);
+Template_0008_threads(const ThreadID tID) = Template_0008(tID);
+Template_0009_threads(const ThreadID tID) = Template_0009(tID);
+Template_0010_threads(const ThreadID tID) = Template_0010(tID);
+Template_0011_threads(const ThreadID tID) = Template_0011(tID);
+Template_0012_threads(const ThreadID tID) = Template_0012(tID);
+//Periodic Threads
+Template_0014_1 = Template_0014(1);
+PeriodicThread1 = PeriodicThread(1, 120000, 120000, 0);
+Template_0013_2 = Template_0013(2);
+PeriodicThread2 = PeriodicThread(2, 120000, 120000, 0);
+
+system
+       FPS_scheduler,
+       Template_0001_threads, 
+       Template_0002_threads, 
+       Template_0003_threads, 
+       Template_0004_threads, 
+       Template_0005_threads, 
+       Template_0006_threads, 
+       Template_0007_threads, 
+       Template_0008_threads, 
+       Template_0009_threads, 
+       Template_0010_threads, 
+       Template_0011_threads, 
+       Template_0012_threads, 
+       PeriodicThread2 &lt; Template_0013_2 &lt;
+       PeriodicThread1 &lt; Template_0014_1;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; Template_0003_threads(2).iconst_152</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

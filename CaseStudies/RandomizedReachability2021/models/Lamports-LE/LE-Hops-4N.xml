@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>//Insert declarations of global clocks, variables, constants and channels.
+
+const int N = 4;
+const int M = 18;
+const int MDELAY = 3;
+const int TDELAY = 5;
+const int TO = 10;
+
+clock time;
+
+typedef int[0,N-1] id_t;
+typedef int[0,M-1] id_m_t;
+typedef struct
+{
+  id_t src;
+  id_t dst;
+  id_t leader;
+  int[0,N*N] hops;
+} msg_t;
+
+void setMsg(msg_t &amp;msg, id_t src, id_t dst, id_t leader, int[0,N*N] hops)
+{
+  msg.src = src;
+  msg.dst = dst;
+  msg.leader = leader;
+  msg.hops = hops;
+}
+
+chan send;
+chan receive[N];
+msg_t shared;
+
+const int link[N][N] = {
+  { 0,1,1,1 },
+  { 1,0,1,1 },
+  { 1,1,0,1 },
+  { 1,1,1,0 }
+};
+
+void reset(msg_t &amp;msg)
+{
+  msg.src = msg.dst = msg.leader = msg.hops = 0;
+}
+
+bool used[M];</declaration>
+	<template>
+		<name x="5" y="5">Message</name>
+		<parameter>const id_m_t id</parameter>
+		<declaration>//Insert local declarations of clocks, variables and constants.
+
+clock x;
+msg_t msg;
+
+bool mayUse()
+{
+  int i = 0;
+  while (i &lt; id)
+  {
+    if(!used[i])
+      return false;
+    i++;
+  }
+  return true;
+}</declaration>
+		<location id="id0" x="272" y="112">
+			<label kind="invariant" x="224" y="72">x &lt;= MDELAY</label>
+		</location>
+		<location id="id1" x="272" y="288">
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="336" y="184">receive[msg.dst]!</label>
+			<label kind="assignment" x="336" y="208">shared = msg,
+reset(msg),
+used[id] = false</label>
+			<nail x="328" y="112"/>
+			<nail x="328" y="288"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="88" y="160">mayUse()</label>
+			<label kind="synchronisation" x="88" y="176">send?</label>
+			<label kind="assignment" x="88" y="192">x = 0,
+msg = shared,
+reset(shared),
+used[id] = true</label>
+			<nail x="208" y="288"/>
+			<nail x="208" y="112"/>
+		</transition>
+	</template>
+	<template>
+		<name>Node</name>
+		<parameter>const int id</parameter>
+		<declaration>
+id_t leader = id;
+int[0,N*N] hops;
+clock x;
+int[0,N] i;
+id_t src;
+
+void set(id_t l, int[0,N*N] h)
+{
+  leader = l;
+  hops = h;
+}
+
+int[0,N] next(int[0,N] i,int[0,N] src)
+{
+  while (i  &lt; N &amp;&amp; (!link[id][i] || i == src))
+  {
+    i++;
+  }
+  return i;
+}
+
+int[0,1000] timeout()
+{
+  if (hops &gt; 0)
+    return TO + TDELAY + hops * MDELAY;
+  return TO;
+}
+
+bool worse(const msg_t &amp;msg)
+{ 
+  return msg.leader &gt; leader || msg.leader == leader &amp;&amp; msg.hops &gt; hops;
+}</declaration>
+		<location id="id2" x="360" y="400">
+			<committed/>
+		</location>
+		<location id="id3" x="168" y="400">
+			<committed/>
+		</location>
+		<location id="id4" x="168" y="96">
+			<committed/>
+		</location>
+		<location id="id5" x="168" y="256">
+			<label kind="invariant" x="-8" y="248">x &lt;= timeout() + TDELAY</label>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id5"/>
+			<label kind="guard" x="240" y="232">i == N</label>
+			<label kind="assignment" x="288" y="232">i = src = 0</label>
+			<nail x="360" y="256"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="guard" x="424" y="344">i &lt; N</label>
+			<label kind="synchronisation" x="416" y="360">send!</label>
+			<label kind="assignment" x="416" y="376">setMsg(shared, id, i, leader, hops),
+i = next(i+1, src)</label>
+			<nail x="408" y="344"/>
+			<nail x="408" y="400"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="208" y="400">!worse(shared)</label>
+			<label kind="assignment" x="208" y="416">src = shared.src,
+set(shared.leader, shared.hops + 1),
+i = next(0, src),
+x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id5"/>
+			<label kind="guard" x="176" y="296">worse(shared)</label>
+			<label kind="assignment" x="176" y="312">reset(shared)</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="24" y="304">receive[id]?</label>
+			<nail x="112" y="288"/>
+			<nail x="112" y="400"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="240" y="120">i == N</label>
+			<label kind="assignment" x="240" y="144">i = 0</label>
+			<nail x="232" y="96"/>
+			<nail x="232" y="232"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="guard" x="112" y="-24">i &lt; N</label>
+			<label kind="synchronisation" x="112" y="-8">send!</label>
+			<label kind="assignment" x="112" y="8">setMsg(shared, id, i, leader, hops),
+i = next(i + 1, N)</label>
+			<nail x="120" y="48"/>
+			<nail x="208" y="48"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="guard" x="16" y="152">x &gt; timeout()</label>
+			<label kind="assignment" x="16" y="168">set(id, 0),
+i = next(0, N),
+x = 0</label>
+			<nail x="112" y="216"/>
+			<nail x="112" y="96"/>
+		</transition>
+	</template>
+	<system>//Insert process assignments.
+
+N0 = Node(0);
+N1 = Node(1);
+N2 = Node(2);
+N3 = Node(3);
+
+//Edit system definition.
+system N0, N1, N2, N3,
+        Message;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; shared.hops &gt;= 10</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

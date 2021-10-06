@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+
+const int N = 100;
+const int D = 30;
+const int d = 10;
+const int V = 121;
+typedef int[0,N-1] id_t;
+
+broadcast chan rec[N], f;
+broadcast chan w[N];</declaration>
+	<template>
+		<name x="5" y="5">NodeAlt</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock x, y;</declaration>
+		<location id="id0" x="32" y="0">
+			<label kind="invariant" x="-24" y="-8">x&lt;=D</label>
+		</location>
+		<location id="id1" x="160" y="-64">
+			<label kind="invariant" x="150" y="-49">x&lt;=D</label>
+		</location>
+		<location id="id2" x="-96" y="-64">
+			<label kind="invariant" x="-106" y="-49">x&lt;=D</label>
+		</location>
+		<location id="id3" x="32" y="-128">
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="216" y="-80">rec[id]?</label>
+			<nail x="208" y="-32"/>
+			<nail x="208" y="-104"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-192" y="-72">rec[id]?</label>
+			<nail x="-144" y="-32"/>
+			<nail x="-144" y="-96"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="8" y="48">rec[id]?</label>
+			<nail x="0" y="48"/>
+			<nail x="64" y="48"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="96" y="-120">w[id]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-120" y="-136">y&gt;d</label>
+			<label kind="synchronisation" x="-120" y="-120">rec[(id+1)%N]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-72" y="-40">w[id]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="80" y="-24">y&gt;d</label>
+			<label kind="synchronisation" x="80" y="-8">rec[(id+1)%N]!</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-16" y="-80">rec[id]?</label>
+			<label kind="assignment" x="0" y="-64">x=0,
+y=0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Node</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock x, y;</declaration>
+		<location id="id4" x="32" y="0">
+			<label kind="invariant" x="-24" y="-8">x&lt;=D</label>
+		</location>
+		<location id="id5" x="160" y="-64">
+			<label kind="invariant" x="150" y="-49">x&lt;=D</label>
+		</location>
+		<location id="id6" x="-96" y="-64">
+			<label kind="invariant" x="-106" y="-49">x&lt;=D</label>
+		</location>
+		<location id="id7" x="32" y="-128">
+		</location>
+		<init ref="id7"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="216" y="-80">rec[id]?</label>
+			<nail x="208" y="-32"/>
+			<nail x="208" y="-104"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-192" y="-72">rec[id]?</label>
+			<nail x="-144" y="-32"/>
+			<nail x="-144" y="-96"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="8" y="48">rec[id]?</label>
+			<nail x="0" y="48"/>
+			<nail x="64" y="48"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id5"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="96" y="-120">w[id]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-120" y="-136">y&gt;d</label>
+			<label kind="synchronisation" x="-120" y="-120">rec[(id+1)%N]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id4"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-72" y="-40">w[id]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="80" y="-24">y&gt;d</label>
+			<label kind="synchronisation" x="80" y="-8">rec[(id+1)%N]!</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-16" y="-80">rec[id]?</label>
+			<label kind="assignment" x="0" y="-64">x=0,
+y=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Spec</name>
+		<parameter>const id_t id</parameter>
+		<declaration>clock z;</declaration>
+		<location id="id8" x="-224" y="-96">
+			<label kind="invariant" x="-200" y="-104">z&lt;=(N+1)*D - V</label>
+		</location>
+		<init ref="id8"/>
+		<transition controllable="false">
+			<source ref="id8"/>
+			<target ref="id8"/>
+			<label kind="select" x="-320" y="-144">e:id_t</label>
+			<label kind="guard" x="-320" y="-128">e!=id</label>
+			<label kind="synchronisation" x="-312" y="-112">w[e]!</label>
+			<nail x="-280" y="-128"/>
+			<nail x="-280" y="-72"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id8"/>
+			<target ref="id8"/>
+			<label kind="select" x="-256" y="-192">e:id_t</label>
+			<label kind="synchronisation" x="-256" y="-176">rec[e]!</label>
+			<nail x="-272" y="-144"/>
+			<nail x="-184" y="-144"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id8"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-248" y="-40">w[id]!</label>
+			<label kind="assignment" x="-248" y="-24">z=0</label>
+			<nail x="-272" y="-40"/>
+			<nail x="-176" y="-40"/>
+		</transition>
+	</template>
+	<template>
+		<name>SpecComplement</name>
+		<parameter>const id_t id</parameter>
+		<declaration>clock z;</declaration>
+		<location id="id9" x="-221" y="-93">
+			<name x="-231" y="-127">Init</name>
+			<label kind="exponentialrate" x="-226" y="-82">1</label>
+		</location>
+		<location id="id10" x="-85" y="-93">
+			<name x="-102" y="-76">Error</name>
+		</location>
+		<init ref="id9"/>
+		<transition controllable="false">
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-195" y="-93">z &gt; (N+1)*D - V</label>
+			<label kind="synchronisation" x="-153" y="-119">f!</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id9"/>
+			<label kind="select" x="-323" y="-127">e:id_t</label>
+			<label kind="guard" x="-323" y="-110">e!=id</label>
+			<label kind="synchronisation" x="-323" y="-93">w[e]?</label>
+			<nail x="-277" y="-125"/>
+			<nail x="-277" y="-69"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id9"/>
+			<label kind="select" x="-238" y="-178">e:id_t</label>
+			<label kind="synchronisation" x="-238" y="-161">rec[e]?</label>
+			<nail x="-269" y="-141"/>
+			<nail x="-181" y="-141"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-245" y="-37">w[id]?</label>
+			<label kind="assignment" x="-243" y="-22">z=0</label>
+			<nail x="-269" y="-37"/>
+			<nail x="-173" y="-37"/>
+		</transition>
+	</template>
+	<system>// Nodes .. N0 has been instantiated so that it is ready to work
+// pass on token
+N0 := NodeAlt(0);
+N1 := Node(1);
+N2 := Node(2);
+N3 := Node(3);
+N4 := Node(4);
+N5 := Node(5);
+N6 := Node(6);
+N7 := Node(7);
+N8 := Node(8);
+N9 := Node(9);
+N10 := Node(10);
+N11 := Node(11);
+N12 := Node(12);
+N13 := Node(13);
+N14 := Node(14);
+N15 := Node(15);
+N16 := Node(16);
+N17 := Node(17);
+N18 := Node(18);
+N19 := Node(19);
+N20 := Node(20);
+N21 := Node(21);
+N22 := Node(22);
+N23 := Node(23);
+N24 := Node(24);
+N25 := Node(25);
+N26 := Node(26);
+N27 := Node(27);
+N28 := Node(28);
+N29 := Node(29);
+N30 := Node(30);
+N31 := Node(31);
+N32 := Node(32);
+N33 := Node(33);
+N34 := Node(34);
+N35 := Node(35);
+N36 := Node(36);
+N37 := Node(37);
+N38 := Node(38);
+N39 := Node(39);
+N40 := Node(40);
+N41 := Node(41);
+N42 := Node(42);
+N43 := Node(43);
+N44 := Node(44);
+N45 := Node(45);
+N46 := Node(46);
+N47 := Node(47);
+N48 := Node(48);
+N49 := Node(49);
+N50 := Node(50);
+N51 := Node(51);
+N52 := Node(52);
+N53 := Node(53);
+N54 := Node(54);
+N55 := Node(55);
+N56 := Node(56);
+N57 := Node(57);
+N58 := Node(58);
+N59 := Node(59);
+N60 := Node(60);
+N61 := Node(61);
+N62 := Node(62);
+N63 := Node(63);
+N64 := Node(64);
+N65 := Node(65);
+N66 := Node(66);
+N67 := Node(67);
+N68 := Node(68);
+N69 := Node(69);
+N70 := Node(70);
+N71 := Node(71);
+N72 := Node(72);
+N73 := Node(73);
+N74 := Node(74);
+N75 := Node(75);
+N76 := Node(76);
+N77 := Node(77);
+N78 := Node(78);
+N79 := Node(79);
+N80 := Node(80);
+N81 := Node(81);
+N82 := Node(82);
+N83 := Node(83);
+N84 := Node(84);
+N85 := Node(85);
+N86 := Node(86);
+N87 := Node(87);
+N88 := Node(88);
+N89 := Node(89);
+N90 := Node(90);
+N91 := Node(91);
+N92 := Node(92);
+N93 := Node(93);
+N94 := Node(94);
+N95 := Node(95);
+N96 := Node(96);
+N97 := Node(97);
+N98 := Node(98);
+N99 := Node(99);
+
+// Overall specification claiming that w[i] will occur with a
+// minimal frequency
+SC := SpecComplement(0);
+
+// List one or more processes to be composed into a system.
+system	N0, N1, N2, N3, N4, N5, N6, N7, N8, N9, 
+	N10, N11, N12, N13, N14, N15, N16, N17, N18, N19, 
+	N20, N21, N22, N23, N24, N25, N26, N27, N28, N29, 
+	N30, N31, N32, N33, N34, N35, N36, N37, N38, N39, 
+	N40, N41, N42, N43, N44, N45, N46, N47, N48, N49, 
+	N50, N51, N52, N53, N54, N55, N56, N57, N58, N59, 
+	N60, N61, N62, N63, N64, N65, N66, N67, N68, N69, 
+	N70, N71, N72, N73, N74, N75, N76, N77, N78, N79, 
+	N80, N81, N82, N83, N84, N85, N86, N87, N88, N89, 
+	N90, N91, N92, N93, N94, N95, N96, N97, N98, N99, 
+	SC;
+</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; SC.Error</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

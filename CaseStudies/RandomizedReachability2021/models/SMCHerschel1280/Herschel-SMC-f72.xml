@@ -1,0 +1,1512 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**
+Herschel-Planck satellite software task model for schedulability analysis.
+This model version is optimized for statistical model-checking. 
+The results are published in the following paper:
+Schedulability Analysis using Statistical Model Checking.
+Alexandre David, Kim G. Larsen, Marius Mikučionis.
+Proceedings of the 6th international conference on Leveraging applications of formal methods, verification, and validation, ISoLA 2012.
+
+
+The model is a follow-up research started from the following publication:
+Schedulability analysis using Uppaal: Herschel-Planck case study.
+Marius Mikučionis, Kim G. Larsen, Jacob I. Rasmussen, Brian Nielsen, Arne Skou, Steen U. Palm, Jan S. Pedersen and Poul Hougaard.
+Proceedings of the 4th international conference on Leveraging applications of formal methods, verification, and validation, ISoLA 2010.
+
+@inproceedings{Mikucionis:2010:SAU:1939345.1939369,
+  author = {Miku\v{c}ionis, Marius and Larsen, Kim Guldstrand and Rasmussen, Jacob Illum and Nielsen, Brian and Skou, Arne and Palm, Steen Ulrik and Pedersen, Jan Storbank and Hougaard, Poul},
+  title = {Schedulability analysis using Uppaal: Herschel-Planck case study},
+  booktitle = {Proceedings of the 4th international conference on Leveraging applications of formal methods, verification, and validation - Volume Part II},
+  series = {ISoLA'10},
+  year = {2010},
+  isbn = {3-642-16560-5, 978-3-642-16560-3},
+  location = {Heraklion, Crete, Greece},
+  pages = {175--190},
+  numpages = {16},
+  url = {http://portal.acm.org/citation.cfm?id=1939345.1939369},
+  acmid = {1939369},
+  publisher = {Springer-Verlag},
+  address = {Berlin, Heidelberg},
+  keywords = {model-checking, schedulability analysis, stop-watch automata, timed automata, verification},
+} 
+
+*/
+
+const int NOTASK = 33; // number of tasks
+const int NORES = 7; // number of resources
+const int BCEF = 72; // best case execution time fraction of WCET, in percents
+const int BIGEXP = 1000000; // force leaving the WaitForCPU location
+
+typedef int[0, NOTASK] taskid_t;
+typedef int[0, NORES-1] resid_t;
+
+typedef int[0, 10000000] time_t; // time is in microseconds (lets have 10sec)
+
+/** Scheduler messages: */
+broadcast chan release[NORES];
+broadcast chan enqueue; // any shouting process should not arrive to committed state!
+broadcast chan schedule[taskid_t], preempt[taskid_t]; // optional notification
+broadcast chan initialize;
+
+/** ASW messages: */
+broadcast chan StartASW; // starts all ASW tasks
+
+typedef taskid_t queue_t[taskid_t];
+
+clock usedTime, idleTime, globalTime; // CPU usage and idle time, global time.
+taskid_t ctask = 0; // current task owning the cpu
+queue_t taskqueue;
+bool runs[taskid_t]; // controls if the task is currently running on CPU
+bool ready[taskid_t]; // controls if the task is ready
+bool blocked[taskid_t]; // shows if the task is blocked
+bool susp[taskid_t]; // shows if the task is suspended
+taskid_t cprio[taskid_t]; // current task priorities
+clock job[taskid_t]; // progress of the task work (CPU time)
+clock WCRT[taskid_t]; // worst case response time
+bool error = false;
+int len=0; // CPU queue length (without currently running task)
+
+void add(queue_t &amp;queue, taskid_t id)
+{
+    int i;
+    taskid_t tid;
+    while (queue[i]!=0) {
+	    if (cprio[id] &gt; cprio[queue[i]]) {
+           tid = queue[i]; queue[i] = id; id = tid;
+        }
+        i++;
+    }
+    queue[i] = id;
+    len++;
+}
+
+taskid_t poll(queue_t &amp;queue)
+{
+    taskid_t t = queue[0];
+    int i = 0;
+    while(queue[i]!=0) {
+        queue[i]=queue[i+1];
+        i++;
+    }
+    len--;
+    return t;
+}
+
+// simple bubble sorter, O(n^2) in general, O(2n) after 1 change
+void sort(queue_t&amp; queue)
+{ 
+    taskid_t i, tmp;
+    int j;
+    for (i=0,j=0; queue[i+1]!=0; i++,j=i){        
+        while (j&gt;=0 &amp;&amp; cprio[queue[j+1]]&gt;cprio[queue[j]]) {
+            tmp = queue[j]; queue[j] = queue[j+1]; queue[j+1] = tmp;
+            j--;
+        }
+    }
+}
+
+int def_prio(taskid_t task) {
+    if (task==0) return 0;
+    else return NOTASK-task+1;
+}
+
+const int ASWPrio = def_prio(13);
+
+const resid_t CPU_R=0, Icb_R=1, Sgm_R=2, PmReq_R=3, Other_RCS=4, Other_SF1=5, Other_SF2=6;
+const int ceiling[resid_t]={ASWPrio, ASWPrio, ASWPrio, ASWPrio, ASWPrio, ASWPrio, ASWPrio};
+taskid_t owner[resid_t];
+
+/** Check if the resource is available: */
+bool avail(resid_t res) { return (owner[res]==0); }
+
+/** Lock the resource based on priority ceiling protocol: */
+void lockCeil(resid_t res, taskid_t task) {
+    owner[res] = task; // mark resource occupied by the task
+    cprio[task] = ceiling[res]; // assume the priority of the resource
+}
+
+/** Unlock the resource based on priority ceiling protocol: */
+void unlockCeil(resid_t res, taskid_t task){
+    owner[res] = 0; // mark the resource as released
+    cprio[task] = def_prio(task); // return to default priority
+}
+
+/** Boost the priority of resource owner based on priority inheritance protocol: */
+void boostPrio(resid_t res, taskid_t task) {
+    if (cprio[owner[res]] &lt;= def_prio(task)) {
+        cprio[owner[res]] = def_prio(task)+1;
+        sort(taskqueue);
+    }
+}
+
+/** Lock the resource based on priority inheritance protocol: */
+void lockInh(resid_t res, taskid_t task) {
+    owner[res] = task; // mark the resource as occupied by the task
+}
+
+/** Unlock the resource based on priority inheritance protocol: */
+void unlockInh(resid_t res, taskid_t task) {
+    owner[res] = 0; // mark the resource as released
+    cprio[task] = def_prio(task); // return to default priority
+}
+
+/**
+ * The function is concerned with either a time delay or a resource.
+ * The resource is encoded by res and the time delay is encoded by member delay.
+ */
+typedef int[0,4] funtype_t;  // function type
+const funtype_t END     = 0; // No operation (end of the task)
+const funtype_t COMPUTE = 1; // busy with computation
+const funtype_t LOCK    = 2; // attempt to lock a resource, block if not available
+const funtype_t UNLOCK  = 3; // release the resource
+const funtype_t SUSPEND = 4; // release CPU and "wait for hardware" with idle delay
+
+typedef struct {   
+    funtype_t cmd;
+    resid_t res;
+    time_t delay;
+} fun_t;
+
+const fun_t FIN = { END, 0, 0};
+
+typedef int[0,28] ASWCounter_t;
+typedef fun_t ASWFlow_t[ASWCounter_t];
+
+typedef int[0,49] BSWCounter_t;
+typedef fun_t BSWFlow_t[BSWCounter_t];
+
+int cycle = 1;
+
+void main()
+{
+    for (i:taskid_t) cprio[i] = def_prio(i);
+    runs[0]=1;
+    ready[0]=1;
+}
+</declaration>
+	<template>
+		<name>Scheduler</name>
+		<location id="id0" x="-216" y="96">
+			<name x="-256" y="112">Preempt</name>
+			<committed/>
+		</location>
+		<location id="id1" x="-16" y="96">
+			<name x="-8" y="112">Schedule</name>
+			<committed/>
+		</location>
+		<location id="id2" x="-16" y="-48">
+			<name x="-8" y="-40">Running</name>
+		</location>
+		<location id="id3" x="-16" y="-112">
+			<committed/>
+		</location>
+		<init ref="id3"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-184" y="-8">release[CPU_R]?</label>
+			<label kind="assignment" x="-184" y="8">runs[ctask]=0,
+ctask=poll(taskqueue)</label>
+			<nail x="-72" y="8"/>
+			<nail x="-184" y="8"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="8" y="80">cprio[ctask]&gt;=
+cprio[taskqueue[0]]</label>
+			<nail x="128" y="96"/>
+			<nail x="128" y="-48"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-208" y="-64">schedule[ctask]!</label>
+			<label kind="assignment" x="-208" y="-48">runs[ctask]=1</label>
+			<nail x="-216" y="-48"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-192" y="48">taskqueue[0]&gt;0 &amp;&amp;
+cprio[ctask]&lt;
+cprio[taskqueue[0]]</label>
+			<label kind="synchronisation" x="-192" y="97">preempt[ctask]!</label>
+			<label kind="assignment" x="-192" y="112">add(taskqueue,ctask),
+runs[ctask]=0,
+ctask=poll(taskqueue)</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-40" y="-8">enqueue?</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-8" y="-104">initialize!</label>
+			<label kind="assignment" x="-8" y="-88">main()</label>
+		</transition>
+	</template>
+	<template>
+		<name>IdleTask</name>
+		<location id="id4" x="-48" y="-184">
+			<name x="-64" y="-168">CPUUsed</name>
+			<label kind="invariant" x="-64" y="-152">idleTime'==0</label>
+		</location>
+		<location id="id5" x="120" y="-184">
+			<name x="80" y="-168">CPUIdle</name>
+			<label kind="invariant" x="40" y="-152">usedTime'==0</label>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="0" y="-200">preempt[0]?</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="0" y="-232">schedule[0]?</label>
+			<nail x="-48" y="-216"/>
+			<nail x="120" y="-216"/>
+		</transition>
+	</template>
+	<template>
+		<name>MainCycle</name>
+		<parameter>const taskid_t id, const time_t Offset, const time_t Period, const time_t WCET, const time_t Deadline, clock &amp;x</parameter>
+		<declaration>clock sub; // tracks CPU time usage for parts of the task
+
+ASWCounter_t ic=0; // operation counter
+
+const fun_t flow[4] = {
+    { LOCK,    Sgm_R, 0 },   
+    { COMPUTE, CPU_R, WCET },
+    { UNLOCK,  Sgm_R, 0 },
+    { END, 0, 0}
+};</declaration>
+		<location id="id6" x="-32" y="-584">
+			<urgent/>
+		</location>
+		<location id="id7" x="176" y="-584">
+			<name x="160" y="-568">starting</name>
+			<label kind="invariant" x="144" y="-552">x&lt;=Offset</label>
+		</location>
+		<location id="id8" x="-264" y="-408">
+			<name x="-248" y="-424">Release</name>
+			<label kind="invariant" x="-248" y="-408">job[id]&lt;=WCET</label>
+			<label kind="exponentialrate" x="-248" y="-392">BIGEXP</label>
+		</location>
+		<location id="id9" x="80" y="-160">
+			<name x="96" y="-192">Suspended</name>
+			<label kind="invariant" x="96" y="-176">sub&lt;=
+flow[ic].delay</label>
+		</location>
+		<location id="id10" x="-32" y="-400">
+			<name x="-8" y="-416">Ready</name>
+			<label kind="exponentialrate" x="-8" y="-400">BIGEXP</label>
+		</location>
+		<location id="id11" x="200" y="-400">
+			<name x="96" y="-408">WaitForCPU</name>
+			<label kind="exponentialrate" x="136" y="-392">BIGEXP</label>
+		</location>
+		<location id="id12" x="384" y="-400">
+			<committed/>
+		</location>
+		<location id="id13" x="-32" y="-160">
+			<name x="-88" y="-144">Computing</name>
+			<label kind="invariant" x="-136" y="-128">sub'==runs[id] &amp;&amp;
+sub&lt;=flow[ic].delay</label>
+		</location>
+		<location id="id14" x="-432" y="-304">
+			<name x="-424" y="-296">Error</name>
+		</location>
+		<location id="id15" x="-264" y="-304">
+			<name x="-312" y="-280">Next</name>
+			<label kind="invariant" x="-376" y="-264">sub'==runs[id]
+&amp;&amp; sub&lt;=0</label>
+			<label kind="exponentialrate" x="-320" y="-232">BIGEXP</label>
+		</location>
+		<location id="id16" x="384" y="-304">
+			<name x="328" y="-288">Blocked</name>
+			<label kind="exponentialrate" x="336" y="-272">BIGEXP</label>
+		</location>
+		<location id="id17" x="200" y="-304">
+			<name x="144" y="-296">tryLock</name>
+			<committed/>
+		</location>
+		<location id="id18" x="-32" y="-304">
+			<name x="-24" y="-336">Compute</name>
+			<committed/>
+		</location>
+		<location id="id19" x="-264" y="-584">
+			<name x="-304" y="-568">Idle</name>
+			<label kind="invariant" x="-344" y="-552">x&lt;=Period</label>
+		</location>
+		<init ref="id7"/>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-200" y="-88">sub==flow[ic].delay</label>
+			<label kind="synchronisation" x="-200" y="-72">enqueue?</label>
+			<label kind="assignment" x="-200" y="-56">add(taskqueue, id),
+susp[id]=false, ic++, sub=0</label>
+			<nail x="80" y="-56"/>
+			<nail x="-224" y="-56"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="240" y="-456">enqueue?</label>
+			<label kind="assignment" x="240" y="-440">add(taskqueue, id)</label>
+			<nail x="384" y="-440"/>
+			<nail x="232" y="-440"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="80" y="-536">enqueue?</label>
+			<label kind="assignment" x="80" y="-520">add(taskqueue, id),
+x=0, job[id]=0,
+WCRT[id]=0, ready[id]=1</label>
+			<nail x="88" y="-536"/>
+			<nail x="88" y="-472"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id14"/>
+			<label kind="guard" x="88" y="-448">x&gt;Deadline</label>
+			<label kind="assignment" x="88" y="-432">error=1</label>
+			<nail x="200" y="-432"/>
+			<nail x="-432" y="-432"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-128" y="-424">x&gt;Deadline</label>
+			<label kind="assignment" x="-128" y="-408">error=1</label>
+			<nail x="-48" y="-424"/>
+			<nail x="-416" y="-424"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id14"/>
+			<label kind="guard" x="296" y="-40">x&gt;Deadline</label>
+			<label kind="assignment" x="320" y="-24">error=0</label>
+			<nail x="384" y="0"/>
+			<nail x="-432" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-208" y="-600">x==Period</label>
+			<label kind="synchronisation" x="-208" y="-584">StartASW!</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="48" y="-600">x==Offset</label>
+			<label kind="synchronisation" x="48" y="-584">StartASW!</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-400" y="-408">x&gt;Deadline</label>
+			<label kind="assignment" x="-400" y="-392">error=1</label>
+			<nail x="-408" y="-408"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-344" y="-376">runs[id] &amp;&amp;
+END==flow[ic].cmd &amp;&amp;
+x&lt;=Deadline</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id15"/>
+			<label kind="guard" x="32" y="-144">sub==flow[ic].delay</label>
+			<label kind="synchronisation" x="32" y="-128">enqueue!</label>
+			<label kind="assignment" x="32" y="-112">add(taskqueue, id),
+susp[id]=false,
+ic++, sub=0</label>
+			<nail x="80" y="-16"/>
+			<nail x="-240" y="-16"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id9"/>
+			<label kind="guard" x="24" y="-264">SUSPEND==
+flow[ic].cmd</label>
+			<label kind="synchronisation" x="24" y="-232">release[CPU_R]!</label>
+			<label kind="assignment" x="24" y="-216">susp[id]=true,
+sub=0</label>
+			<nail x="80" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-232" y="-192">runs[id] &amp;&amp;
+sub&gt;=flow[ic].delay*BCEF/100</label>
+			<label kind="assignment" x="-232" y="-160">ic++, sub=0</label>
+			<nail x="-232" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="-56" y="-360">schedule[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="160" y="-360">schedule[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="232" y="-415">enqueue!</label>
+			<label kind="assignment" x="232" y="-400">add(taskqueue, id)</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-72" y="-232">COMPUTE==
+flow[ic].cmd</label>
+			<label kind="assignment" x="-72" y="-200">sub=0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-376" y="-320">x&gt;Deadline</label>
+			<label kind="assignment" x="-376" y="-304">error=1</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-224" y="-264">runs[id] &amp;&amp;
+END!=flow[ic].cmd &amp;&amp;
+x&lt;=Deadline</label>
+			<nail x="-224" y="-248"/>
+			<nail x="-80" y="-248"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-232" y="-336">UNLOCK==flow[ic].cmd</label>
+			<label kind="synchronisation" x="-232" y="-320">release[flow[ic].res]!</label>
+			<label kind="assignment" x="-232" y="-304">unlockCeil(flow[ic].res, id),
+ic++, sub=0</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="288" y="-376">release[flow[ic].res]?</label>
+			<label kind="assignment" x="288" y="-360">blocked[id]=0</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id15"/>
+			<label kind="guard" x="152" y="-264">avail(flow[ic].res)</label>
+			<label kind="assignment" x="152" y="-248">lockCeil(flow[ic].res, id),
+ic++, sub=0</label>
+			<nail x="200" y="-8"/>
+			<nail x="-264" y="-8"/>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="guard" x="232" y="-336">!avail(flow[ic].res)</label>
+			<label kind="synchronisation" x="232" y="-319">release[CPU_R]!</label>
+			<label kind="assignment" x="232" y="-304">blocked[id]=1</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id17"/>
+			<label kind="guard" x="48" y="-320">LOCK==
+flow[ic].cmd</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id19"/>
+			<label kind="guard" x="-256" y="-560">runs[id] &amp;&amp;
+job[id]&gt;=WCET*BCEF/100 &amp;&amp;
+x&lt;=Deadline</label>
+			<label kind="synchronisation" x="-256" y="-496">release[CPU_R]!</label>
+			<label kind="assignment" x="-256" y="-480">ic=0, job[id]=0,
+WCRT[id]=0, ready[id]=0</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-104" y="-536">enqueue!</label>
+			<label kind="assignment" x="-104" y="-520">add(taskqueue, id),
+x=0, job[id]=0,
+WCRT[id]=0, ready[id]=1</label>
+		</transition>
+	</template>
+	<template>
+		<name>ASW</name>
+		<parameter>const taskid_t id, broadcast chan &amp;start, const ASWFlow_t flow, const time_t WCET, const time_t Deadline, clock &amp;x</parameter>
+		<declaration>/**
+Template for ASW task. 
+The task is started by channel start and it finishes with signal on channel done.
+The task processes the control flow by executing one of the four basic steps:
+1) LOCK -- attempts to lock a semaphore, and blocks if semaphore is not available,
+2) UNLOCK -- unlocks the semaphore,
+3) COMPUTE -- consumes CPU for a specified amount of busy CPU time,
+4) SUSPEND -- releases CPU for a specified amount of world time and then resumes.
+Locking and unlocking uses priority ceiling protocol.
+When flow ends, the task will consume the CPU until job[id] reaches WCET value:
+1) the total duration of COMPUTE steps should not exceed WCET, 
+   otherwise there will be deadlock,
+2) the total duration of COMPUTE steps may be less than WCET, 
+   but the task will still consume WCET of CPU time in total.
+*/
+
+clock sub; // tracks CPU time usage for parts of the task
+
+ASWCounter_t ic=0; // function counter
+
+/*
+// computes the sum of computation time (should not exceed WCET)
+int[0, 250000] wcet;
+void findWcet(){
+  wcet = sum(i: ASWCounter_t) 
+      (flow[i].cmd==COMPUTE)*flow[i].delay;
+}
+*/</declaration>
+		<location id="id20" x="-264" y="-400">
+			<name x="-256" y="-400">Release</name>
+			<label kind="invariant" x="-256" y="-384">job[id]&lt;=WCET</label>
+			<label kind="exponentialrate" x="-256" y="-368">BIGEXP</label>
+		</location>
+		<location id="id21" x="80" y="-160">
+			<name x="96" y="-192">Suspended</name>
+			<label kind="invariant" x="96" y="-176">sub&lt;=
+flow[ic].delay</label>
+		</location>
+		<location id="id22" x="-32" y="-400">
+			<name x="-16" y="-416">Ready</name>
+			<label kind="exponentialrate" x="-16" y="-400">BIGEXP</label>
+		</location>
+		<location id="id23" x="200" y="-400">
+			<name x="96" y="-408">WaitForCPU</name>
+			<label kind="exponentialrate" x="136" y="-392">BIGEXP</label>
+		</location>
+		<location id="id24" x="384" y="-400">
+			<committed/>
+		</location>
+		<location id="id25" x="-32" y="-160">
+			<name x="-72" y="-144">Computing</name>
+			<label kind="invariant" x="-120" y="-128">sub'==runs[id] &amp;&amp;
+sub&lt;=flow[ic].delay</label>
+		</location>
+		<location id="id26" x="-432" y="-304">
+			<name x="-424" y="-296">Error</name>
+		</location>
+		<location id="id27" x="-264" y="-304">
+			<name x="-312" y="-280">Next</name>
+			<label kind="invariant" x="-376" y="-264">sub'==runs[id]
+&amp;&amp; sub&lt;=0</label>
+			<label kind="exponentialrate" x="-320" y="-232">BIGEXP</label>
+		</location>
+		<location id="id28" x="384" y="-304">
+			<name x="328" y="-288">Blocked</name>
+			<label kind="exponentialrate" x="328" y="-272">BIGEXP</label>
+		</location>
+		<location id="id29" x="200" y="-304">
+			<name x="144" y="-296">tryLock</name>
+			<committed/>
+		</location>
+		<location id="id30" x="-32" y="-304">
+			<name x="-24" y="-336">Compute</name>
+			<committed/>
+		</location>
+		<location id="id31" x="-32" y="-584">
+			<urgent/>
+		</location>
+		<location id="id32" x="-264" y="-584">
+			<name x="-304" y="-600">Idle</name>
+		</location>
+		<init ref="id32"/>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-184" y="-96">sub==flow[ic].delay</label>
+			<label kind="synchronisation" x="-184" y="-80">enqueue?</label>
+			<label kind="assignment" x="-184" y="-64">add(taskqueue, id),
+susp[id]=false, ic++, sub=0</label>
+			<nail x="64" y="-64"/>
+			<nail x="-208" y="-64"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="232" y="-456">enqueue?</label>
+			<label kind="assignment" x="232" y="-440">add(taskqueue, id)</label>
+			<nail x="360" y="-440"/>
+			<nail x="232" y="-440"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="8" y="-552">enqueue?</label>
+			<label kind="assignment" x="8" y="-536">add(taskqueue, id)</label>
+			<nail x="32" y="-560"/>
+			<nail x="32" y="-464"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-192" y="-416">END==flow[ic].cmd</label>
+			<label kind="synchronisation" x="-160" y="-400">schedule[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id26"/>
+			<label kind="guard" x="88" y="-464">x&gt;Deadline</label>
+			<label kind="assignment" x="88" y="-448">error=1</label>
+			<nail x="200" y="-448"/>
+			<nail x="-432" y="-448"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id26"/>
+			<label kind="guard" x="-136" y="-448">x&gt;Deadline</label>
+			<label kind="assignment" x="-136" y="-432">error=1</label>
+			<nail x="-48" y="-432"/>
+			<nail x="-408" y="-432"/>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id26"/>
+			<label kind="guard" x="296" y="-56">x&gt;Deadline</label>
+			<label kind="assignment" x="320" y="-40">error=1</label>
+			<nail x="384" y="-16"/>
+			<nail x="-432" y="-16"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id26"/>
+			<label kind="guard" x="-384" y="-416">x&gt;Deadline</label>
+			<label kind="assignment" x="-384" y="-400">error=1</label>
+			<nail x="-392" y="-400"/>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-344" y="-368">runs[id] &amp;&amp;
+END==flow[ic].cmd &amp;&amp;
+x&lt;Deadline</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id27"/>
+			<label kind="guard" x="32" y="-144">sub==flow[ic].delay</label>
+			<label kind="synchronisation" x="32" y="-128">enqueue!</label>
+			<label kind="assignment" x="32" y="-112">add(taskqueue, id),
+susp[id]=false,
+ic++, sub=0</label>
+			<nail x="80" y="-32"/>
+			<nail x="-224" y="-32"/>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id21"/>
+			<label kind="guard" x="24" y="-264">SUSPEND==
+flow[ic].cmd</label>
+			<label kind="synchronisation" x="24" y="-232">release[CPU_R]!</label>
+			<label kind="assignment" x="24" y="-216">susp[id]=true,
+sub=0</label>
+			<nail x="80" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-232" y="-192">runs[id] &amp;&amp;
+sub&gt;=flow[ic].delay*BCEF/100</label>
+			<label kind="assignment" x="-224" y="-160">ic++, sub=0</label>
+			<nail x="-232" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id30"/>
+			<label kind="guard" x="-56" y="-376">END!=flow[ic].cmd</label>
+			<label kind="synchronisation" x="-56" y="-360">schedule[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="160" y="-360">schedule[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="232" y="-415">enqueue!</label>
+			<label kind="assignment" x="232" y="-400">add(taskqueue, id)</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-72" y="-232">COMPUTE==
+flow[ic].cmd</label>
+			<label kind="assignment" x="-72" y="-200">sub=0</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id26"/>
+			<label kind="guard" x="-376" y="-320">x&gt;Deadline</label>
+			<label kind="assignment" x="-376" y="-304">error=1</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id30"/>
+			<label kind="guard" x="-224" y="-264">runs[id] &amp;&amp;
+END!=flow[ic].cmd &amp;&amp;
+x&lt;=Deadline</label>
+			<nail x="-232" y="-248"/>
+			<nail x="-80" y="-248"/>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-232" y="-336">UNLOCK==flow[ic].cmd</label>
+			<label kind="synchronisation" x="-232" y="-320">release[flow[ic].res]!</label>
+			<label kind="assignment" x="-232" y="-304">unlockCeil(flow[ic].res, id),
+ic++, sub=0</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="288" y="-376">release[flow[ic].res]?</label>
+			<label kind="assignment" x="288" y="-360">blocked[id]=0</label>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id27"/>
+			<label kind="guard" x="152" y="-264">avail(flow[ic].res)</label>
+			<label kind="assignment" x="152" y="-248">lockCeil(flow[ic].res, id),
+ic++, sub=0</label>
+			<nail x="200" y="-24"/>
+			<nail x="-264" y="-24"/>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id28"/>
+			<label kind="guard" x="232" y="-336">!avail(flow[ic].res)</label>
+			<label kind="synchronisation" x="232" y="-319">release[CPU_R]!</label>
+			<label kind="assignment" x="232" y="-304">blocked[id]=1</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id29"/>
+			<label kind="guard" x="48" y="-320">LOCK==
+flow[ic].cmd</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id32"/>
+			<label kind="guard" x="-256" y="-552">runs[id] &amp;&amp;
+job[id]&gt;=WCET*BCEF/100 
+&amp;&amp; x&lt;=Deadline</label>
+			<label kind="synchronisation" x="-256" y="-496">release[CPU_R]!</label>
+			<label kind="assignment" x="-256" y="-480">ic=0, job[id]=0,
+WCRT[id]=0, ready[id]=0</label>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-72" y="-520">enqueue!</label>
+			<label kind="assignment" x="-72" y="-504">add(taskqueue, id)</label>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="-240" y="-600">start?</label>
+			<label kind="assignment" x="-240" y="-584">job[id]=0,
+WCRT[id]=0, ready[id]=1</label>
+			<label kind="comments" x="-208" y="-554">PrimaryFunctions seem to be released at 20ms (together with MainCycle, see page 18)</label>
+		</transition>
+	</template>
+	<template>
+		<name>BSW</name>
+		<parameter>const taskid_t id, const time_t Offset, const time_t Period, const BSWFlow_t flow, const time_t WCET, const time_t Deadline</parameter>
+		<declaration>/**
+ * Template for BSW task. 
+ * The idea is the same as with ASW, except that:
+ * 1) inheritance protocol is used (lockInh) for resources,
+ * 2) the task is started on timely (periodic) basis instead of channel synchronization.
+ */
+
+clock x;   // controls periodic start
+clock sub; // tracks CPU time usage for parts of the task
+
+BSWCounter_t ic=0; // function counter
+</declaration>
+		<location id="id33" x="-424" y="-608">
+			<name x="-432" y="-592">starting</name>
+			<label kind="invariant" x="-432" y="-576">x&lt;=Offset</label>
+		</location>
+		<location id="id34" x="-264" y="-408">
+			<name x="-256" y="-408">Release</name>
+			<label kind="invariant" x="-256" y="-392">job[id]&lt;=WCET</label>
+			<label kind="exponentialrate" x="-256" y="-376">BIGEXP</label>
+		</location>
+		<location id="id35" x="80" y="-160">
+			<name x="96" y="-192">Suspended</name>
+			<label kind="invariant" x="96" y="-176">sub&lt;=
+flow[ic].delay</label>
+		</location>
+		<location id="id36" x="-32" y="-408">
+			<name x="-16" y="-424">Ready</name>
+			<label kind="exponentialrate" x="-16" y="-408">BIGEXP</label>
+		</location>
+		<location id="id37" x="200" y="-408">
+			<name x="96" y="-416">WaitForCPU</name>
+			<label kind="exponentialrate" x="96" y="-400">BIGEXP</label>
+		</location>
+		<location id="id38" x="384" y="-408">
+			<committed/>
+		</location>
+		<location id="id39" x="-32" y="-160">
+			<name x="-88" y="-144">Computing</name>
+			<label kind="invariant" x="-96" y="-128">sub'==runs[id] &amp;&amp;
+sub&lt;=flow[ic].delay</label>
+		</location>
+		<location id="id40" x="-432" y="-304">
+			<name x="-424" y="-296">Error</name>
+		</location>
+		<location id="id41" x="-264" y="-304">
+			<name x="-312" y="-280">Next</name>
+			<label kind="invariant" x="-376" y="-264">sub'==runs[id]
+&amp;&amp; sub&lt;=0</label>
+			<label kind="exponentialrate" x="-336" y="-232">BIGEXP</label>
+		</location>
+		<location id="id42" x="384" y="-304">
+			<name x="328" y="-272">Blocked</name>
+			<label kind="exponentialrate" x="336" y="-256">BIGEXP</label>
+		</location>
+		<location id="id43" x="200" y="-304">
+			<name x="144" y="-296">tryLock</name>
+			<committed/>
+		</location>
+		<location id="id44" x="-32" y="-304">
+			<name x="-24" y="-328">GotCPU</name>
+			<committed/>
+		</location>
+		<location id="id45" x="-264" y="-608">
+			<name x="-304" y="-592">Idle</name>
+			<label kind="invariant" x="-344" y="-576">x&lt;=Period</label>
+		</location>
+		<init ref="id33"/>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id41"/>
+			<label kind="guard" x="-232" y="-120">sub==flow[ic].delay</label>
+			<label kind="synchronisation" x="-232" y="-104">enqueue?</label>
+			<label kind="assignment" x="-232" y="-88">add(taskqueue, id),
+susp[id]=false, ic++, sub=0</label>
+			<nail x="80" y="-88"/>
+			<nail x="-240" y="-88"/>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id37"/>
+			<label kind="synchronisation" x="252" y="-463">enqueue?</label>
+			<label kind="assignment" x="252" y="-448">add(taskqueue, id)</label>
+			<nail x="384" y="-448"/>
+			<nail x="240" y="-448"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id36"/>
+			<label kind="guard" x="-88" y="-712">x==Offset</label>
+			<label kind="synchronisation" x="-88" y="-696">enqueue?</label>
+			<label kind="assignment" x="-88" y="-680">add(taskqueue, id),
+x=0, job[id]=0, WCRT[id]=0, ready[id]=1</label>
+			<nail x="-424" y="-696"/>
+			<nail x="96" y="-696"/>
+			<nail x="96" y="-504"/>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id36"/>
+			<label kind="guard" x="-24" y="-608">x==Period</label>
+			<label kind="synchronisation" x="-24" y="-592">enqueue?</label>
+			<label kind="assignment" x="-24" y="-576">add(taskqueue, id),
+x=0, job[id]=0,
+WCRT[id]=0, ready[id]=1</label>
+			<nail x="8" y="-608"/>
+			<nail x="8" y="-520"/>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id40"/>
+			<label kind="guard" x="104" y="-464">x&gt;Deadline</label>
+			<label kind="assignment" x="104" y="-448">error=1</label>
+			<nail x="200" y="-448"/>
+			<nail x="-432" y="-448"/>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id40"/>
+			<label kind="guard" x="-192" y="-448">x&gt;Deadline</label>
+			<label kind="assignment" x="-192" y="-432">error=1</label>
+			<nail x="-56" y="-432"/>
+			<nail x="-408" y="-432"/>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id40"/>
+			<label kind="guard" x="296" y="-80">x&gt;Deadline</label>
+			<label kind="assignment" x="320" y="-64">error=1</label>
+			<nail x="384" y="-40"/>
+			<nail x="-432" y="-40"/>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id34"/>
+			<label kind="guard" x="-176" y="-408">END==flow[ic].cmd</label>
+			<label kind="synchronisation" x="-144" y="-392">schedule[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id45"/>
+			<label kind="guard" x="-376" y="-640">Offset==0</label>
+			<label kind="synchronisation" x="-376" y="-624">initialize?</label>
+			<label kind="assignment" x="-376" y="-608">x=Period</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id36"/>
+			<label kind="guard" x="-408" y="-712">x==Offset</label>
+			<label kind="synchronisation" x="-408" y="-696">enqueue!</label>
+			<label kind="assignment" x="-408" y="-680">add(taskqueue, id), 
+x=0, job[id]=0, WCRT[id]=0, ready[id]=1</label>
+			<nail x="-424" y="-680"/>
+			<nail x="88" y="-680"/>
+			<nail x="88" y="-496"/>
+		</transition>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id40"/>
+			<label kind="guard" x="-392" y="-408">x&gt;Deadline</label>
+			<label kind="assignment" x="-392" y="-392">error=1</label>
+			<nail x="-400" y="-408"/>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id34"/>
+			<label kind="guard" x="-336" y="-368">runs[id] &amp;&amp;
+END==flow[ic].cmd &amp;&amp;
+x&lt;Deadline</label>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id41"/>
+			<label kind="guard" x="32" y="-144">sub==flow[ic].delay</label>
+			<label kind="synchronisation" x="32" y="-128">enqueue!</label>
+			<label kind="assignment" x="32" y="-112">add(taskqueue, id),
+susp[id]=false,
+ic++, sub=0</label>
+			<nail x="80" y="-56"/>
+			<nail x="-248" y="-56"/>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id35"/>
+			<label kind="guard" x="32" y="-264">SUSPEND==
+flow[ic].cmd</label>
+			<label kind="synchronisation" x="32" y="-232">release[CPU_R]!</label>
+			<label kind="assignment" x="32" y="-216">susp[id]=true,
+sub=0</label>
+			<nail x="80" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id41"/>
+			<label kind="guard" x="-232" y="-192">runs[id] &amp;&amp;
+sub&gt;=flow[ic].delay*BCEF/100</label>
+			<label kind="assignment" x="-232" y="-160">ic++, sub=0</label>
+			<nail x="-232" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id44"/>
+			<label kind="guard" x="-80" y="-368">END!=flow[ic].cmd</label>
+			<label kind="synchronisation" x="-80" y="-352">schedule[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id43"/>
+			<label kind="synchronisation" x="160" y="-360">schedule[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id37"/>
+			<label kind="synchronisation" x="232" y="-423">enqueue!</label>
+			<label kind="assignment" x="232" y="-408">add(taskqueue, id)</label>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id39"/>
+			<label kind="guard" x="-72" y="-232">COMPUTE==
+flow[ic].cmd</label>
+			<label kind="assignment" x="-72" y="-200">sub=0</label>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id40"/>
+			<label kind="guard" x="-384" y="-320">x&gt;Deadline</label>
+			<label kind="assignment" x="-384" y="-304">error=1</label>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id44"/>
+			<label kind="guard" x="-224" y="-264">runs[id] &amp;&amp;
+END!=flow[ic].cmd &amp;&amp;
+x&lt;=Deadline</label>
+			<nail x="-224" y="-248"/>
+			<nail x="-80" y="-248"/>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id41"/>
+			<label kind="guard" x="-240" y="-336">UNLOCK==flow[ic].cmd</label>
+			<label kind="synchronisation" x="-240" y="-320">release[flow[ic].res]!</label>
+			<label kind="assignment" x="-232" y="-304">unlockInh(flow[ic].res, id),
+ic++, sub=0</label>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id38"/>
+			<label kind="synchronisation" x="280" y="-384">release[flow[ic].res]?</label>
+			<label kind="assignment" x="280" y="-368">blocked[id]=0</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id41"/>
+			<label kind="guard" x="152" y="-264">avail(flow[ic].res)</label>
+			<label kind="assignment" x="152" y="-248">lockInh(flow[ic].res, id),
+ic++, sub=0</label>
+			<nail x="200" y="-48"/>
+			<nail x="-264" y="-48"/>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id42"/>
+			<label kind="guard" x="224" y="-336">!avail(flow[ic].res)</label>
+			<label kind="synchronisation" x="224" y="-320">release[CPU_R]!</label>
+			<label kind="assignment" x="224" y="-304">blocked[id]=1,
+boostPrio(flow[ic].res, id)</label>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id43"/>
+			<label kind="guard" x="48" y="-320">LOCK==
+flow[ic].cmd</label>
+		</transition>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id45"/>
+			<label kind="guard" x="-256" y="-568">runs[id] &amp;&amp;
+job[id]&gt;=WCET*BCEF/100 
+&amp;&amp; x&lt;=Deadline</label>
+			<label kind="synchronisation" x="-256" y="-512">release[CPU_R]!</label>
+			<label kind="assignment" x="-256" y="-496">ic=0, job[id]=0,
+WCRT[id]=0, ready[id]=0</label>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id36"/>
+			<label kind="guard" x="-104" y="-560">x==Period</label>
+			<label kind="synchronisation" x="-104" y="-544">enqueue!</label>
+			<label kind="assignment" x="-104" y="-528">add(taskqueue, id),
+x=0, job[id]=0,
+WCRT[id]=0, ready[id]=1</label>
+			<label kind="comments" x="-208" y="-478">PrimaryFunctions seem to be released at 20ms (together with MainCycle, see page 18)</label>
+			<nail x="-88" y="-608"/>
+		</transition>
+	</template>
+	<template>
+		<name>GlobalPlain</name>
+		<location id="id46" x="0" y="-24">
+			<label kind="invariant" x="-64" y="-8">forall(i: taskid_t) 
+    job[i]'==runs[i] 
+&amp;&amp;
+forall(i: taskid_t) 
+    WCRT[i]'==ready[i]</label>
+			<label kind="comments" x="-10" y="11">Restrict exploration to the first 10 cycles of 250ms</label>
+		</location>
+		<init ref="id46"/>
+	</template>
+	<template>
+		<name>Global</name>
+		<declaration>const int CYCLE = 250000; // cycle length
+const int CYCLELIMIT = 2;
+const int LIMIT = 4*250000; 
+
+clock TIME;
+</declaration>
+		<location id="id47" x="0" y="0">
+			<label kind="invariant" x="-88" y="16">TIME&lt;=LIMIT &amp;&amp;
+globalTime&lt;=cycle*CYCLE &amp;&amp;
+forall(i: taskid_t) job[i]'==runs[i] &amp;&amp;
+forall(i: taskid_t) WCRT[i]'==ready[i]</label>
+			<label kind="comments" x="-10" y="35">Restrict exploration to the first 10 cycles of 250ms</label>
+		</location>
+		<init ref="id47"/>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id47"/>
+			<label kind="guard" x="-216" y="-64">globalTime==cycle*CYCLE 
+&amp;&amp; cycle==CYCLELIMIT</label>
+			<label kind="assignment" x="-216" y="-32">cycle=1, globalTime=0,
+usedTime=0, idleTime=0,
+WCRT[0]=0</label>
+			<nail x="-224" y="0"/>
+			<nail x="-224" y="-64"/>
+			<nail x="-32" y="-64"/>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id47"/>
+			<label kind="guard" x="32" y="-64">globalTime==cycle*CYCLE 
+&amp;&amp; cycle&lt;CYCLELIMIT</label>
+			<label kind="assignment" x="32" y="-32">cycle++</label>
+			<nail x="32" y="-64"/>
+			<nail x="216" y="-64"/>
+			<nail x="216" y="0"/>
+		</transition>
+	</template>
+	<system>const ASWFlow_t PF_f = { // Primary Functions:
+    { LOCK,    Icb_R, 0 },          // 0) ----- Data processing -----------------
+    { COMPUTE, CPU_R, 1600-1200 },  // 1)  computing with Icb_R
+    { SUSPEND, CPU_R, 1200 },       // 2)  suspended with Icb_R
+    { UNLOCK,  Icb_R, 0 },          // 3)
+    { COMPUTE, CPU_R, 20577-(1600-1200) }, // 4)  computing without Icb_R
+    { COMPUTE, CPU_R, 3440 },       // 5) ----- Guidance ------------------------
+    { LOCK,    Sgm_R, 0 },          // 6) ----- Attitude determination ----------
+    { COMPUTE, CPU_R, 1218-121 },   // 7)  computing with Sgm_R
+    { SUSPEND, CPU_R, 121 },        // 8)  suspended with Sgm_R
+    { UNLOCK,  Sgm_R, 0 },          // 9) 
+    { COMPUTE, CPU_R, 3751-(1218-121) },  //10)  computing without Sgm_R
+    { COMPUTE, CPU_R, 42 },         //11) ----- Perform extra checks ------------
+    { LOCK,    PmReq_R,0 },         //12) ----- SCM controller ------------------
+    { COMPUTE, CPU_R, 3300-1650 },  //13)  computing with PmReq_R
+    { SUSPEND, CPU_R, 1650 },       //14)  suspended with PmReq_R
+    { UNLOCK,  PmReq_R, 0 },        //15) 
+    { COMPUTE, CPU_R, 3479-(3300-1650) },  //16)  computing without PmReq_R
+    { COMPUTE, CPU_R, 2752 },       //17) ----- Command RWL ---------------------
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN // fill the array
+};
+
+const ASWFlow_t RCS_f = { // RCS control:
+    { LOCK,    Other_RCS, 0 },      // 0) ----- RCS control -----------------------------
+    { COMPUTE, CPU_R, 0 },          // 1)  computing with Other_RCS (Prm_R and ObdhReg_R)
+    { SUSPEND, CPU_R, 6350-0 },     // 2)  suspended with Other_RCS
+    { UNLOCK,  Other_RCS, 0 },      // 3)
+    { COMPUTE, CPU_R, 4061 },       // 4)  computing without Other_RCS
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, 
+    FIN, FIN, FIN, FIN
+};
+
+const ASWFlow_t SF1_f = { // Secondary Functions 1:
+    { LOCK,    Sgm_R, 0 },       // 0) ----- Determine unit health status --------------
+    { COMPUTE, CPU_R, 982-90 },  // 1)  computing with Sgm_R
+    { SUSPEND, CPU_R, 90 },      // 2)  suspended with Sgm_R
+    { UNLOCK,  Sgm_R, 0 },       // 3)
+    { COMPUTE, CPU_R, 1982-(982-90) },// 4)  computing without Sgm_R
+    { COMPUTE, CPU_R, 251 },     // 5) ----- Determine state ---------------------------
+    { LOCK,    Other_SF1, 0 },   // 6) ----- Retrieve and handle TC --------------------
+    { COMPUTE, CPU_R, 0 },       // 7)  computing with Other_SF1 (Other_R and Sgm_R(?!))
+    { SUSPEND, CPU_R, 3200-0 },  // 8)  suspended with Other_SF1
+    { UNLOCK,  Other_SF1, 0 },   // 9)
+    { COMPUTE, CPU_R, 3093 },    //10)  computing without Other_SF1
+    { LOCK,    Sgm_R, 0 },       //11) ----- Handle BSW events -------------------------
+    { COMPUTE, CPU_R, 645-180 }, //12)  computing with Sgm_R
+    { SUSPEND, CPU_R, 180 },     //13)  suspended with Sgm_R
+    { UNLOCK,  Sgm_R, 0 },       //14)
+    { COMPUTE, CPU_R, 7096-(645-180) },//15)  computing without Sgm_R
+    { COMPUTE, CPU_R, 27 },      //16) ----- Handle unit TC ---------------------------
+    { COMPUTE, CPU_R, 1871 },    //17) ----- Configure --------------------------------
+    { LOCK,    PmReq_R, 0 },     //18) ----- Handle requests --------------------------
+    { COMPUTE, CPU_R, 3300-1650 },//19)  computing with PmReq_R
+    { SUSPEND, CPU_R, 1650 },    //20)  suspended with PmReq_R
+    { UNLOCK,  PmReq_R, 0 },     //21)  release PmReq_R
+    { LOCK,    Sgm_R, 0 },       //22)  lock Sgm_R
+    { COMPUTE, CPU_R, 982-90},   //23)  computing with Sgm_R
+    { SUSPEND, CPU_R, 90 },      //24)  suspended with Sgm_R
+    { UNLOCK,  Sgm_R, 0 },       //25)  release Sgm_R
+    { COMPUTE, CPU_R, 3811-(3300-1650)-(982-90) },//26)  computing without PmReq_R or Sgm_R
+    { COMPUTE, CPU_R, 965 },     //27) ----- ACB execute list -------------------------
+    FIN
+};
+
+const ASWFlow_t SF2_f = { // Secondary Functions 2:
+    { LOCK,    Icb_R, 0 },         // 0) ----- Handle pending TC -------------------------
+    { COMPUTE, CPU_R, 12530-3600 },// 1)  computing with Icb_R
+    { SUSPEND, CPU_R, 3600 },      // 2)  suspended with Icb_R
+    { UNLOCK,  Icb_R, 0 },         // 3)
+    { LOCK,    Other_SF2, 0 },     // 4)  lock Other_SF2
+    { COMPUTE, CPU_R, 0 },         // 5)  computing with Other_SF2
+    { SUSPEND, CPU_R, 3200 },      // 6)  suspended with Other_SF2
+    { UNLOCK,  Other_SF2, 0 },     // 7)
+    { COMPUTE, CPU_R, 10103-(12530-3600) }, // 8)  computing without Icb_R or Other_SF2
+    { LOCK,    Icb_R, 0 },         // 9) ----- Acquire HK data --------------------------
+    { COMPUTE, CPU_R, 1600-1200 }, //10)  computing with Icb_R
+    { SUSPEND, CPU_R, 1200 },      //11)  suspended with Icb_R
+    { UNLOCK,  Icb_R, 0 },         //12)
+    { COMPUTE, CPU_R, 15033-(1600-1200) }, // 13)  computing without Icb_R
+    { LOCK,    Other_SF2, 0 },     //14) ----- Acquire RWL tacho data -------------------
+    { COMPUTE, CPU_R, 0 },         //15)  computing with Other_SF2
+    { SUSPEND, CPU_R, 12800 },     //16)  suspended with Other_SF2
+    { UNLOCK,  Other_SF2, 0 },     //17)
+    { COMPUTE, CPU_R, 4807 },      //18)  computing without Other_SF2
+    { LOCK,    Other_SF2, 0 },     //19) ----- Acquire RCS data -------------------
+    { COMPUTE, CPU_R, 0 },         //20)  computing with Other_SF2
+    { SUSPEND, CPU_R, 6400 },      //21)  suspended with Other_SF2
+    { UNLOCK,  Other_SF2, 0 },     //22)
+    { COMPUTE, CPU_R, 2287 },      //23)  computing without Other_SF2
+    { COMPUTE, CPU_R, 7267 },      //24) ----- OBDB check CRC --------------------------
+    { COMPUTE, CPU_R, 193 },       //25) ----- Check BSW service status ----------------
+    FIN, FIN, FIN
+};
+
+// just use CPU for WCET amount of time:
+const BSWFlow_t WCET_f = { 
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, 
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN
+}; 
+
+const BSWFlow_t ErrMgr_f = { // Locked(1x1.0) + Suspend(0x0), WCET(???)
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000},
+    { UNLOCK, Icb_R, 0},
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, 
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN
+};
+
+const BSWFlow_t Obt_f = { // WCET(1100), Locked(2x0.5) + Suspend(1x0.3), locked_cpu = 0.7, add(0.35)
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 500-300},
+    { SUSPEND, 0, 300},
+    { UNLOCK, Icb_R, 0},
+    { COMPUTE, 0, 350}, // added 0.1 to add up to WCET
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 500},
+    { UNLOCK, Icb_R, 0},
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, 
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN
+};
+
+const BSWFlow_t StsMon_f = { // WCET(3300), locked_cpu=3.9 =&gt; 0.6 too much, subtract 0.2 from each
+    { LOCK, Icb_R, 0 },  // WD refresh: locked(2x0.45) - suspend(0x0)
+    { COMPUTE, 0, 450 },
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 450-200 }, // subtracted 0.2 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },  // Misc. RM status: locked(4x0.7) - suspended(1x0.5)
+    { COMPUTE, 0, 700-500 },
+    { SUSPEND, 0, 500},
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 700 },
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 700 },
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 700-200 }, // subtracted 0.2 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 }, // RM scrub stat: locked(2x0.5) - suspended(1x0.3)
+    { COMPUTE, 0, 500-300 },
+    { SUSPEND, 0, 300},
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 500-200 }, // subtracted 0.2 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, 
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN,
+    FIN, FIN, FIN, FIN
+};
+
+const BSWFlow_t Sgm_f = { // WCET(4020), locked_cpu=3.98, left(40)
+    { LOCK, Sgm_R, 0 }, // Health table: locked(2x0.15) - suspended(1x0)
+    { COMPUTE, 0, 150},
+    { SUSPEND, 0, 0},
+    { UNLOCK, Sgm_R, 0},
+    { LOCK, Sgm_R, 0 },
+    { COMPUTE, 0, 150},
+    { SUSPEND, 0, 0},
+    { UNLOCK, Sgm_R, 0},
+    { COMPUTE, 0, 10}, // added 0.1 to add up to WCET
+    { LOCK, Sgm_R, 0 }, // Config status: locked(2x0.18) - suspended(1x0.03)
+    { COMPUTE, 0, 180-30},
+    { SUSPEND, 0, 30},
+    { UNLOCK, Sgm_R, 0},
+    { LOCK, Sgm_R, 0 },
+    { COMPUTE, 0, 180},
+    { UNLOCK, Sgm_R, 0},
+    { COMPUTE, 0, 10}, // added 0.1 to add up to WCET
+    { LOCK, Sgm_R, 0 }, // HK block: locked(2x0.61) - suspended(1x0.46)
+    { COMPUTE, 0, 610-460},
+    { SUSPEND, 0, 460},
+    { UNLOCK, Sgm_R, 0},
+    { LOCK, Sgm_R, 0 },
+    { COMPUTE, 0, 610},
+    { UNLOCK, Sgm_R, 0},
+    { COMPUTE, 0, 10}, // added 0.1 to add up to WCET
+    { LOCK, Sgm_R, 0 }, // Raw block: locked(5x0.61) - suspended(1x0.46)
+    { COMPUTE, 0, 610-460},
+    { SUSPEND, 0, 460},
+    { UNLOCK, Sgm_R, 0},
+    { LOCK, Sgm_R, 0 },
+    { COMPUTE, 0, 610},
+    { UNLOCK, Sgm_R, 0},
+    { LOCK, Sgm_R, 0 },
+    { COMPUTE, 0, 610},
+    { UNLOCK, Sgm_R, 0},
+    { LOCK, Sgm_R, 0 },
+    { COMPUTE, 0, 610},
+    { UNLOCK, Sgm_R, 0},
+    { LOCK, Sgm_R, 0 },
+    { COMPUTE, 0, 610},
+    { UNLOCK, Sgm_R, 0},
+    FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN, FIN
+};
+
+const BSWFlow_t Cmd_f = { // WCET(14000), locked_cpu=15.5, locked(16x1.0), suspended(1x0.5), overflow(1.5) subtract(0.1) from each
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-500 },
+    { SUSPEND, 0, 500},
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    { LOCK, Icb_R, 0 },
+    { COMPUTE, 0, 1000-100 },// subtracted 0.1 to fit into WCET
+    { UNLOCK, Icb_R, 0},
+    FIN
+};
+
+clock ASWclock;
+
+//                 taskid,Offset,Period, flow,   WCET, Deadline           
+RTEMS_RTC      =     BSW(1,    0, 10000, WCET_f,   13,    1000);
+AswSync_SyncPulselsr=BSW(2,    0,250000, WCET_f,   70,    1000);
+Hk_SamplerIsr  =     BSW(3,62500,125000, WCET_f,   70,    1000);//offset on pg.19
+SwCyc_CycStartIsr=   BSW(4,    0,250000, WCET_f,   20,    1000);
+SwCyc_CycEndIsr=     BSW(5,200000,250000, WCET_f,  100,    1000);//offset on pg.19
+Rt1553_Isr     =     BSW(6,    0, 15625, WCET_f,   70,    1000);
+Bc1553_Isr     =     BSW(7,    0, 20000, WCET_f,   70,    1000);
+Spw_Isr        =     BSW(8,    0, 39000, WCET_f,   70,    2000);
+Obdh_Isr       =     BSW(9,    0,250000, WCET_f,   70,    2000);
+RtSdb_P_1      =    BSW(10,    0, 15625, WCET_f,  150,   15625);
+RtSdb_P_2      =    BSW(11,    0,125000, WCET_f,  400,   15625);
+RtSdb_P_3      =    BSW(12,    0,250000, WCET_f,  170,   15625);
+// #13 is reserved for ASW resource priority ceiling
+FdirEvents     =    BSW(14,20000,250000, WCET_f, 5000,  230220);
+NominalEvents_1=    BSW(15,20000,250000, WCET_f,  720,  230220);
+mainCycle =   MainCycle(16,20000,250000,  400,  230220, ASWclock);
+HkSampler_P_2  =    BSW(17,62500,125000, WCET_f,  500,  62500);//offset on pg.19
+HkSampler_P_1  =    BSW(18,62500,250000, WCET_f, 6000,  62500);//offset on pg.19
+Acb_P          =    BSW(19,200000,250000,WCET_f, 6000,  50540);//offset on pg.18,19
+IoCyc_P        =    BSW(20,200000,250000,WCET_f, 3000,  50540);//offset on pg.18,19
+                 //ASW: id, start,  finish,   flow,  WCET, Deadline
+primaryF  =         ASW(21,StartASW, PF_f, 34050,  59600, ASWclock);
+rCSControlF=        ASW(22,StartASW, RCS_f, 4070, 239600, ASWclock);
+Obt_P          =    BSW(23,    0,1000000,Obt_f,  1100, 100000);
+Hk_P           =    BSW(24,    0,250000, WCET_f, 2750, 250000);
+StsMon_P       =    BSW(25,62500,250000,StsMon_f,3300, 125000);//offset on pg.20
+TmGen_P        =    BSW(26,    0,250000, WCET_f, 4860, 250000);
+Sgm_P          =    BSW(27,    0,250000, Sgm_f,  4020, 250000);
+TcRouter_P     =    BSW(28,    0,250000, WCET_f,  500, 250000);
+Cmd_P          =    BSW(29,    0,250000, Cmd_f, 14000, 250000);
+NominalEvents_2=    BSW(30,20000,250000, WCET_f, 1780, 230220);
+secondF_1    =      ASW(31,StartASW, SF1_f, 20960, 189600, ASWclock);
+secondF_2    =      ASW(32,StartASW, SF2_f, 39690, 230220, ASWclock);
+Bkgnd_P        =    BSW(33,    0,250000, WCET_f,  200, 250000);
+
+// Tasks in table order:
+system Scheduler, RTEMS_RTC, AswSync_SyncPulselsr, Hk_SamplerIsr, 
+    SwCyc_CycStartIsr, SwCyc_CycEndIsr, Rt1553_Isr, Bc1553_Isr, 
+    Spw_Isr, Obdh_Isr, RtSdb_P_1, RtSdb_P_2, RtSdb_P_3, 
+    FdirEvents, NominalEvents_1, mainCycle, 
+    HkSampler_P_2, HkSampler_P_1, Acb_P, IoCyc_P, primaryF, rCSControlF, 
+    Obt_P, Hk_P, StsMon_P, TmGen_P, Sgm_P, TcRouter_P, Cmd_P, 
+    NominalEvents_2, secondF_1, secondF_2, Bkgnd_P, IdleTask, GlobalPlain;
+
+progress { cycle; }
+
+gantt {
+    T(i:taskid_t): 
+	(ready[i] &amp;&amp; !runs[i]) -&gt; 1,// green: ready
+	(ready[i] &amp;&amp; runs[i]) -&gt; 2, // blue:  running
+	(blocked[i]) -&gt; 0,          // red:   blocked
+	susp[i] -&gt; 9;               // cyan:  suspended
+    R(i:resid_t):  
+	(owner[i]&gt;0 &amp;&amp; runs[owner[i]]) -&gt; 2,  // blue: locked and actively used
+	(owner[i]&gt;0 &amp;&amp; !runs[owner[i]] &amp;&amp; !susp[owner[i]]) -&gt; 1, // green: locked but preempted
+        (owner[i]&gt;0 &amp;&amp; susp[owner[i]]) -&gt; 9;  // cyan: locked and suspended
+}
+</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=1280*250000; 100000] { error } :1:error</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

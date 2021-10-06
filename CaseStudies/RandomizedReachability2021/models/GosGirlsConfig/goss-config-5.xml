@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+const int numberOfGirls = 6;    // enter amount of girls
+clock totalTime;
+
+typedef int[0, numberOfGirls-1] id_girl;
+
+int secrets[numberOfGirls][numberOfGirls]; 
+
+chan call[numberOfGirls], endCall[numberOfGirls]; 
+
+typedef int[0,2147000000] c_t;
+c_t amountOfCalls = 0; 
+
+int evaluation() {
+    int output = 1, i, j;
+    
+    for (i = 0; i &lt; numberOfGirls; i++) {
+        for (j = 0; j &lt; numberOfGirls; j++) {
+            if (secrets[i][j] == 0) {
+                output = 0; 
+            }
+        }
+    }
+
+    return output; 
+}
+
+bool verifyConfig(){
+    for (i: int[0,numberOfGirls-1]){
+        for (j: int[0,numberOfGirls-1]){
+            if((i &lt; 2 &amp;&amp; j &lt; 2) || (i &gt;= 2 &amp;&amp; j &gt;= 2))
+            {
+                if(secrets[i][j] != 1) return false;
+            }
+            else
+            {
+                if(secrets[i][j] == 1) return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool verifyConfig2(){
+    int count = 0;
+
+    for (i: int[0,numberOfGirls-1]){
+        count = 0;
+
+        for (j: int[0,numberOfGirls-1]){
+
+            if(secrets[i][j])
+                count++;
+        }
+
+        if(count != 4)
+                return false;
+    }
+
+    return true;
+}</declaration>
+	<template>
+		<name x="5" y="5">GirlScenario2</name>
+		<parameter>const id_girl id</parameter>
+		<declaration>// Place local declarations here.
+int callgirl = 0; 
+
+clock x; 
+
+void initialize(int girl) {
+    // initializing secrets for a girl
+    secrets[girl][girl] = 1; 
+}
+
+void gossip(int girl) {
+    if (secrets[girl][girl] == 1) {
+        secrets[id][girl] = 1; 
+    }
+
+    if (secrets[id][id] == 1) {
+        secrets[girl][id] = 1; 
+    }
+}
+
+int getCallGirl() {
+    return callgirl; 
+}
+
+
+
+</declaration>
+		<location id="id0" x="-807" y="-705" color="#ffff00">
+			<name x="-824" y="-739">Start</name>
+		</location>
+		<location id="id1" x="-680" y="-705" color="#00ff00">
+			<name x="-697" y="-739">Free</name>
+		</location>
+		<location id="id2" x="-544" y="-917">
+			<name x="-595" y="-951">Receiving</name>
+			<label kind="invariant" x="-554" y="-900">x &lt;= 60</label>
+		</location>
+		<location id="id3" x="-544" y="-484">
+			<name x="-554" y="-518">Calling</name>
+			<label kind="invariant" x="-535" y="-476">x &lt;= 60</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-535" y="-620">endCall[getCallGirl()]?</label>
+			<label kind="assignment" x="-535" y="-603">gossip(getCallGirl())</label>
+			<nail x="-544" y="-705"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-535" y="-765">x == 60</label>
+			<label kind="synchronisation" x="-535" y="-790">endCall[id]!</label>
+			<nail x="-544" y="-705"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-689" y="-934">endCall[id]?</label>
+			<nail x="-680" y="-917"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-663" y="-510">x == 60</label>
+			<label kind="synchronisation" x="-697" y="-484">endCall[getCallGirl()]!</label>
+			<label kind="assignment" x="-688" y="-467">gossip(getCallGirl())</label>
+			<nail x="-680" y="-484"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-604" y="-824">call[id]?</label>
+			<label kind="assignment" x="-662" y="-811">x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="select" x="-629" y="-688">girl : id_girl</label>
+			<label kind="guard" x="-629" y="-671">girl != id</label>
+			<label kind="synchronisation" x="-629" y="-654">call[girl]!</label>
+			<label kind="assignment" x="-629" y="-637">amountOfCalls++, callgirl = girl, x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-789" y="-705">initialize(id)</label>
+		</transition>
+	</template>
+	<template>
+		<name>GirlScenario1</name>
+		<parameter>const id_girl id</parameter>
+		<declaration>id_girl callgirl; 
+clock x; 
+void initialize(int girl) {
+    // initializing secrets for a girl
+    secrets[girl][girl] = 1; 
+}
+
+void gossip(int girl) {
+    int i = 0; 
+    while (i &lt; numberOfGirls) {
+        if (secrets[girl][i] == 1) {
+            secrets[id][i] = 1; 
+        }
+        i++; 
+    }
+    i = 0; 
+    while (i &lt; numberOfGirls) {
+        if (secrets[id][i] == 1) {
+            secrets[girl][i] = 1; 
+        }
+        i++; 
+    }
+}
+
+id_girl getCallGirl() {
+    return callgirl; 
+}
+</declaration>
+		<location id="id4" x="-297" y="-178" color="#ffff00">
+			<name x="-314" y="-212">Start</name>
+		</location>
+		<location id="id5" x="-170" y="-178" color="#00ff00">
+			<name x="-186" y="-220">Free</name>
+			<label kind="invariant" x="-228" y="-169">amountOfCalls &lt;= 7</label>
+		</location>
+		<location id="id6" x="-34" y="-390">
+			<name x="-85" y="-424">Receiving</name>
+			<label kind="invariant" x="-44" y="-373">x &lt;= 60</label>
+		</location>
+		<location id="id7" x="-34" y="43">
+			<name x="-44" y="9">Calling</name>
+			<label kind="invariant" x="-16" y="35">x &lt;= 60</label>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-25" y="-76">endCall[getCallGirl()]?</label>
+			<label kind="assignment" x="-25" y="-59">gossip(getCallGirl())</label>
+			<nail x="-34" y="-178"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-25" y="-246">x == 60</label>
+			<label kind="synchronisation" x="-25" y="-263">endCall[id]!</label>
+			<nail x="-34" y="-178"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-179" y="-407">endCall[id]?</label>
+			<nail x="-170" y="-390"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-152" y="9">x == 60</label>
+			<label kind="synchronisation" x="-187" y="43">endCall[getCallGirl()]!</label>
+			<label kind="assignment" x="-178" y="60">gossip(getCallGirl())</label>
+			<nail x="-170" y="43"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-94" y="-297">call[id]?</label>
+			<label kind="assignment" x="-143" y="-288">x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id7"/>
+			<label kind="select" x="-119" y="-161">girl : id_girl</label>
+			<label kind="guard" x="-390" y="-143">id==0 ? girl!=2 and girl!=3 and girl!=4 : (id==4 ? girl!=0 and girl!=1 and girl!=2 : (id!=girl-2 and id!=girl+2 and id!=girl+3 and id!=girl-3))</label>
+			<label kind="synchronisation" x="-119" y="-127">call[girl]!</label>
+			<label kind="assignment" x="-119" y="-110">amountOfCalls++, callgirl = girl, x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="assignment" x="-279" y="-178">initialize(id)</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+// List one or more processes to be composed into a system.
+system GirlScenario2;
+    </system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; verifyConfig2()</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

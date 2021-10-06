@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+//define a number of people
+const int Numberofpersons = 8;
+//create channels
+chan call[Numberofpersons];
+chan endcall[Numberofpersons];
+//create shared array of secrets known
+bool sharedsecrets[Numberofpersons][Numberofpersons];
+//type definition of person_t
+typedef int[0,Numberofpersons-1] person_t;
+//select a model
+const int selector = 1;
+//bool
+bool setbefore = false;
+bool busy;
+//clock
+clock totaltime;
+
+
+bool verifyConfig(){
+    for (i: int[0,Numberofpersons-1]){
+        for (j: int[0,Numberofpersons-1]){
+            if((i &lt; 2 &amp;&amp; j &lt; 2) || (i &gt;= 2 &amp;&amp; j &gt;= 2))
+            {
+                if(sharedsecrets[i][j] != 1) return false;
+            }
+            else
+            {
+                if(sharedsecrets[i][j] == 1) return false;
+            }
+        }
+    }
+    return true;
+}</declaration>
+	<template>
+		<name x="5" y="5">Person</name>
+		<parameter>const person_t id</parameter>
+		<declaration>// Place local declarations here.
+clock calltime;
+
+person_t otherperson;
+
+void create(){
+    sharedsecrets[id][id] = 1;
+    otherperson = id;
+    calltime = 0;
+}
+
+void setotherperson(person_t newotherperson){
+    otherperson = newotherperson;
+}
+
+void exchange(){
+    for (i: int[0,Numberofpersons-1]){
+        if(sharedsecrets[id][i]){
+            sharedsecrets[otherperson][i] = 1;
+        }
+        if(sharedsecrets[otherperson][i]){
+            sharedsecrets[id][i] = 1;
+        }    
+    }
+}
+
+person_t getotherperson(){
+    return otherperson;
+}
+
+bool scenario(int selector, person_t number){
+    //linear chain
+    if(selector == 1){ 
+        if(id != 0 &amp;&amp; id &lt; Numberofpersons-1){
+            return number == id-1 || number == id+1;
+        }
+        else if(id == 0){
+            return number == id+1;
+        }
+        else if(id == Numberofpersons-1){
+            return number == id-1;
+        }
+    }
+    //full graph
+    else if(selector == 2){
+        return true;
+    }
+    //circular chain
+    else if(selector == 3){ 
+        if(id != 0 &amp;&amp; id &lt; Numberofpersons-1){
+            return number == id-1 || number == id+1;
+        }
+        else if(id == 0){
+            return number == id+1 || number == Numberofpersons-1;
+        }
+        else if(id == Numberofpersons-1){
+            return number == id-1 || number == 0;
+        }
+    }
+    //single call
+    else if(selector == 4){
+        if(busy){
+        return 0;
+        }
+        return 1;
+    }
+    return 0;
+}
+
+void settotaltime(){
+    if(!setbefore){
+        setbefore = true;
+        totaltime = 0;
+    }
+}
+
+</declaration>
+		<location id="id0" x="-840" y="-408">
+			<name x="-850" y="-442">initial</name>
+		</location>
+		<location id="id1" x="-738" y="-408">
+			<name x="-748" y="-442">Ready</name>
+		</location>
+		<location id="id2" x="-603" y="-476">
+			<name x="-613" y="-510">Caller</name>
+		</location>
+		<location id="id3" x="-603" y="-340">
+			<name x="-612" y="-331">Called</name>
+		</location>
+		<location id="id4" x="-450" y="-408">
+			<name x="-433" y="-416">exchangestate</name>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id1"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-578" y="-382">calltime &gt;= 60</label>
+			<label kind="synchronisation" x="-578" y="-365">endcall[id]?</label>
+			<nail x="-450" y="-340"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-552" y="-501">calltime &gt;= 60</label>
+			<label kind="synchronisation" x="-552" y="-518">endcall[getotherperson()]!</label>
+			<label kind="assignment" x="-441" y="-484">exchange(),
+busy = 0</label>
+			<nail x="-450" y="-476"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-662" y="-391">call[id]?</label>
+			<label kind="assignment" x="-772" y="-366">calltime = 0,
+setotherperson(id)</label>
+			<nail x="-620" y="-340"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="select" x="-773" y="-586">caller : person_t</label>
+			<label kind="guard" x="-773" y="-561">caller != id &amp;&amp;
+scenario(selector,caller)</label>
+			<label kind="synchronisation" x="-671" y="-450">call[caller]!</label>
+			<label kind="assignment" x="-773" y="-510">calltime = 0,
+setotherperson(caller),
+busy = 1</label>
+			<nail x="-620" y="-476"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-824" y="-425">create(),
+settotaltime()</label>
+		</transition>
+	</template>
+	<system>// List one or more processes to be composed into a system.
+system Person;
+
+</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; verifyConfig()</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

@@ -1,0 +1,794 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+
+const int N = 500;
+const int D = 30;
+const int d = 20;
+const int V = 301;
+typedef int[0,N-1] id_t;
+
+broadcast chan rec[N], f;
+broadcast chan w[N];</declaration>
+	<template>
+		<name x="5" y="5">NodeAlt</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock x, y;</declaration>
+		<location id="id0" x="32" y="0">
+			<label kind="invariant" x="-24" y="-8">x&lt;=D</label>
+		</location>
+		<location id="id1" x="160" y="-64">
+			<label kind="invariant" x="150" y="-49">x&lt;=D</label>
+		</location>
+		<location id="id2" x="-96" y="-64">
+			<label kind="invariant" x="-106" y="-49">x&lt;=D</label>
+		</location>
+		<location id="id3" x="32" y="-128">
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="216" y="-80">rec[id]?</label>
+			<nail x="208" y="-32"/>
+			<nail x="208" y="-104"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-192" y="-72">rec[id]?</label>
+			<nail x="-144" y="-32"/>
+			<nail x="-144" y="-96"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="8" y="48">rec[id]?</label>
+			<nail x="0" y="48"/>
+			<nail x="64" y="48"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="96" y="-120">w[id]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-120" y="-136">y&gt;d</label>
+			<label kind="synchronisation" x="-120" y="-120">rec[(id+1)%N]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-72" y="-40">w[id]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="80" y="-24">y&gt;d</label>
+			<label kind="synchronisation" x="80" y="-8">rec[(id+1)%N]!</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-16" y="-80">rec[id]?</label>
+			<label kind="assignment" x="0" y="-64">x=0,
+y=0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Node</name>
+		<parameter>const id_t id</parameter>
+		<declaration>// Place local declarations here.
+clock x, y;</declaration>
+		<location id="id4" x="32" y="0">
+			<label kind="invariant" x="-24" y="-8">x&lt;=D</label>
+		</location>
+		<location id="id5" x="160" y="-64">
+			<label kind="invariant" x="150" y="-49">x&lt;=D</label>
+		</location>
+		<location id="id6" x="-96" y="-64">
+			<label kind="invariant" x="-106" y="-49">x&lt;=D</label>
+		</location>
+		<location id="id7" x="32" y="-128">
+		</location>
+		<init ref="id7"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="216" y="-80">rec[id]?</label>
+			<nail x="208" y="-32"/>
+			<nail x="208" y="-104"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-192" y="-72">rec[id]?</label>
+			<nail x="-144" y="-32"/>
+			<nail x="-144" y="-96"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="8" y="48">rec[id]?</label>
+			<nail x="0" y="48"/>
+			<nail x="64" y="48"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id5"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="96" y="-120">w[id]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-120" y="-136">y&gt;d</label>
+			<label kind="synchronisation" x="-120" y="-120">rec[(id+1)%N]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id4"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-72" y="-40">w[id]!</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="80" y="-24">y&gt;d</label>
+			<label kind="synchronisation" x="80" y="-8">rec[(id+1)%N]!</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-16" y="-80">rec[id]?</label>
+			<label kind="assignment" x="0" y="-64">x=0,
+y=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Spec</name>
+		<parameter>const id_t id</parameter>
+		<declaration>clock z;</declaration>
+		<location id="id8" x="-224" y="-96">
+			<label kind="invariant" x="-200" y="-104">z&lt;=(N+1)*D - V</label>
+		</location>
+		<init ref="id8"/>
+		<transition controllable="false">
+			<source ref="id8"/>
+			<target ref="id8"/>
+			<label kind="select" x="-320" y="-144">e:id_t</label>
+			<label kind="guard" x="-320" y="-128">e!=id</label>
+			<label kind="synchronisation" x="-312" y="-112">w[e]!</label>
+			<nail x="-280" y="-128"/>
+			<nail x="-280" y="-72"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id8"/>
+			<target ref="id8"/>
+			<label kind="select" x="-256" y="-192">e:id_t</label>
+			<label kind="synchronisation" x="-256" y="-176">rec[e]!</label>
+			<nail x="-272" y="-144"/>
+			<nail x="-184" y="-144"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id8"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-248" y="-40">w[id]!</label>
+			<label kind="assignment" x="-248" y="-24">z=0</label>
+			<nail x="-272" y="-40"/>
+			<nail x="-176" y="-40"/>
+		</transition>
+	</template>
+	<template>
+		<name>SpecComplement</name>
+		<parameter>const id_t id</parameter>
+		<declaration>clock z;</declaration>
+		<location id="id9" x="-221" y="-93">
+			<name x="-231" y="-127">Init</name>
+			<label kind="exponentialrate" x="-226" y="-82">1</label>
+		</location>
+		<location id="id10" x="-85" y="-93">
+			<name x="-102" y="-76">Error</name>
+		</location>
+		<init ref="id9"/>
+		<transition controllable="false">
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-195" y="-93">z &gt; (N+1)*D - V</label>
+			<label kind="synchronisation" x="-153" y="-119">f!</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id9"/>
+			<label kind="select" x="-323" y="-127">e:id_t</label>
+			<label kind="guard" x="-323" y="-110">e!=id</label>
+			<label kind="synchronisation" x="-323" y="-93">w[e]?</label>
+			<nail x="-277" y="-125"/>
+			<nail x="-277" y="-69"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id9"/>
+			<label kind="select" x="-238" y="-178">e:id_t</label>
+			<label kind="synchronisation" x="-238" y="-161">rec[e]?</label>
+			<nail x="-269" y="-141"/>
+			<nail x="-181" y="-141"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-245" y="-37">w[id]?</label>
+			<label kind="assignment" x="-243" y="-22">z=0</label>
+			<nail x="-269" y="-37"/>
+			<nail x="-173" y="-37"/>
+		</transition>
+	</template>
+	<system>// Nodes .. N0 has been instantiated so that it is ready to work
+// pass on token
+N0 := NodeAlt(0);
+N1 := Node(1);
+N2 := Node(2);
+N3 := Node(3);
+N4 := Node(4);
+N5 := Node(5);
+N6 := Node(6);
+N7 := Node(7);
+N8 := Node(8);
+N9 := Node(9);
+N10 := Node(10);
+N11 := Node(11);
+N12 := Node(12);
+N13 := Node(13);
+N14 := Node(14);
+N15 := Node(15);
+N16 := Node(16);
+N17 := Node(17);
+N18 := Node(18);
+N19 := Node(19);
+N20 := Node(20);
+N21 := Node(21);
+N22 := Node(22);
+N23 := Node(23);
+N24 := Node(24);
+N25 := Node(25);
+N26 := Node(26);
+N27 := Node(27);
+N28 := Node(28);
+N29 := Node(29);
+N30 := Node(30);
+N31 := Node(31);
+N32 := Node(32);
+N33 := Node(33);
+N34 := Node(34);
+N35 := Node(35);
+N36 := Node(36);
+N37 := Node(37);
+N38 := Node(38);
+N39 := Node(39);
+N40 := Node(40);
+N41 := Node(41);
+N42 := Node(42);
+N43 := Node(43);
+N44 := Node(44);
+N45 := Node(45);
+N46 := Node(46);
+N47 := Node(47);
+N48 := Node(48);
+N49 := Node(49);
+N50 := Node(50);
+N51 := Node(51);
+N52 := Node(52);
+N53 := Node(53);
+N54 := Node(54);
+N55 := Node(55);
+N56 := Node(56);
+N57 := Node(57);
+N58 := Node(58);
+N59 := Node(59);
+N60 := Node(60);
+N61 := Node(61);
+N62 := Node(62);
+N63 := Node(63);
+N64 := Node(64);
+N65 := Node(65);
+N66 := Node(66);
+N67 := Node(67);
+N68 := Node(68);
+N69 := Node(69);
+N70 := Node(70);
+N71 := Node(71);
+N72 := Node(72);
+N73 := Node(73);
+N74 := Node(74);
+N75 := Node(75);
+N76 := Node(76);
+N77 := Node(77);
+N78 := Node(78);
+N79 := Node(79);
+N80 := Node(80);
+N81 := Node(81);
+N82 := Node(82);
+N83 := Node(83);
+N84 := Node(84);
+N85 := Node(85);
+N86 := Node(86);
+N87 := Node(87);
+N88 := Node(88);
+N89 := Node(89);
+N90 := Node(90);
+N91 := Node(91);
+N92 := Node(92);
+N93 := Node(93);
+N94 := Node(94);
+N95 := Node(95);
+N96 := Node(96);
+N97 := Node(97);
+N98 := Node(98);
+N99 := Node(99);
+N100 := Node(100);
+N101 := Node(101);
+N102 := Node(102);
+N103 := Node(103);
+N104 := Node(104);
+N105 := Node(105);
+N106 := Node(106);
+N107 := Node(107);
+N108 := Node(108);
+N109 := Node(109);
+N110 := Node(110);
+N111 := Node(111);
+N112 := Node(112);
+N113 := Node(113);
+N114 := Node(114);
+N115 := Node(115);
+N116 := Node(116);
+N117 := Node(117);
+N118 := Node(118);
+N119 := Node(119);
+N120 := Node(120);
+N121 := Node(121);
+N122 := Node(122);
+N123 := Node(123);
+N124 := Node(124);
+N125 := Node(125);
+N126 := Node(126);
+N127 := Node(127);
+N128 := Node(128);
+N129 := Node(129);
+N130 := Node(130);
+N131 := Node(131);
+N132 := Node(132);
+N133 := Node(133);
+N134 := Node(134);
+N135 := Node(135);
+N136 := Node(136);
+N137 := Node(137);
+N138 := Node(138);
+N139 := Node(139);
+N140 := Node(140);
+N141 := Node(141);
+N142 := Node(142);
+N143 := Node(143);
+N144 := Node(144);
+N145 := Node(145);
+N146 := Node(146);
+N147 := Node(147);
+N148 := Node(148);
+N149 := Node(149);
+N150 := Node(150);
+N151 := Node(151);
+N152 := Node(152);
+N153 := Node(153);
+N154 := Node(154);
+N155 := Node(155);
+N156 := Node(156);
+N157 := Node(157);
+N158 := Node(158);
+N159 := Node(159);
+N160 := Node(160);
+N161 := Node(161);
+N162 := Node(162);
+N163 := Node(163);
+N164 := Node(164);
+N165 := Node(165);
+N166 := Node(166);
+N167 := Node(167);
+N168 := Node(168);
+N169 := Node(169);
+N170 := Node(170);
+N171 := Node(171);
+N172 := Node(172);
+N173 := Node(173);
+N174 := Node(174);
+N175 := Node(175);
+N176 := Node(176);
+N177 := Node(177);
+N178 := Node(178);
+N179 := Node(179);
+N180 := Node(180);
+N181 := Node(181);
+N182 := Node(182);
+N183 := Node(183);
+N184 := Node(184);
+N185 := Node(185);
+N186 := Node(186);
+N187 := Node(187);
+N188 := Node(188);
+N189 := Node(189);
+N190 := Node(190);
+N191 := Node(191);
+N192 := Node(192);
+N193 := Node(193);
+N194 := Node(194);
+N195 := Node(195);
+N196 := Node(196);
+N197 := Node(197);
+N198 := Node(198);
+N199 := Node(199);
+N200 := Node(200);
+N201 := Node(201);
+N202 := Node(202);
+N203 := Node(203);
+N204 := Node(204);
+N205 := Node(205);
+N206 := Node(206);
+N207 := Node(207);
+N208 := Node(208);
+N209 := Node(209);
+N210 := Node(210);
+N211 := Node(211);
+N212 := Node(212);
+N213 := Node(213);
+N214 := Node(214);
+N215 := Node(215);
+N216 := Node(216);
+N217 := Node(217);
+N218 := Node(218);
+N219 := Node(219);
+N220 := Node(220);
+N221 := Node(221);
+N222 := Node(222);
+N223 := Node(223);
+N224 := Node(224);
+N225 := Node(225);
+N226 := Node(226);
+N227 := Node(227);
+N228 := Node(228);
+N229 := Node(229);
+N230 := Node(230);
+N231 := Node(231);
+N232 := Node(232);
+N233 := Node(233);
+N234 := Node(234);
+N235 := Node(235);
+N236 := Node(236);
+N237 := Node(237);
+N238 := Node(238);
+N239 := Node(239);
+N240 := Node(240);
+N241 := Node(241);
+N242 := Node(242);
+N243 := Node(243);
+N244 := Node(244);
+N245 := Node(245);
+N246 := Node(246);
+N247 := Node(247);
+N248 := Node(248);
+N249 := Node(249);
+N250 := Node(250);
+N251 := Node(251);
+N252 := Node(252);
+N253 := Node(253);
+N254 := Node(254);
+N255 := Node(255);
+N256 := Node(256);
+N257 := Node(257);
+N258 := Node(258);
+N259 := Node(259);
+N260 := Node(260);
+N261 := Node(261);
+N262 := Node(262);
+N263 := Node(263);
+N264 := Node(264);
+N265 := Node(265);
+N266 := Node(266);
+N267 := Node(267);
+N268 := Node(268);
+N269 := Node(269);
+N270 := Node(270);
+N271 := Node(271);
+N272 := Node(272);
+N273 := Node(273);
+N274 := Node(274);
+N275 := Node(275);
+N276 := Node(276);
+N277 := Node(277);
+N278 := Node(278);
+N279 := Node(279);
+N280 := Node(280);
+N281 := Node(281);
+N282 := Node(282);
+N283 := Node(283);
+N284 := Node(284);
+N285 := Node(285);
+N286 := Node(286);
+N287 := Node(287);
+N288 := Node(288);
+N289 := Node(289);
+N290 := Node(290);
+N291 := Node(291);
+N292 := Node(292);
+N293 := Node(293);
+N294 := Node(294);
+N295 := Node(295);
+N296 := Node(296);
+N297 := Node(297);
+N298 := Node(298);
+N299 := Node(299);
+N300 := Node(300);
+N301 := Node(301);
+N302 := Node(302);
+N303 := Node(303);
+N304 := Node(304);
+N305 := Node(305);
+N306 := Node(306);
+N307 := Node(307);
+N308 := Node(308);
+N309 := Node(309);
+N310 := Node(310);
+N311 := Node(311);
+N312 := Node(312);
+N313 := Node(313);
+N314 := Node(314);
+N315 := Node(315);
+N316 := Node(316);
+N317 := Node(317);
+N318 := Node(318);
+N319 := Node(319);
+N320 := Node(320);
+N321 := Node(321);
+N322 := Node(322);
+N323 := Node(323);
+N324 := Node(324);
+N325 := Node(325);
+N326 := Node(326);
+N327 := Node(327);
+N328 := Node(328);
+N329 := Node(329);
+N330 := Node(330);
+N331 := Node(331);
+N332 := Node(332);
+N333 := Node(333);
+N334 := Node(334);
+N335 := Node(335);
+N336 := Node(336);
+N337 := Node(337);
+N338 := Node(338);
+N339 := Node(339);
+N340 := Node(340);
+N341 := Node(341);
+N342 := Node(342);
+N343 := Node(343);
+N344 := Node(344);
+N345 := Node(345);
+N346 := Node(346);
+N347 := Node(347);
+N348 := Node(348);
+N349 := Node(349);
+N350 := Node(350);
+N351 := Node(351);
+N352 := Node(352);
+N353 := Node(353);
+N354 := Node(354);
+N355 := Node(355);
+N356 := Node(356);
+N357 := Node(357);
+N358 := Node(358);
+N359 := Node(359);
+N360 := Node(360);
+N361 := Node(361);
+N362 := Node(362);
+N363 := Node(363);
+N364 := Node(364);
+N365 := Node(365);
+N366 := Node(366);
+N367 := Node(367);
+N368 := Node(368);
+N369 := Node(369);
+N370 := Node(370);
+N371 := Node(371);
+N372 := Node(372);
+N373 := Node(373);
+N374 := Node(374);
+N375 := Node(375);
+N376 := Node(376);
+N377 := Node(377);
+N378 := Node(378);
+N379 := Node(379);
+N380 := Node(380);
+N381 := Node(381);
+N382 := Node(382);
+N383 := Node(383);
+N384 := Node(384);
+N385 := Node(385);
+N386 := Node(386);
+N387 := Node(387);
+N388 := Node(388);
+N389 := Node(389);
+N390 := Node(390);
+N391 := Node(391);
+N392 := Node(392);
+N393 := Node(393);
+N394 := Node(394);
+N395 := Node(395);
+N396 := Node(396);
+N397 := Node(397);
+N398 := Node(398);
+N399 := Node(399);
+N400 := Node(400);
+N401 := Node(401);
+N402 := Node(402);
+N403 := Node(403);
+N404 := Node(404);
+N405 := Node(405);
+N406 := Node(406);
+N407 := Node(407);
+N408 := Node(408);
+N409 := Node(409);
+N410 := Node(410);
+N411 := Node(411);
+N412 := Node(412);
+N413 := Node(413);
+N414 := Node(414);
+N415 := Node(415);
+N416 := Node(416);
+N417 := Node(417);
+N418 := Node(418);
+N419 := Node(419);
+N420 := Node(420);
+N421 := Node(421);
+N422 := Node(422);
+N423 := Node(423);
+N424 := Node(424);
+N425 := Node(425);
+N426 := Node(426);
+N427 := Node(427);
+N428 := Node(428);
+N429 := Node(429);
+N430 := Node(430);
+N431 := Node(431);
+N432 := Node(432);
+N433 := Node(433);
+N434 := Node(434);
+N435 := Node(435);
+N436 := Node(436);
+N437 := Node(437);
+N438 := Node(438);
+N439 := Node(439);
+N440 := Node(440);
+N441 := Node(441);
+N442 := Node(442);
+N443 := Node(443);
+N444 := Node(444);
+N445 := Node(445);
+N446 := Node(446);
+N447 := Node(447);
+N448 := Node(448);
+N449 := Node(449);
+N450 := Node(450);
+N451 := Node(451);
+N452 := Node(452);
+N453 := Node(453);
+N454 := Node(454);
+N455 := Node(455);
+N456 := Node(456);
+N457 := Node(457);
+N458 := Node(458);
+N459 := Node(459);
+N460 := Node(460);
+N461 := Node(461);
+N462 := Node(462);
+N463 := Node(463);
+N464 := Node(464);
+N465 := Node(465);
+N466 := Node(466);
+N467 := Node(467);
+N468 := Node(468);
+N469 := Node(469);
+N470 := Node(470);
+N471 := Node(471);
+N472 := Node(472);
+N473 := Node(473);
+N474 := Node(474);
+N475 := Node(475);
+N476 := Node(476);
+N477 := Node(477);
+N478 := Node(478);
+N479 := Node(479);
+N480 := Node(480);
+N481 := Node(481);
+N482 := Node(482);
+N483 := Node(483);
+N484 := Node(484);
+N485 := Node(485);
+N486 := Node(486);
+N487 := Node(487);
+N488 := Node(488);
+N489 := Node(489);
+N490 := Node(490);
+N491 := Node(491);
+N492 := Node(492);
+N493 := Node(493);
+N494 := Node(494);
+N495 := Node(495);
+N496 := Node(496);
+N497 := Node(497);
+N498 := Node(498);
+N499 := Node(499);
+
+// Overall specification claiming that w[i] will occur with a
+// minimal frequency
+SC := SpecComplement(0);
+
+// List one or more processes to be composed into a system.
+system	N0, N1, N2, N3, N4, N5, N6, N7, N8, N9, 
+	N10, N11, N12, N13, N14, N15, N16, N17, N18, N19, 
+	N20, N21, N22, N23, N24, N25, N26, N27, N28, N29, 
+	N30, N31, N32, N33, N34, N35, N36, N37, N38, N39, 
+	N40, N41, N42, N43, N44, N45, N46, N47, N48, N49, 
+	N50, N51, N52, N53, N54, N55, N56, N57, N58, N59, 
+	N60, N61, N62, N63, N64, N65, N66, N67, N68, N69, 
+	N70, N71, N72, N73, N74, N75, N76, N77, N78, N79, 
+	N80, N81, N82, N83, N84, N85, N86, N87, N88, N89, 
+	N90, N91, N92, N93, N94, N95, N96, N97, N98, N99, 
+	N100, N101, N102, N103, N104, N105, N106, N107, N108, N109, 
+	N110, N111, N112, N113, N114, N115, N116, N117, N118, N119, 
+	N120, N121, N122, N123, N124, N125, N126, N127, N128, N129, 
+	N130, N131, N132, N133, N134, N135, N136, N137, N138, N139, 
+	N140, N141, N142, N143, N144, N145, N146, N147, N148, N149, 
+	N150, N151, N152, N153, N154, N155, N156, N157, N158, N159, 
+	N160, N161, N162, N163, N164, N165, N166, N167, N168, N169, 
+	N170, N171, N172, N173, N174, N175, N176, N177, N178, N179, 
+	N180, N181, N182, N183, N184, N185, N186, N187, N188, N189, 
+	N190, N191, N192, N193, N194, N195, N196, N197, N198, N199, 
+	N200, N201, N202, N203, N204, N205, N206, N207, N208, N209, 
+	N210, N211, N212, N213, N214, N215, N216, N217, N218, N219, 
+	N220, N221, N222, N223, N224, N225, N226, N227, N228, N229, 
+	N230, N231, N232, N233, N234, N235, N236, N237, N238, N239, 
+	N240, N241, N242, N243, N244, N245, N246, N247, N248, N249, 
+	N250, N251, N252, N253, N254, N255, N256, N257, N258, N259, 
+	N260, N261, N262, N263, N264, N265, N266, N267, N268, N269, 
+	N270, N271, N272, N273, N274, N275, N276, N277, N278, N279, 
+	N280, N281, N282, N283, N284, N285, N286, N287, N288, N289, 
+	N290, N291, N292, N293, N294, N295, N296, N297, N298, N299, 
+	N300, N301, N302, N303, N304, N305, N306, N307, N308, N309, 
+	N310, N311, N312, N313, N314, N315, N316, N317, N318, N319, 
+	N320, N321, N322, N323, N324, N325, N326, N327, N328, N329, 
+	N330, N331, N332, N333, N334, N335, N336, N337, N338, N339, 
+	N340, N341, N342, N343, N344, N345, N346, N347, N348, N349, 
+	N350, N351, N352, N353, N354, N355, N356, N357, N358, N359, 
+	N360, N361, N362, N363, N364, N365, N366, N367, N368, N369, 
+	N370, N371, N372, N373, N374, N375, N376, N377, N378, N379, 
+	N380, N381, N382, N383, N384, N385, N386, N387, N388, N389, 
+	N390, N391, N392, N393, N394, N395, N396, N397, N398, N399, 
+	N400, N401, N402, N403, N404, N405, N406, N407, N408, N409, 
+	N410, N411, N412, N413, N414, N415, N416, N417, N418, N419, 
+	N420, N421, N422, N423, N424, N425, N426, N427, N428, N429, 
+	N430, N431, N432, N433, N434, N435, N436, N437, N438, N439, 
+	N440, N441, N442, N443, N444, N445, N446, N447, N448, N449, 
+	N450, N451, N452, N453, N454, N455, N456, N457, N458, N459, 
+	N460, N461, N462, N463, N464, N465, N466, N467, N468, N469, 
+	N470, N471, N472, N473, N474, N475, N476, N477, N478, N479, 
+	N480, N481, N482, N483, N484, N485, N486, N487, N488, N489, 
+	N490, N491, N492, N493, N494, N495, N496, N497, N498, N499, 
+	SC;
+</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; SC.Error</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

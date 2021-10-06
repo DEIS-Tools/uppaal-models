@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>clock globalclock;
+
+const int NGirls = 6;
+
+typedef int[0,NGirls-1] girls_id_type;
+
+int GVarXSecrets[NGirls];
+int GVarXId;
+bool GVarXBusy = false;
+
+int GVarYSecrets[NGirls];
+int GVarYId;
+bool GVarYBusy = false;
+
+int amountOfCalls = 0;
+int maxCalls = 6;
+bool didNotExceedMaxCalls = true;
+
+
+chan call[NGirls], hangup[NGirls];
+
+void incrementCalls(){
+    amountOfCalls++;
+    if(amountOfCalls &gt; maxCalls){
+        didNotExceedMaxCalls = false;
+    }
+}</declaration>
+	<template>
+		<name x="5" y="5">GossipGirl</name>
+		<parameter>const girls_id_type id</parameter>
+		<declaration>clock x;
+
+int secrets[NGirls];
+int[0, NGirls] secretsLen;
+
+int knowsMySecretsList[NGirls];
+int[0, NGirls] knowsMySecretsListLen;
+
+bool knowsEverything = false;
+bool knowsConfig = false;
+
+girls_id_type partner;
+
+void initGirl(){
+    int i = 0;
+    while(i &lt; NGirls){
+        secrets[i] = - 1;
+        i++;
+    }
+    i = 0;
+    while(i &lt; NGirls){
+        knowsMySecretsList[i] = - 1;
+        i++;
+    }
+    secrets[0] = id;    
+    secretsLen++;
+}
+
+void addSecrects(int newSecrets[NGirls])
+{
+    int i = 0;
+    while(i &lt; NGirls){
+        int j = 0;
+        bool found = false;
+        while(j != secretsLen){
+            if (secrets[j] == newSecrets[i]){
+                found = true;
+            }
+            j++;
+        }
+        if(!found &amp;&amp; newSecrets[i] &gt;= 0){
+            secrets[secretsLen++] = newSecrets[i];
+            knowsMySecretsListLen = 0;
+        }
+        i++;
+    }
+    if(secretsLen == NGirls){
+        knowsEverything = true;
+    }
+    if(secretsLen == NGirls-2){
+        knowsConfig = true;
+    }
+    else
+    {
+        knowsConfig = false;
+    }
+}
+
+bool knowsMySecrets(girls_id_type gid){
+    int i = 0;
+    while (i &lt; knowsMySecretsListLen){
+        if(gid == knowsMySecretsList[i]){
+            return true;
+        }
+        i++;
+    }
+    return false;
+}
+
+void sharedMySecrets(girls_id_type gid){
+    knowsMySecretsList[knowsMySecretsListLen++] = gid;    
+}</declaration>
+		<location id="id0" x="-2057" y="-595">
+		</location>
+		<location id="id1" x="-2057" y="-782">
+			<label kind="invariant" x="-2031" y="-790">x&lt;=60</label>
+		</location>
+		<location id="id2" x="-2227" y="-595">
+		</location>
+		<location id="id3" x="-2227" y="-781">
+		</location>
+		<location id="id4" x="-2583" y="-679">
+			<name x="-2643" y="-714">UsingFacebook</name>
+		</location>
+		<location id="id5" x="-2727" y="-679">
+			<name x="-2754" y="-714">Sleeping</name>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-2048" y="-578">hangup[id]?</label>
+			<nail x="-2057" y="-416"/>
+			<nail x="-2584" y="-425"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-2048" y="-901">x == 60</label>
+			<label kind="synchronisation" x="-2048" y="-884">hangup[partner]!</label>
+			<nail x="-2057" y="-960"/>
+			<nail x="-2584" y="-960"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-2210" y="-654">addSecrects(GVarXSecrets),
+sharedMySecrets(GVarXId),
+GVarXBusy = false</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-2210" y="-773">addSecrects(GVarYSecrets),
+sharedMySecrets(GVarYId),
+partner = GVarYId,
+GVarYBusy = false,
+x=0</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="select" x="-2448" y="-578">cid: girls_id_type</label>
+			<label kind="guard" x="-2448" y="-544">GVarYBusy == false &amp;&amp;
+knowsMySecrets(cid) == false</label>
+			<label kind="synchronisation" x="-2448" y="-561">call[cid]?</label>
+			<label kind="assignment" x="-2448" y="-510">GVarYSecrets = secrets,
+GVarYId = id,
+GVarYBusy = true</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="assignment" x="-2709" y="-671">initGirl()</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-2431" y="-875">GVarXBusy == false &amp;&amp;
+secretsLen != NGirls</label>
+			<label kind="synchronisation" x="-2431" y="-892">call[id]!</label>
+			<label kind="assignment" x="-2431" y="-824">GVarXSecrets = secrets,
+GVarXId = id,
+GVarXBusy = true,
+incrementCalls()</label>
+		</transition>
+	</template>
+	<system>system GossipGirl;</system>
+	<queries>
+		<query>
+			<formula>E&lt;&gt; (forall (i : girls_id_type) GossipGirl(i).knowsConfig)</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
