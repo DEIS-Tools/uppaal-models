@@ -18,4 +18,4 @@ Uppaal SMC model of CSMA/CA protocol: [csma-ca.xml](csma-ca.xml)
 
 Image from the protocol model:
 
-![CSMA/CA protocol in UPPAAL](csma-ca.svgz)
+![CSMA/CA protocol in UPPAAL](csma-ca.svg)
