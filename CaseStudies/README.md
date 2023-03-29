@@ -11,7 +11,7 @@ Peter G. Jensen, Kenneth Y. Jørgensen, Kim G. Larsen, Marius Mikučionis, Marco
 _**[Schedulability of Herschel-Planck Revisited Using Statistical Model Checking](HerschelPlanck2012)**_,
 Alexandre David, Kim G. Larsen, Axel Legay and Marius Mikučionis. *Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2012)*, October 2012, Springer-Verlag Berlin Heidelberg. ISBN 978-3-642-34032-1, 978-3-642-34031-4. [[DOI](https://doi.org/10.1007/978-3-642-34032-1_28)]
 
-_**[Computing Nash Equilibrium in Wireless Ad Hoc Networks: A Simulation-Based Approach](CSMA-CA-2012)**_,
+_**[Computing Nash Equilibrium in Wireless Ad Hoc Networks: A Simulation-Based Approach](CSMA-CA-IWIGP2012)**_,
 Peter E. Bulychev, Alexandre David, Kim G. Larsen, Axel Legay, Marius Mikučionis. *2nd Internation Workshop on Interactions, Games and Protocols (IWIGP 2012)*, March 25, 2012, Electronic Proceedings in Theoretical Computer Science (EPTCS). [[DOI](https://doi.org/10.4204/EPTCS.78.1)]
 
 _**[Schedulability Analysis of Herschel/Planck Software Using Uppaal](HerschelPlanck2011)**_
