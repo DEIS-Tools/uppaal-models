@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_1.dtd'><nta><declaration>// Place global declarations here.
+//const int N=10; // CORRECT
+const int N=6; // INCORRECT
+
+clock time;
+
+typedef int[0,N-1] id_t;
+
+broadcast chan ready;
+broadcast chan go;
+
+broadcast chan a;
+
+bool isTransmitting[N];
+
+const int macMaxCSMABackoffs = 4; // CORRECT
+//const int macMaxCSMABackoffs = 1; // INCORRECT
+
+// approved consts
+const int aUnitBackoffPeriod = 20;
+const int CCA_duration = 8; // CORRECT
+const int aTurnaroundTime = 12; // CORRECT
+const int ACK_time = 88;
+const int aMaxFrameRetries = 3; // CORRECT
+
+const int macMinBE = 3; // CORRECT
+const int macMaxBE = 5; // CORRECT
+
+//const int macMinBE = 0; // INCORRECT
+//const int macMaxBE = 0; // INCORRECT
+
+//const int minDataLength = 15*8; // CORRECT
+//const int maxDataLength = 6*8; // CORRECT
+const int data_length = 35*8; // CORRECT 25*8 - is for header 
+//const int data_length = maxDataLength;
+
+//const int data_length = 3; // INCORRECT
+//const int aTurnaroundTime = 2; // INCORRECT
+//const int CCA_duration = 10; // INCORRECT
+
+//const int max_waking_delay=6000;  for sound speed is 300 m/s
+//const int max_waking_delay=10;  //CORRECT for something else
+const int max_waking_delay=1000;  //CORRECT for something else
+//const int max_waking_delay=aTurnaroundTime;  //CORRECT to show that is_disrete_waiting qualitatively affects the model // exist
+//const int max_waking_delay=aTurnaroundTime + data_length + CCA_duration;  //CORRECT to show that is_disrete_waiting qualitatively affects the model // forall
+
+const int aMinLIFSPeriod = 40; // CORRECT
+
+const bool is_discrete_waiting = false;
+const bool acknowledgment_supported = true;
+const bool recover_from_failures = false;
+
+const int wait_after_failure = 0;</declaration><template><name x="5" y="5">Process</name><parameter>const id_t id</parameter><declaration>// Place local declarations here.
+
+int be;
+int nb; 
+int nretries;
+
+int backoff;
+
+int waking_delay;
+
+
+
+clock x;
+
+bool cca_passed := false;
+bool collision_occured := false;
+
+bool is_busy() {
+    int i;
+    for(i=0; i&lt;N; i++) {
+        if (isTransmitting[i])
+            return true;
+    }
+    return false;
+}
+
+void start_sending() {
+    isTransmitting[id] = true;
+}
+
+void finish_sending() {
+    isTransmitting[id] = false;
+}
+
+bool is_conflict() {
+    bool f = false;
+    int i;
+    for(i=0; i&lt;N; i++) {
+        if (isTransmitting[i]) {
+            if (f)
+                return true;
+            else 
+                f = true;
+        }
+    }
+    return false;
+}</declaration><location id="id0" x="-2352" y="64"><label kind="invariant" x="-2344" y="16">energy' == RX_Power
+x&lt;=ACK_Time</label></location><location id="id1" x="-2560" y="-200"><urgent/></location><location id="id2" x="-2264" y="-200"><name x="-2264" y="-184">FAILURE</name></location><location id="id3" x="-1928" y="-200"><urgent/></location><location id="id4" x="-2704" y="-288"><label kind="invariant" x="-2712" y="-328">x&lt;=MaxWakingDelay</label></location><location id="id5" x="-2560" y="-40"><label kind="invariant" x="-2544" y="-72">x&lt;=MinLIFS</label></location><location id="id6" x="-2560" y="-288"><urgent/></location><location id="id7" x="-2336" y="-128"><name x="-2416" y="-152">SUCCESS</name></location><location id="id8" x="-2336" y="-40"><urgent/></location><location id="id9" x="-2264" y="-360"><urgent/></location><location id="id10" x="-1928" y="64"><label kind="invariant" x="-1920" y="32">x&lt;=TurnAround</label></location><location id="id11" x="-2160" y="-40"><label kind="invariant" x="-2152" y="-72">x&lt;=ACK_time</label></location><location id="id12" x="-2160" y="-200"><label kind="invariant" x="-2232" y="-232">x&lt;=aTurnaroundTime</label></location><location id="id13" x="-1928" y="-360"><name x="-2064" y="-392">TRANSMIT_DATA</name><label kind="invariant" x="-2064" y="-376">x&lt;=FrameLength</label></location><location id="id14" x="-1928" y="-488"><name x="-2032" y="-512">VULNERABLE</name><label kind="invariant" x="-1912" y="-512">energy' == TX_Power
+x&lt;=TurnAround</label></location><location id="id15" x="-2264" y="-488"><name x="-2312" y="-512">CCA</name><label kind="invariant" x="-2256" y="-480">energy' == RX_Power
+x&lt;=CCA</label></location><location id="id16" x="-2560" y="-488"><name x="-2680" y="-512">WAIT_BACKOFF</name><label kind="invariant" x="-2744" y="-488">x&lt;=backoff*UnitBackoff</label></location><location id="id17" x="-2560" y="-360"><urgent/></location><init ref="id4"/><transition><source ref="id0"/><target ref="id5"/><label kind="guard" x="-2488" y="40">x==ACK_Time</label><nail x="-2560" y="64"/></transition><transition><source ref="id1"/><target ref="id2"/><label kind="guard" x="-2536" y="-200">nretries == (MaxFrameRetries-1)</label><nail x="-2360" y="-200"/></transition><transition><source ref="id1"/><target ref="id6"/><label kind="guard" x="-2552" y="-240">nretries &lt; (MaxFrameRetries-1)</label><label kind="assignment" x="-2552" y="-224">nretries = nretries + 1</label></transition><transition><source ref="id4"/><target ref="id6"/></transition><transition><source ref="id5"/><target ref="id1"/><label kind="guard" x="-2552" y="-176">x==MinLIFS</label></transition><transition><source ref="id6"/><target ref="id17"/><label kind="assignment" x="-2552" y="-336">be:=macMinBE, nb:=0</label></transition><transition><source ref="id15"/><target ref="id15"/><label kind="synchronisation" x="-2304" y="-592">busy?</label><label kind="assignment" x="-2304" y="-576">cca_passed:=false</label><nail x="-2304" y="-552"/><nail x="-2216" y="-552"/></transition><transition><source ref="id11"/><target ref="id8"/><label kind="guard" x="-2304" y="-72">x==ACK</label><label kind="assignment" x="-2304" y="-56">nt:=nt-1</label></transition><transition><source ref="id9"/><target ref="id2"/><label kind="guard" x="-2256" y="-328">nb == MaxNB</label></transition><transition><source ref="id9"/><target ref="id17"/><label kind="guard" x="-2544" y="-400">nb &lt; MaxNB</label><label kind="assignment" x="-2544" y="-384">be:= (be+1 &gt; MaxBE ? MaxBE: be+1)</label></transition><transition><source ref="id11"/><target ref="id11"/><label kind="synchronisation" x="-2144" y="-32">busy?</label><label kind="assignment" x="-2144" y="-16">collision_occured:=true</label><nail x="-2184" y="8"/><nail x="-2136" y="8"/><nail x="-2152" y="-16"/></transition><transition><source ref="id3"/><target ref="id12"/><label kind="guard" x="-2080" y="-224">!collision_occured</label></transition><transition><source ref="id10"/><target ref="id0"/><label kind="guard" x="-2056" y="32">x == TurnAround</label><label kind="assignment" x="-2056" y="48">x:=0</label></transition><transition><source ref="id3"/><target ref="id10"/><label kind="guard" x="-1920" y="-176">collision_occured</label><nail x="-1928" y="-64"/></transition><transition><source ref="id13"/><target ref="id13"/><label kind="synchronisation" x="-1864" y="-384">busy?</label><label kind="assignment" x="-1864" y="-368">collision_occured:=true</label><nail x="-1872" y="-392"/><nail x="-1872" y="-320"/></transition><transition><source ref="id8"/><target ref="id7"/><label kind="guard" x="-2328" y="-96">!collision_occured</label><nail x="-2336" y="-72"/></transition><transition><source ref="id8"/><target ref="id5"/><label kind="guard" x="-2480" y="-32">collision_occured</label><label kind="assignment" x="-2408" y="-64">x:=0</label></transition><transition><source ref="id12"/><target ref="id11"/><label kind="guard" x="-2152" y="-176">x==TurnAround</label><label kind="synchronisation" x="-2152" y="-120">busy!</label><label kind="assignment" x="-2152" y="-160">collision_occured:=(nt&gt;0)
+nt:=nt+1
+x:=0</label></transition><transition><source ref="id13"/><target ref="id3"/><label kind="guard" x="-1920" y="-312">x==FrameLength</label><label kind="assignment" x="-1920" y="-296">x:=0
+nt:=nt-1</label></transition><transition><source ref="id14"/><target ref="id13"/><label kind="guard" x="-1920" y="-472">x==TurnAround</label><label kind="synchronisation" x="-2184" y="-520">busy!</label><label kind="assignment" x="-1920" y="-456">x:=0
+collision_occured:=(nt&gt;0)
+nt:=nt+1</label></transition><transition><source ref="id15"/><target ref="id14"/><label kind="guard" x="-2184" y="-536">(x==CCA) &amp;&amp; (cca_passed)</label><label kind="assignment" x="-2184" y="-504">x:=0</label></transition><transition><source ref="id15"/><target ref="id9"/><label kind="guard" x="-2264" y="-448">(x == CCA_duration) &amp;&amp; !cca_passed</label><label kind="assignment" x="-2264" y="-432">nb := nb+1</label></transition><transition><source ref="id16"/><target ref="id15"/><label kind="guard" x="-2512" y="-544">(x==backoff*UnitBackoff)</label><label kind="assignment" x="-2512" y="-528">cca_passed:=(nt==0)
+x:=0</label></transition><transition><source ref="id17"/><target ref="id16"/><label kind="assignment" x="-2552" y="-448">backoff := random(0..pow(2,be))
+x:=0</label></transition></template><system>// Place template instantiations here.
+
+system Process;</system></nta>
