@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.5//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_5.dtd'>
+<nta>
+	<declaration>/**
+A model of the gossip protocol with dynamic call duration.
+
+N nodes each has a secret.
+They can call each other and exchange their secrets.
+The duration of the call is the symmetric difference of their known secrets plus one.
+*/
+
+const int N = 7;
+typedef int[0,N-1] id_t;
+const int ALL_SECRETS = (1 &lt;&lt; N) - 1;
+typedef int[0,ALL_SECRETS] Secrets;
+
+chan call[ALL_SECRETS+1][ALL_SECRETS+1];
+</declaration>
+	<template>
+		<name x="5" y="5">Node</name>
+		<parameter>id_t i</parameter>
+		<declaration>
+clock x;
+Secrets secrets = 0;
+
+int duration;
+
+int symdiff(Secrets a, Secrets b) {
+    int count = 0;
+    Secrets bstr = a^b;
+    for (j : id_t) {
+        count += (bstr &gt;&gt; j) &amp; 1;
+    }
+    return count;
+}
+
+int numSecrets() {
+    return symdiff(secrets, 0);
+}</declaration>
+		<location id="id0" x="-705" y="-229">
+			<name x="-730" y="-212">InCall</name>
+		</location>
+		<location id="id1" x="-705" y="-331">
+			<name x="-730" y="-365">Waiting</name>
+		</location>
+		<location id="id2" x="-875" y="-331">
+			<committed/>
+		</location>
+		<init ref="id2"/>
+		<transition id="id3">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="select" x="-535" y="-212">other_secrets : Secrets</label>
+			<label kind="synchronisation" x="-535" y="-195">call[other_secrets][secrets]?</label>
+			<label kind="assignment" x="-535" y="-178">duration:=symdiff(secrets,other_secrets)+1,
+secrets:=secrets|other_secrets,
+x:=0</label>
+			<nail x="-561" y="-323"/>
+			<nail x="-561" y="-127"/>
+		</transition>
+		<transition id="id4">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-697" y="-297">x&gt;=duration</label>
+			<label kind="assignment" x="-697" y="-280">duration:=0</label>
+		</transition>
+		<transition id="id5">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="select" x="-534" y="-323">other_secrets : Secrets</label>
+			<label kind="synchronisation" x="-535" y="-306">call[secrets][other_secrets]!</label>
+			<label kind="assignment" x="-535" y="-289">duration:=symdiff(secrets,other_secrets)+1,
+secrets:=secrets|other_secrets,
+x:=0</label>
+			<nail x="-552" y="-331"/>
+			<nail x="-552" y="-229"/>
+		</transition>
+		<transition id="id6">
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-858" y="-323">secrets:=(1&lt;&lt;i)</label>
+		</transition>
+	</template>
+	<system>
+system Node;
+</system>
+	<queries>
+		<query>
+			<formula/>
+			<comment/>
+		</query>
+	</queries>
+</nta>
