@@ -24,7 +24,7 @@ In the study, we have primarily been measuring the state space size using the `f
 The articial example from [S. Lund et al. 2021](https://link.springer.com/chapter/10.1007/978-3-030-85037-1_6), designed to showcase the issues of relying purely on type information for extrapolation in XTA.
 
 
-### TCP backoff protocol (TCP-*V*-*N*)
+### TCP Backoff Protocol (TCP-*V*-*N*)
 In this model, *N* clients estimates a congestion window based on how often their messages to the server is lost/denied.
 They limit their rate of messaging inverse proportionally to the size of the congestion window.
 Our experiments include both an additive-increase/muliplicative-decrease (AIMD) backoff protocol and a linear backoff protocol.
@@ -36,17 +36,17 @@ We use two variants of this model.
 In one variant, the duration of the call between two components is the union of their known secrets.
 In the other, the duration is the size of the symmetric difference of their known secrets plus one.
 
-### Firefly synchronization (firefly-*W*-*H*-*N*)
+### Firefly Synchronization (firefly-*W*-*H*-*N*)
 In this model, *N* fireflies lives on an *W* by *H* grid.
 A firefly blinks every *60 − t* seconds, where *t* is the number of times it has seen another firefly in the same cell blink at least 30 seconds after its own latest blink.
 Over time this results in the firelies blinking in synchronization.
 See https://ncase.me/fireflies/.
 
-### Leader election (Leader-*N*)
+### Leader Election (leader-*N*)
 In this model, N network nodes attempts to elect a leader by communicating witch each other.
 The timeout deadline is dynamically calculated based on the number of hops a message do.
 
-### Printing projects (Printing-*M*-*P*)
+### Printing Projects (printing-projects-*M*-*P*)
 In this model, *P* projects requires a varying number of pieces printed.
 Each piece has a different size and will therefore take different amount of time to print.
 There are *M* printers available.
