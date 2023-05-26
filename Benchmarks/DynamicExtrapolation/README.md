@@ -6,11 +6,11 @@ Nicolaj Ø. Jensen, Peter G. Jensen, Kim G. Larsen (2023). In: TBD
 ## Abstract
 
 Abstractions, such as extrapolation, ensure termination of timed automata model checking.
-However, such methods are normally only defined for classical timed automata, whereas modern tools like Uppaal take as input timed automata extended with discrete data and C-like language constructs (XTA) making classical extrapolation excessively imprecise if even applicable.
+However, such methods are normally only defined for classical timed automata, whereas modern tools like Uppaal take as input timed automata extended with discrete data and C-like language constructs (XTA) making classical extrapolation excessively overapproximating if even applicable.
 In this paper, we propose a new dynamic extrapolation techinque for XTAs which utilizes information from the immediate state of the search to find more precise extrapolation values.
 We determine which code snippets are relevant to obtain the extrapolation values ahead of verification using static analysis and then execute these dynamically during verification.
-We implement our novel extrapolation technique in Uppaal and find that it reduces the zone graph by up to 82% compared to a classic location-clock-based extrapolation.
-In the worst case, its overhead is 47% higher.
+We implement our novel extrapolation technique in Uppaal and find that it reduces the zone graph sizes by 34.7% overall compared to a classic location-clock-based extrapolation.
+The best case is an 82.7% reduction and the worst case is a surprising 8.2% increase.
 
 ## Models
 
