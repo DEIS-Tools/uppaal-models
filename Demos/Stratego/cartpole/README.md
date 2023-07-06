@@ -8,6 +8,9 @@ is widely used in testing RL techniques.
 ![cartpole-gif](./reinforcement-learning-cartpole-v0.gif)
 ([source][2])
 
+
+## Model description
+
 The model consists of an always moving cart that can either move left or
 right on a flat, horizontal surface. On top of the cart, a pole is balancing and
 the learning agent has to keep the pole standing upright by changing the
@@ -43,6 +46,29 @@ back to the Alive location. Otherwise, the agent is terminated, the system is
 reset and the death counter is increased by one.
 
 ![cartpole template](./imgs/cartpole-screenshot.png)
+
+
+## Training and evaluation
+
+For evaluation, we will start by getting UPPAAL Stratego to calculate the
+expected number of deaths when we apply random control. The query `E[<=10;1000]
+(max: CartPole.num_deaths)` estimates the maximal number of deaths over 10
+seconds on the basis of 1000 simulated runs. We see, that this estimation lies
+about 23, which indicates a pretty poor control strategy.
+
+We therefore train a strategy that has access to the aforementioned state
+variables and has the objective to minimize the number of deaths. The query
+`strategy StayAlive = minE (CartPole.num_deaths) [<=10] {} ->
+{CartPole.cart_pos, CartPole.cart_vel, CartPole.pole_ang, CartPole.pole_vel}:
+<> time >= 10` does the job.
+
+Now we can rerun the estimation query, but this time appending `under StayAlive`
+to it in order to utilize our newfound strategy. We now see a dramatically
+better performance as the estimated maximal number of deaths is less than
+0.01 (might vary a bit from each execution of the query)! This means that UPPAAL
+Stratego has done what every other RL technique worth its salt should be able to
+do: solve the cartpole problem!
+
 
 [1]: https://people.cs.aau.dk/~marius/stratego/
 [2]: https://tenor.com/view/reinforcement-learning-cartpole-v0-tensorflow-open-ai-gif-18474251
