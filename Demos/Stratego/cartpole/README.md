@@ -13,7 +13,7 @@ direction of the cart without letting it travel to far in either direction.
 The agent is handed control every 0.02 seconds and then has to decide in which
 direction to push the cart.
 
-[agent template](./imgs/agent-screenshot.png)
+![agent template](./imgs/agent-screenshot.png)
 
 The observable state space for the agent is 4-dimensional and consists of the 
 position and velocity of the cart, the angle of the pole and the velocity with
@@ -27,7 +27,7 @@ a set of functions which are described in detail in [the paper][3] by Florian,
 R. (2007). They are quite intricate and depends on the mass of the cart, the
 mass and length of the pole and the magnitude of the force that gets applied.
 
-[acceleration functions](./imgs/functions-screenshot.png)
+![acceleration functions](./imgs/functions-screenshot.png)
 
 Whenever the agent takes an action, the CartPole model visits the IsDead
 location, where there effectively happens a check for whether the agent has lost
@@ -37,7 +37,7 @@ pole is to low on the right. If none of these are true, the model transitions
 back to the Alive location. Otherwise, the agent is terminated, the system is
 reset and the death counter is increased by one.
 
-[cartpole template](./imgs/cartpole-screenshot.png)
+![cartpole template](./imgs/cartpole-screenshot.png)
 
 [1]: https://people.cs.aau.dk/~marius/stratego/
 [2]: https://tenor.com/view/reinforcement-learning-cartpole-v0-tensorflow-open-ai-gif-18474251
