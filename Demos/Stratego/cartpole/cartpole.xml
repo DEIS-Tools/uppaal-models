@@ -95,8 +95,8 @@ double cartAcc() {
 }</declaration>
 		<location id="id5" x="-229" y="-357">
 			<name x="-280" y="-400">Terminated</name>
-			<label kind="invariant" x="-340" y="-442">cart_pos' == 0 &amp;&amp; cart_vel'==0 &amp;&amp;
-pole_ang'==0 &amp;&amp; pole_vel'==0</label>
+			<label kind="invariant" x="-340" y="-442">cart_pos' == 0 &amp;&amp; cart_vel' == 0 &amp;&amp;
+pole_ang' == 0 &amp;&amp; pole_vel' == 0</label>
 			<committed/>
 		</location>
 		<location id="id6" x="-229" y="-17">
@@ -401,7 +401,7 @@ Mean estimate of displayed sample: 23.77 ± 0.16279 (95% CI)</comment>
 			<formula>strategy StayAlive = minE (CartPole.num_deaths) [&lt;=10] {} -&gt; {CartPole.cart_pos, CartPole.cart_vel, CartPole.pole_ang, CartPole.pole_vel}: &lt;&gt; time &gt;= 10</formula>
 			<comment>Train a strategy from a partially observable state space that minimizes the number of deaths over a 10 seconds run.
 Should find a strategy within a minute.</comment>
-			<result outcome="success" type="quality" timestamp="2023-07-06 11:08:18 +0200">
+			<result outcome="success" type="quality" timestamp="2023-07-06 13:49:22 +0200">
 			</result>
 		</query>
 		<query>
@@ -415,74 +415,74 @@ Should find a strategy within a minute.</comment>
 		<query>
 			<formula>E[&lt;=10;1000] (max: CartPole.num_deaths) under StayAlive</formula>
 			<comment>Expected number of deaths under the well trained agent.
-Should finish in a couple of seconds and be less than 0.01.</comment>
-			<result outcome="success" type="quantity" value="0.005 ± 0.00437914 (95% CI)" timestamp="2023-07-06 11:09:28 +0200">
-				<details>0.005 ± 0.00437914 (95% CI)</details>
+Should finish in a couple of seconds and be around 0.01.</comment>
+			<result outcome="success" type="quantity" value="0.001 ± 0.00196234 (95% CI)" timestamp="2023-07-06 13:49:31 +0200">
+				<details>0.001 ± 0.00196234 (95% CI)</details>
 				<plot title="Probability Density Distribution" xaxis="max: CartPole.num_deaths" yaxis="probability density">
-					<series title="density" type="b(1.000000)" color="0x0000ff" encoding="csv">0.0,0.995
-1.0,0.005
+					<series title="density" type="b(1.000000)" color="0x0000ff" encoding="csv">0.0,0.999
+1.0,0.001
 					</series>
-					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.005,0.0
-0.005,0.995
+					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.001,0.0
+0.001,0.999
 					</series>
 					<comment>Parameters: α=0.05, ε=0.05, bucket width=1, bucket count=2
 Runs: 1000 in total, 1000 (100%) displayed, 0 (0%) remaining
 Span of displayed sample: [0, 1]
-Mean estimate of displayed sample: 0.005 ± 0.00438 (95% CI)</comment>
+Mean estimate of displayed sample: 0.001 ± 0.00196 (95% CI)</comment>
 				</plot>
 				<plot title="Probability Distribution" xaxis="max: CartPole.num_deaths" yaxis="probability">
-					<series title="probability" type="b(1.000000)" color="0x0000ff" encoding="csv">0.0,0.995
-1.0,0.005
+					<series title="probability" type="b(1.000000)" color="0x0000ff" encoding="csv">0.0,0.999
+1.0,0.001
 					</series>
-					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.005,0.0
-0.005,0.995
+					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.001,0.0
+0.001,0.999
 					</series>
 					<comment>Parameters: α=0.05, ε=0.05, bucket width=1, bucket count=2
 Runs: 1000 in total, 1000 (100%) displayed, 0 (0%) remaining
 Span of displayed sample: [0, 1]
-Mean estimate of displayed sample: 0.005 ± 0.00438 (95% CI)</comment>
+Mean estimate of displayed sample: 0.001 ± 0.00196 (95% CI)</comment>
 				</plot>
 				<plot title="Cumulative Probability Distribution" xaxis="max: CartPole.num_deaths" yaxis="probability">
 					<series title="cumulative" type="l" color="0x000000" encoding="csv">0.0,0.0
-1.0,0.995
+1.0,0.999
 					</series>
-					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.005,0.0
-0.005,1.0
+					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.001,0.0
+0.001,1.0
 					</series>
 					<comment>Parameters: α=0.05, ε=0.05, bucket width=1, bucket count=2
 Runs: 1000 in total, 1000 (100%) displayed, 0 (0%) remaining
 Span of displayed sample: [0, 1]
-Mean estimate of displayed sample: 0.005 ± 0.00438 (95% CI)</comment>
+Mean estimate of displayed sample: 0.001 ± 0.00196 (95% CI)</comment>
 				</plot>
 				<plot title="Cumulative Probability Confidence Intervals" xaxis="max: CartPole.num_deaths" yaxis="probability">
 					<series title="upper limit" type="k" color="0x0000dd" encoding="csv">0.0,0.003682083896865672
-1.0,0.9983745804824372
+1.0,0.9999746825125088
 					</series>
 					<series title="lower limit" type="k" color="0xdd0000" encoding="csv">0.0,0.0
-1.0,0.9883705294401879
+1.0,0.9944410757201734
 					</series>
 					<series title="cumulative" type="l" color="0x000000" encoding="csv">0.0,0.0
-1.0,0.995
+1.0,0.999
 					</series>
-					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.005,0.0
-0.005,1.0
+					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.001,0.0
+0.001,1.0
 					</series>
 					<comment>Parameters: α=0.05, ε=0.05, bucket width=1, bucket count=2
 Runs: 1000 in total, 1000 (100%) displayed, 0 (0%) remaining
 Span of displayed sample: [0, 1]
-Mean estimate of displayed sample: 0.005 ± 0.00438 (95% CI)</comment>
+Mean estimate of displayed sample: 0.001 ± 0.00196 (95% CI)</comment>
 				</plot>
 				<plot title="Frequency Histogram" xaxis="max: CartPole.num_deaths" yaxis="count">
-					<series title="count" type="b(1.000000)" color="0x0000ff" encoding="csv">0.0,995.0
-1.0,5.0
+					<series title="count" type="b(1.000000)" color="0x0000ff" encoding="csv">0.0,999.0
+1.0,1.0
 					</series>
-					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.005,0.0
-0.005,995.0
+					<series title="average" type="pl" color="0x00dd00" encoding="csv">0.001,0.0
+0.001,999.0
 					</series>
 					<comment>Parameters: α=0.05, ε=0.05, bucket width=1, bucket count=2
 Runs: 1000 in total, 1000 (100%) displayed, 0 (0%) remaining
 Span of displayed sample: [0, 1]
-Mean estimate of displayed sample: 0.005 ± 0.00438 (95% CI)</comment>
+Mean estimate of displayed sample: 0.001 ± 0.00196 (95% CI)</comment>
 				</plot>
 			</result>
 		</query>
