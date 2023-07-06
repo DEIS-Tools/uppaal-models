@@ -1,7 +1,9 @@
 # CartPole model for UPPAAL Stratego
 
-This model is a [UPPAAL Stratego][1] implementation of the classical reinforcement learning
-problem, where an agent has to balance a pole vertically on a moving cart.
+This model is a [UPPAAL Stratego][1] implementation of the classical
+reinforcement learning problem, where an agent has to balance a pole vertically
+on a moving cart. The model corresponds to the [Gymnasium environment][4] that
+is widely used in testing RL techniques.
 
 ![cartpole-gif](./reinforcement-learning-cartpole-v0.gif)
 ([source][2])
@@ -15,17 +17,20 @@ direction to push the cart.
 
 ![agent template](./imgs/agent-screenshot.png)
 
-The observable state space for the agent is 4-dimensional and consists of the 
+The observable state space for the agent is 4-dimensional and consists of the
 position and velocity of the cart, the angle of the pole and the velocity with
 which the pole is falling. In the initial location of the model, all these
-variables are instantiated with a random value between -0.05 and 0.05.
-
-The main location for the CartPole model is when it is alive. Here the position
-of the cart and the angle of the pole are set to change according to the
-corresponding velocities. On the other hand, the velocities are updated by
-a set of functions which are described in detail in [the paper][3] by Florian,
+variables are instantiated with a random value between -0.05 and 0.05. The main
+location for the CartPole model is when it is alive. Here the position of the
+cart and the angle of the pole are set to change according to the corresponding
+velocities. On the other hand, the velocities are updated by a set of functions
+which are described in detail in [the paper][3] by Florian,
 R. (2007). They are quite intricate and depends on the mass of the cart, the
 mass and length of the pole and the magnitude of the force that gets applied.
+
+In this model, the functions are written up so it is easy to change these
+values but by default they are set to match the configuration of the Gymnasium
+environment that this model is supposed to correspond to.
 
 ![acceleration functions](./imgs/functions-screenshot.png)
 
@@ -42,3 +47,4 @@ reset and the death counter is increased by one.
 [1]: https://people.cs.aau.dk/~marius/stratego/
 [2]: https://tenor.com/view/reinforcement-learning-cartpole-v0-tensorflow-open-ai-gif-18474251
 [3]: https://coneural.org/florian/papers/05_cart_pole.pdf
+[4]: https://github.com/Farama-Foundation/Gymnasium/blob/main/gymnasium/envs/classic_control/cartpole.py
