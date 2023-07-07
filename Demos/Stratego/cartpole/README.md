@@ -70,7 +70,38 @@ Stratego has done what every other RL technique worth its salt should be able to
 do: solve the cartpole problem!
 
 
+## Evaluating in the Gymnasium environment
+
+We can assert that the strategy learned by UPPAAL Stratego is actually useful
+outside Stratego. [Gymnasium][4] is a widely used Python framework for working
+with a wide range of standard RL environments such as cartpole, and since this
+model is based on that specific implementation, our Stratego strategies should
+work in the Gymnasium setting. In the directory of this model are some Python
+files that allow you to try this out!
+
+First, be a good pythonista and create and activate a virtual environment using
+your favorite method to do so (or just the easy method: `python3 -m venv ./env
+&& source env/bin/activate`). Then run the command `pip install -r
+requirements.txt` which will install Gymnasium and [stratetrees][5], a small
+package designed to work with UPPAAL Stratego strategies in a Python setting.
+
+Now you need to save a UPPAAL strategy as a json file. In UPPAAL, create a new
+query that says `saveStrategy("/path/to/somewhere/strategy.json", StayAlive)`
+(if your strategy is not called 'StayAlive', you should obviously write
+something else at the end) and run it. Now you should be able to run the command
+`python main.py --strategy /path/to/somewhere/strategy.json` and see your UPPAAL
+Stratego strategy being applied on the Gymnasium environment!
+
+As the output suggest, a perfect score would be to reach a mean of 500. That
+will probably not be the case (more likely something like 490). This indicates
+that the UPPAAL strategy is not perfect and has not solved the problem
+completely. You can try and tinker with the learning parameters in UPPAAL
+(Options -> Learning parameters...) or you can increase the number of seconds
+in the training queries above (eg. change 10 to 20 to force it to learn to
+balance for a longer time period).
+
 [1]: https://people.cs.aau.dk/~marius/stratego/
 [2]: https://tenor.com/view/reinforcement-learning-cartpole-v0-tensorflow-open-ai-gif-18474251
 [3]: https://coneural.org/florian/papers/05_cart_pole.pdf
 [4]: https://github.com/Farama-Foundation/Gymnasium/blob/main/gymnasium/envs/classic_control/cartpole.py
+[5]: https://pypi.org/project/stratetrees/
