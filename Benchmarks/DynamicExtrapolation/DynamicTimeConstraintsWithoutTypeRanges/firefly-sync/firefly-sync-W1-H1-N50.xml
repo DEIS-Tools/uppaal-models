@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.5//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_5.dtd'>
+<nta>
+	<declaration>/**
+This automata models the photinus carolinus firefly, which is known to synchronize their flashing.
+See more at https://www.firefly.org/synchronous-fireflies.html or a simulation at https://ncase.me/fireflies/.
+
+In this model, N fireflies lives on an W by H grid.
+A firefly blinks every PERIOD−t seconds, where t is the number of times it has seen another firefly in
+the same cell blink more than PERID/2 seconds after its own latest blink.
+Over time this results in the firelies blinking in synchronization (guaranteed if W=H=1).
+*/
+
+const int N = 50;  // Number of fireflies
+const int PERIOD = 60;  // Ideal flashing interval
+const int W = 1;  // Grid width
+const int H = 1;  // Grid height
+
+broadcast chan flash[W][H];</declaration>
+	<template>
+		<name x="5" y="5">Firefly</name>
+		<parameter>const int[0,N-1] id</parameter>
+		<declaration>// Place local declarations here.
+
+clock t;
+int offset = 0;
+int x = 0;
+int y = 0;</declaration>
+		<location id="id0" x="-263" y="-102">
+			<name x="-331" y="-127">Active</name>
+			<label kind="invariant" x="-416" y="-102">t&lt;=PERIOD-offset</label>
+		</location>
+		<location id="id1" x="-263" y="-272">
+			<name x="-323" y="-297">Setup</name>
+			<label kind="invariant" x="-442" y="-272">t&lt;=(id*id*2)%PERIOD</label>
+		</location>
+		<init ref="id1"/>
+		<transition id="id2">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-255" y="17">y&lt;H-1</label>
+			<label kind="assignment" x="-255" y="34">y++</label>
+			<nail x="-255" y="17"/>
+			<nail x="-212" y="17"/>
+		</transition>
+		<transition id="id3">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-187" y="17">y&gt;0</label>
+			<label kind="assignment" x="-187" y="33">y--</label>
+			<nail x="-195" y="17"/>
+			<nail x="-153" y="17"/>
+		</transition>
+		<transition id="id4">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-374" y="17">x&lt;W-1</label>
+			<label kind="assignment" x="-374" y="34">x++</label>
+			<nail x="-331" y="17"/>
+			<nail x="-374" y="17"/>
+		</transition>
+		<transition id="id5">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-306" y="17">x&gt;0</label>
+			<label kind="assignment" x="-306" y="34">x--</label>
+			<nail x="-272" y="17"/>
+			<nail x="-314" y="17"/>
+		</transition>
+		<transition id="id6">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-510" y="-212">t&gt;=(id*id*2)%PERIOD</label>
+			<label kind="assignment" x="-510" y="-195">t:=0,x:=(id*id)%W,y:=H-1-id%H</label>
+		</transition>
+		<transition id="id7">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-135" y="-152">t&gt;=PERIOD-offset</label>
+			<label kind="synchronisation" x="-135" y="-135">flash[x][y]!</label>
+			<label kind="assignment" x="-135" y="-118">t:=0,offset:=0</label>
+			<nail x="-144" y="-153"/>
+			<nail x="-144" y="-84"/>
+		</transition>
+		<transition id="id8">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-135" y="-76">t&gt;PERIOD/2 &amp;&amp;
+t&lt;=PERIOD-offset-1</label>
+			<label kind="synchronisation" x="-135" y="-42">flash[x][y]?</label>
+			<label kind="assignment" x="-135" y="-25">offset+=1</label>
+			<nail x="-144" y="-67"/>
+			<nail x="-144" y="-8"/>
+		</transition>
+	</template>
+	<system>
+system Firefly;
+</system>
+	<queries>
+		<option key="--extrapolation" value="4"/>
+		<query>
+			<formula/>
+			<comment/>
+		</query>
+	</queries>
+</nta>

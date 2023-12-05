@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.5//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_5.dtd'>
+<nta>
+	<declaration>/**
+The articial example from "An Integer Static Analysis for Better Extrapolation in Uppaal" by S. Lund et al,
+designed to showcase the issues of relying purely on type information for extrapolation in XTA.
+*/
+
+const int N = 1000;
+
+clock x,y;
+int[0,N] i;</declaration>
+	<template>
+		<name x="5" y="5">Template</name>
+		<location id="id0" x="0" y="0">
+			<name x="17" y="-8">loc0</name>
+			<label kind="invariant" x="8" y="8">y &lt;= 1</label>
+		</location>
+		<location id="id1" x="0" y="170">
+			<name x="17" y="161">loc1</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id2">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-76" y="68">x=0,
+y=0</label>
+			<nail x="-42" y="170"/>
+			<nail x="-42" y="0"/>
+		</transition>
+		<transition id="id3">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="8" y="85">x &gt;= i</label>
+		</transition>
+		<transition id="id4">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-25" y="-93">y &gt;= 1</label>
+			<label kind="assignment" x="-25" y="-68">y := 0,
+i := N</label>
+			<nail x="-68" y="-68"/>
+			<nail x="68" y="-68"/>
+		</transition>
+	</template>
+	<system>
+Process = Template();
+system Process;
+    </system>
+	<queries>
+	</queries>
+</nta>

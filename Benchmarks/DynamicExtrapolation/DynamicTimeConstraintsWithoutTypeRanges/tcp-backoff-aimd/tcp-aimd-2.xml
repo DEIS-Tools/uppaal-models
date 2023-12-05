@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.5//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_5.dtd'>
+<nta>
+	<declaration>/**
+A model of the TCP backoff protocol.
+N clients estimates a congestion window based on how often their messages to the server is lost/denied.
+They limit their rate of messaging inverse proportionally to the size of the congestion window.
+The backoff uses a additive-increase/muliplicative-decrease (AIMD) protocol.
+*/
+
+const int N = 2;
+
+chan ack;
+chan deny;
+
+const int ADD = 6;
+const int MUL = 2;</declaration>
+	<template>
+		<name>Server</name>
+		<declaration>
+clock x;</declaration>
+		<location id="id0" x="85" y="-8">
+			<name x="102" y="-34">HasClient</name>
+			<label kind="invariant" x="102" y="-17">x&lt;=4</label>
+		</location>
+		<location id="id1" x="-68" y="-8">
+			<name x="-85" y="-42">Ready</name>
+		</location>
+		<init ref="id1"/>
+		<transition id="id2">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="68" y="34">deny!</label>
+			<nail x="110" y="34"/>
+			<nail x="59" y="34"/>
+		</transition>
+		<transition id="id3">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-17" y="-93">x&gt;=1</label>
+			<nail x="85" y="-68"/>
+			<nail x="-68" y="-68"/>
+		</transition>
+		<transition id="id4">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-17" y="-42">ack!</label>
+			<label kind="assignment" x="-17" y="-25">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Client</name>
+		<parameter>int[0,N-1] i</parameter>
+		<declaration>
+clock x;
+
+int cw = 30;
+</declaration>
+		<location id="id5" x="544" y="382">
+			<name x="518" y="399">Success</name>
+			<committed/>
+		</location>
+		<location id="id6" x="425" y="272">
+			<name x="399" y="221">Sending</name>
+			<label kind="invariant" x="399" y="238">x&lt;=5</label>
+		</location>
+		<location id="id7" x="544" y="272">
+			<name x="561" y="255">Receiving</name>
+			<committed/>
+		</location>
+		<location id="id8" x="272" y="272">
+			<name x="195" y="246">Waiting</name>
+		</location>
+		<location id="id9" x="544" y="161">
+			<name x="527" y="119">Fail</name>
+			<committed/>
+		</location>
+		<init ref="id8"/>
+		<transition id="id10">
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<nail x="272" y="161"/>
+		</transition>
+		<transition id="id11">
+			<source ref="id5"/>
+			<target ref="id8"/>
+			<nail x="272" y="382"/>
+		</transition>
+		<transition id="id12">
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="guard" x="297" y="229">x&gt;=10/cw</label>
+			<label kind="assignment" x="297" y="246">x:=0</label>
+		</transition>
+		<transition id="id13">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="467" y="246">x&gt;=1</label>
+		</transition>
+		<transition id="id14">
+			<source ref="id7"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="561" y="195">deny?</label>
+			<label kind="assignment" x="561" y="212">cw:=cw+ADD &lt;? 30</label>
+			<nail x="544" y="255"/>
+		</transition>
+		<transition id="id15">
+			<source ref="id7"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="561" y="314">ack?</label>
+			<label kind="assignment" x="561" y="331">cw=cw/MUL &gt;? 1</label>
+		</transition>
+	</template>
+	<system>
+system Client, Server;
+</system>
+	<queries>
+	</queries>
+</nta>

@@ -19,7 +19,7 @@ Case study models are the result of analysis of a real phenomena.
 The models may contain many features, details and may take a lot of resources to verify.
 The model should contain comments explaining the relation to the real-world situations, expected or preliminary results.
 
-## Benchmarks
+## [Benchmarks](Benchmarks)
 
 The benchmark models can easily be scaled to accomodate larger instances of the original problem.
 The models should contain comments about the purpose, expected results and verification effort (preliminary time and memory utilisation).

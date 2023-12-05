@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.5//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_5.dtd'>
+<nta>
+	<declaration>/**
+P projects requires a varying number of pieces printed.
+Each piece has a different size and will therefore take different amount of time to print.
+There are M printers available.
+*/
+
+const int M = 3; // Machines
+const int P = 6; // Projects
+
+typedef int[0,M-1] Mid;
+typedef int[0,P-1] Pid;
+
+const int MinSize = 1;
+const int MaxSize = 10;
+
+typedef int[MinSize,MaxSize] Size;
+
+clock global_time;
+
+chan start[Pid][Size];
+chan end[Pid][Size];
+</declaration>
+	<template>
+		<name>Machine</name>
+		<parameter>const Mid mid</parameter>
+		<declaration>
+clock x;
+
+Size size = 1;
+Pid project;</declaration>
+		<location id="id0" x="-263" y="-68">
+			<name x="-323" y="-85">Idle</name>
+		</location>
+		<location id="id1" x="-119" y="-8">
+			<name x="-93" y="-17">Printing</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id2">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-263" y="0">x&gt;=size</label>
+			<label kind="synchronisation" x="-263" y="17">end[project][size]!</label>
+			<nail x="-263" y="-8"/>
+		</transition>
+		<transition id="id3">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="select" x="-246" y="-204">s : Size,
+pid : Pid</label>
+			<label kind="synchronisation" x="-246" y="-161">start[pid][s]?</label>
+			<label kind="assignment" x="-246" y="-136">x:=0,
+size:=s,
+project:=pid</label>
+			<nail x="-119" y="-68"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Project</name>
+		<parameter>const Pid pid</parameter>
+		<declaration>// The pieces for a project depends on the binary representation of their id
+// E.g. if pid == 01011 in binary, then it consists of:
+// 1 piece taking 2 time units,
+// 1 piece taking 3 time units
+// 0 piece taking 4 time units
+// 1 piece taking 5 time units
+// 0 piece taking 6 time units
+// etc
+
+clock x;
+
+int todoJobsBitVec = pid &lt;&lt; 1;
+
+int inProgressBitVec = 0;
+
+bool isTodo(Size s)
+{
+    return (todoJobsBitVec &amp; (1 &lt;&lt; s)) &gt; 0;
+}
+
+void markStarted(Size s)
+{
+    inProgressBitVec |= 1 &lt;&lt; s;
+}
+
+bool isInProgress(Size s)
+{
+    return (inProgressBitVec &amp; (1 &lt;&lt; s)) &gt; 0;
+}
+
+void finish(Size s)
+{
+    todoJobsBitVec &amp;= -(1 &lt;&lt; s) - 1;
+}
+
+bool isDone()
+{
+    return todoJobsBitVec == 0;
+}
+</declaration>
+		<location id="id4" x="-255" y="-59">
+		</location>
+		<init ref="id4"/>
+		<transition id="id5">
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="select" x="-238" y="-42">s : Size</label>
+			<label kind="guard" x="-238" y="-25">x&gt;=1</label>
+			<label kind="synchronisation" x="-238" y="-8">end[pid][s]?</label>
+			<label kind="assignment" x="-238" y="9">x:=0,
+finish(s)</label>
+			<nail x="-255" y="51"/>
+			<nail x="-280" y="51"/>
+			<nail x="-280" y="-42"/>
+		</transition>
+		<transition id="id6">
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="select" x="-238" y="-170">s : Size</label>
+			<label kind="guard" x="-238" y="-153">x&gt;=1 &amp;&amp; isTodo(s) &amp;&amp; !isInProgress(s)</label>
+			<label kind="synchronisation" x="-238" y="-136">start[pid][s]!</label>
+			<label kind="assignment" x="-238" y="-119">x:=0,
+markStarted(s)</label>
+			<nail x="-255" y="-170"/>
+			<nail x="-280" y="-170"/>
+			<nail x="-280" y="-76"/>
+		</transition>
+	</template>
+	<system>
+system Machine, Project;
+</system>
+	<queries>
+		<option key="--extrapolation" value="0"/>
+		<query>
+			<formula/>
+			<comment/>
+		</query>
+	</queries>
+</nta>

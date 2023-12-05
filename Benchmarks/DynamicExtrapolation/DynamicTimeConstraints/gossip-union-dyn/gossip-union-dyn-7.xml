@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.5//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_5.dtd'>
+<nta>
+	<declaration>/**
+A model of the gossip protocol with dynamic call duration.
+
+N nodes each has a secret.
+They can call each other and exchange their secrets.
+The duration of the call is the union of their known secrets.
+*/
+
+const int N = 7;
+typedef int[0,N-1] id_t;
+const int ALL_SECRETS = (1 &lt;&lt; N) - 1;
+typedef int[0,ALL_SECRETS + 1] Secrets;
+
+chan call[N][N];
+chan share[N][ALL_SECRETS + 2];
+</declaration>
+	<template>
+		<name x="5" y="5">Node</name>
+		<parameter>id_t i</parameter>
+		<declaration>// Place local declarations here.
+clock x;
+Secrets secrets = 0;
+
+id_t other = 0;
+
+int[0,N] numSecrets() {
+    int count = 0;
+    for (j : id_t) {
+        count += (secrets &gt;&gt; j) &amp; 1;
+    }
+    return count;
+}</declaration>
+		<location id="id0" x="-340" y="-42">
+			<name x="-442" y="-59">Responding</name>
+		</location>
+		<location id="id1" x="-340" y="-179">
+			<name x="-365" y="-212">Called</name>
+		</location>
+		<location id="id2" x="42" y="-42">
+			<name x="59" y="-59">Listening</name>
+		</location>
+		<location id="id3" x="-153" y="-119">
+			<name x="-136" y="-127">Waiting</name>
+		</location>
+		<location id="id4" x="42" y="-179">
+			<name x="16" y="-213">Calling</name>
+		</location>
+		<location id="id5" x="-280" y="-119">
+			<committed/>
+		</location>
+		<init ref="id5"/>
+		<transition id="id6">
+			<source ref="id5"/>
+			<target ref="id3"/>
+			<label kind="assignment" x="-280" y="-110">secrets:=1&lt;&lt;i</label>
+		</transition>
+		<transition id="id7">
+			<source ref="id0"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-331" y="-34">x&gt;=numSecrets()</label>
+			<label kind="synchronisation" x="-331" y="-17">share[i][secrets]!</label>
+			<label kind="assignment" x="-331" y="0">other:=0</label>
+			<nail x="-161" y="-42"/>
+		</transition>
+		<transition id="id8">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="select" x="-654" y="-161">other_secrets : Secrets</label>
+			<label kind="synchronisation" x="-654" y="-144">share[other][other_secrets]?</label>
+			<label kind="assignment" x="-654" y="-127">secrets:=secrets|other_secrets, x:=0</label>
+		</transition>
+		<transition id="id9">
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="select" x="-289" y="-263">j : id_t</label>
+			<label kind="guard" x="-289" y="-246">i!=j</label>
+			<label kind="synchronisation" x="-289" y="-229">call[j][i]?</label>
+			<label kind="assignment" x="-289" y="-212">other:=j</label>
+			<nail x="-161" y="-178"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="select" x="-136" y="-25">other_secrets : Secrets</label>
+			<label kind="synchronisation" x="-136" y="-8">share[other][other_secrets]?</label>
+			<label kind="assignment" x="-136" y="9">secrets:=secrets|other_secrets, other:=0</label>
+			<nail x="-136" y="-42"/>
+		</transition>
+		<transition id="id11">
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="guard" x="59" y="-162">x&gt;=numSecrets()</label>
+			<label kind="synchronisation" x="59" y="-145">share[i][secrets]!</label>
+		</transition>
+		<transition id="id12">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="select" x="-110" y="-263">j : id_t</label>
+			<label kind="guard" x="-110" y="-246">i!=j</label>
+			<label kind="synchronisation" x="-110" y="-229">call[i][j]!</label>
+			<label kind="assignment" x="-110" y="-212">x:=0, other:=j</label>
+			<nail x="-144" y="-178"/>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+// List one or more processes to be composed into a system.
+system Node;
+</system>
+	<queries>
+		<query>
+			<formula/>
+			<comment/>
+		</query>
+	</queries>
+</nta>
