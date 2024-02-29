@@ -1,0 +1,785 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>/**
+This case study has been published at CyPhy 2018, WESE 2018.
+The paper "Guaranteed Control Synthesis for Continuous Systems in UPPAAL TIGA" by 
+Kim Guldstrand Larsen, Adrien Le Coënt, Marius Mikučionis and Jakob Haahr Taankvist.
+
+@InProceedings{LAMT2018,
+  author="Larsen, Kim Guldstrand and Le Co{\"e}nt, Adrien and Miku{\v{c}}ionis, Marius and Taankvist, Jakob Haahr",
+  editor="Chamberlain, Roger and Taha, Walid and T{\"o}rngren, Martin",
+  title="Guaranteed Control Synthesis for Continuous Systems in Uppaal Tiga",
+  booktitle="Cyber Physical Systems. Model-Based Design",
+  year="2019",
+  publisher="Springer International Publishing",
+  address="Cham",
+  pages="113--133",
+  isbn="978-3-030-23703-5",
+  doi="10.1007/978-3-030-23703-5_6",
+  url="https://link.springer.com/chapter/10.1007/978-3-030-23703-5_6"
+}
+*/
+
+import "/home/adrien/Tools/uppaal-stratego-4.1.20-3/demo/stratego/libd2i.so"
+{
+   int[-2147483648,2147483647] flo(double d);
+   int[-2147483648,2147483647] cei(double d);
+};
+
+// Place global declarations here.
+clock time;
+const int maxVelocityEgo = 20;
+const int maxVelocityFront = 20;
+const int minVelocityEgo = -10;
+const int minVelocityFront = -10;
+
+const int maxSensorDistance = 200;
+
+clock waitTimer;
+
+//int distance = 20;
+int distance_gua_evol[2] = {20,20};
+int distance_gua[2] = {20,20};
+//int old_distance_gua = 10;
+
+int velocityEgo_gua[2];// = {0,0};
+int velocityEgo_gua_evol[2];// = {0,0};
+//int velocityEgo;
+int[-2,2] accelerationEgo;
+broadcast chan chooseEgo;
+
+int velocityFront_gua[2];// = {0,0};
+int velocityFront_gua_evol[2];// = {0,0};
+//int velocityFront;
+int[-2,2] accelerationFront;
+broadcast chan chooseFront;
+
+//typedef int idt[2];
+
+
+
+const int number_modes = 9;
+
+const double OSL[number_modes] = {0.707106781186547,0.707106781186547,0.707106781186547,0.707106781186547,0.707106781186547,0.707106781186547,0.707106781186547,0.707106781186547,0.707106781186547};
+const double LIP[number_modes] = {1.41421356237308,1.41421356237308,1.41421356237308,1.41421356237308,1.41421356237308,1.41421356237308,1.41421356237308,1.41421356237308,1.41421356237308};
+// Modes
+//   2   2   2   0   0   0  -2  -2  -2
+//   2   0  -2   2   0  -2   2   0  -2
+//   0   0   0   0   0   0   0   0   0
+const double MAXF1 = 2.828427124746190;
+const double MAXF2 = 2.0;
+const double MAXF3 = 2.828427124746190;
+const double MAXF4 = 2.0;
+const double MAXF5 = 0.0;
+const double MAXF6 = 2.0;
+const double MAXF7 = 2.828427124746190;
+const double MAXF8 = 2.0;
+const double MAXF9 = 2.828427124746190;
+
+const double C0F[number_modes] = {MAXF1*LIP[0],MAXF2*LIP[1],MAXF3*LIP[2],MAXF4*LIP[3],MAXF5*LIP[4],MAXF6*LIP[5],MAXF7*LIP[6],MAXF8*LIP[7],MAXF9*LIP[8]};
+
+const int euler_sub_step = 30;
+const double tau = 1.0/euler_sub_step;
+
+int find_mode(int accFront, int accEgo){
+    int mode_det;
+    if(accFront == 2 &amp;&amp; accEgo == 2){mode_det = 0;}
+    if(accFront == 2 &amp;&amp; accEgo == 0){mode_det = 1;}
+    if(accFront == 2 &amp;&amp; accEgo == -2){mode_det = 2;}
+    if(accFront == 0 &amp;&amp; accEgo == 2){mode_det = 3;}
+    if(accFront == 0 &amp;&amp; accEgo == 0){mode_det = 4;}
+    if(accFront == 0 &amp;&amp; accEgo == -2){mode_det = 5;}
+    if(accFront == -2 &amp;&amp; accEgo == 2){mode_det = 6;}
+    if(accFront == -2 &amp;&amp; accEgo == 0){mode_det = 7;}
+    if(accFront == -2 &amp;&amp; accEgo == -2){mode_det = 8;}
+    return mode_det;
+}
+
+double delta_mode(double delta, int mode){
+    if (OSL[mode] &gt; 0) {
+        return sqrt(delta*delta*exp(3*OSL[mode]*tau) + C0F[mode]*C0F[mode]/(3*OSL[mode]*OSL[mode])*(-tau*tau + 2*tau/(3*OSL[mode]) + 2/(9*OSL[mode]*OSL[mode])*(exp(3*OSL[mode]*tau)-1)));       
+    }
+    if (OSL[mode] == 0) {
+        return sqrt(delta*delta*exp(tau) + C0F[mode]*(-tau*tau -2*tau + 2*(exp(tau)-1)));
+    }
+    if (OSL[mode] &lt; 0) {
+        return sqrt(delta*delta*exp(OSL[mode]*tau) + (C0F[mode]*C0F[mode]/(OSL[mode]*OSL[mode]))*(tau*tau-2*tau/OSL[mode]+2/(OSL[mode]*OSL[mode])-2*exp(-OSL[mode]*tau)/(OSL[mode]*OSL[mode])));
+    }
+    return(0);
+}
+
+
+double mini(double d1, double d2){
+    if(d1 &lt; d2){return d1;}
+    else{return d2;}
+}
+
+double maxi(double d1, double d2){
+    if(d1 &lt; d2){return d2;}
+    else{return d1;}
+}
+
+void eulerDiscrete(){
+    //double velEgo, velFront, 
+    double dist, velEgo, velFront, delta;
+    double memdist_min, memdist_max, memVF_min, memVF_max, memVE_min, memVE_max;
+
+    int i;
+
+    dist = (distance_gua_evol[0]+distance_gua_evol[1])/2;
+    velFront = (velocityFront_gua_evol[0]+velocityFront_gua_evol[1])/2;
+    velEgo = (velocityEgo_gua_evol[0]+velocityEgo_gua_evol[1])/2;
+
+    delta = sqrt((distance_gua_evol[1]-distance_gua_evol[0])*(distance_gua_evol[1]-distance_gua_evol[0])/4 + (velocityFront_gua_evol[1]-velocityFront_gua_evol[0])*(velocityFront_gua_evol[1]-velocityFront_gua_evol[0])/4 + (velocityEgo_gua_evol[1]-velocityEgo_gua_evol[0])*(velocityEgo_gua_evol[1]-velocityEgo_gua_evol[0])/4);
+
+    memdist_min = dist - delta;
+    memdist_max = dist + delta;
+    memVF_min = velFront - delta;
+    memVF_max = velFront + delta;
+    memVE_min = velEgo - delta;
+    memVE_max = velEgo + delta;
+
+    for (i=0;i&lt;=euler_sub_step;i++){
+        dist = dist + tau*(velFront - velEgo);
+        velEgo = velEgo + tau*accelerationEgo;
+        velFront = velFront + tau*accelerationFront;
+        delta = delta_mode(delta,find_mode(accelerationFront,accelerationEgo));
+        memdist_min = mini(memdist_min,dist-delta);
+        memdist_max = maxi(memdist_max,dist+delta);
+        memVF_min = mini(memVF_min,velFront-delta);
+        memVF_max = maxi(memVF_max,velFront+delta);
+        memVE_min = mini(memVE_min,velEgo-delta);
+        memVE_max = maxi(memVE_max,velEgo+delta);
+        
+    }
+
+    //distance_gua_evol[0] = flo(dist-delta);
+    //distance_gua_evol[1] = cei(dist+delta);
+    //velocityFront_gua_evol[0] = flo(velFront-delta);
+    //velocityFront_gua_evol[1] = cei(velFront+delta);
+    //velocityEgo_gua_evol[0] = flo(velEgo-delta);
+    //velocityEgo_gua_evol[1] = cei(velEgo+delta);
+    
+    distance_gua[0] = flo(memdist_min);
+    distance_gua[1] = cei(memdist_max);
+    velocityFront_gua[0] = flo(memVF_min);
+    velocityFront_gua[1] = cei(memVF_max);
+    velocityEgo_gua[0] = flo(memVE_min);
+    velocityEgo_gua[1] = cei(memVE_max);
+
+}
+
+
+
+void updateDiscrete(){
+    //int oldVel, newVel, oldVelFront, oldVelEgo;
+    //oldVel = velocityFront - velocityEgo;
+    //oldVelFront = velocityFront;
+    //oldVelEgo = velocityEgo;
+
+    velocityEgo_gua_evol[0] = velocityEgo_gua_evol[0] + accelerationEgo;
+    velocityEgo_gua_evol[1] = velocityEgo_gua_evol[1] + accelerationEgo;
+    velocityFront_gua_evol[0] = velocityFront_gua_evol[0] + accelerationFront;
+    velocityFront_gua_evol[1] = velocityFront_gua_evol[1] + accelerationFront;
+
+    //newVel = velocityFront - velocityEgo;
+
+    if (distance_gua_evol[0] &gt; maxSensorDistance) {
+        distance_gua_evol[0] = maxSensorDistance + 1;
+        distance_gua_evol[1] = maxSensorDistance + 1;
+    } else {
+        eulerDiscrete();
+        distance_gua_evol[0] = distance_gua_evol[0] + (velocityFront_gua_evol[0]-accelerationFront) - (velocityEgo_gua_evol[0]-accelerationEgo) + (accelerationFront - accelerationEgo)/2;// - (oldVel + newVel)/2;
+        distance_gua_evol[1] = distance_gua_evol[1] + (velocityFront_gua_evol[0]-accelerationFront) - (velocityEgo_gua_evol[0]-accelerationEgo) + (accelerationFront - accelerationEgo)/2;//(oldVel + newVel)/2;
+
+        if (distance_gua_evol[1] &gt; maxSensorDistance) {
+        distance_gua_evol[1] = maxSensorDistance + 1;
+    }
+        //distance_gua_evol[0] = distance;
+        //distance_gua_evol[1] = distance;
+        //velocityFront_gua_evol[0] = velocityFront;
+        //velocityFront_gua_evol[1] = velocityFront;
+        //velocityEgo_gua_evol[0] = velocityEgo;
+        //velocityEgo_gua_evol[1] = velocityEgo;
+
+        //distance = distance_gua_evol[0];
+    }
+}
+
+
+
+broadcast chan update;
+
+// Hybrid stuff
+hybrid clock rVelocityEgo;
+hybrid clock rVelocityFront;
+hybrid clock rDistance;
+hybrid clock D;</declaration>
+	<template>
+		<name x="5" y="5">Ego</name>
+		<location id="id0" x="195" y="34">
+			<name x="228" y="25">Negative_acc</name>
+		</location>
+		<location id="id1" x="-204" y="-68">
+			<name x="-272" y="-76">No_acc</name>
+		</location>
+		<location id="id2" x="-34" y="-68">
+			<name x="-17" y="-76">Choose</name>
+			<committed/>
+		</location>
+		<location id="id3" x="85" y="-187">
+			<name x="75" y="-221">Positive_acc</name>
+		</location>
+		<init ref="id1"/>
+		<transition id="id4">
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="76" y="42">chooseEgo?</label>
+			<nail x="68" y="0"/>
+		</transition>
+		<transition id="id5">
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-59" y="-187">chooseEgo?</label>
+			<nail x="-8" y="-161"/>
+		</transition>
+		<transition id="id6">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-170" y="-119">chooseEgo?</label>
+			<nail x="-119" y="-102"/>
+		</transition>
+		<transition id="id7">
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="guard" x="119" y="-34">velocityEgo_gua_evol[0] &gt; minVelocityEgo</label>
+			<label kind="assignment" x="153" y="-8">accelerationEgo = -2</label>
+			<nail x="59" y="-42"/>
+		</transition>
+		<transition id="id8">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="68" y="-127">velocityEgo_gua_evol[1] &lt; maxVelocityEgo</label>
+			<label kind="assignment" x="68" y="-110">accelerationEgo = 2</label>
+			<nail x="59" y="-102"/>
+		</transition>
+		<transition id="id9">
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-263" y="-25">accelerationEgo = 0</label>
+			<nail x="-119" y="-34"/>
+		</transition>
+	</template>
+	<template>
+		<name>Front</name>
+		<location id="id10" x="-340" y="-306">
+			<name x="-331" y="-331">Faraway</name>
+		</location>
+		<location id="id11" x="102" y="-136">
+			<name x="92" y="-170">Positive_acc</name>
+		</location>
+		<location id="id12" x="102" y="144">
+			<name x="59" y="161">Negative_acc</name>
+		</location>
+		<location id="id13" x="-119" y="144">
+			<name x="-170" y="161">No_acceleration</name>
+		</location>
+		<location id="id14" x="0" y="-34">
+			<name x="17" y="-42">Choose</name>
+			<committed/>
+		</location>
+		<location id="id15" x="-340" y="-238">
+			<committed/>
+		</location>
+		<location id="id16" x="-340" y="-153">
+			<committed/>
+		</location>
+		<branchpoint id="id17" x="-340" y="-195"/>
+		<init ref="id13"/>
+		<transition id="id18">
+			<source ref="id17"/>
+			<target ref="id10"/>
+			<nail x="-374" y="-195"/>
+			<nail x="-374" y="-306"/>
+		</transition>
+		<transition id="id19">
+			<source ref="id17"/>
+			<target ref="id16"/>
+		</transition>
+		<transition id="id20" controllable="false">
+			<source ref="id15"/>
+			<target ref="id17"/>
+		</transition>
+		<transition id="id21" controllable="false">
+			<source ref="id12"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-178" y="-357">distance_gua_evol[0] &gt; maxSensorDistance</label>
+			<label kind="synchronisation" x="-178" y="-340">update?</label>
+			<label kind="assignment" x="-178" y="-323">distance_gua_evol[0] = maxSensorDistance+1, 
+distance_gua_evol[1] = maxSensorDistance+1,
+accelerationFront = 0</label>
+			<nail x="263" y="144"/>
+			<nail x="263" y="-306"/>
+		</transition>
+		<transition id="id22" controllable="false">
+			<source ref="id11"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-204" y="-246">distance_gua_evol[0] &gt; maxSensorDistance</label>
+			<label kind="synchronisation" x="-204" y="-229">update?</label>
+			<label kind="assignment" x="-204" y="-212">distance_gua_evol[0] = maxSensorDistance+1,
+distance_gua_evol[1] = maxSensorDistance+1,
+accelerationFront = 0</label>
+			<nail x="102" y="-229"/>
+			<nail x="-204" y="-229"/>
+			<nail x="-246" y="-280"/>
+		</transition>
+		<transition id="id23" controllable="false">
+			<source ref="id13"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-442" y="93">distance_gua_evol[0] &gt; maxSensorDistance</label>
+			<label kind="synchronisation" x="-442" y="110">update?</label>
+			<label kind="assignment" x="-442" y="127">distance_gua_evol[0] = maxSensorDistance+1,
+accelerationFront = 0</label>
+			<nail x="-451" y="144"/>
+			<nail x="-391" y="-306"/>
+		</transition>
+		<transition id="id24" controllable="false">
+			<source ref="id12"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-25" y="144">chooseFront?</label>
+			<nail x="-60" y="144"/>
+		</transition>
+		<transition id="id25" controllable="false">
+			<source ref="id11"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-17" y="-153">chooseFront?</label>
+			<nail x="0" y="-136"/>
+		</transition>
+		<transition id="id26" controllable="false">
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-153" y="93">chooseFront?</label>
+		</transition>
+		<transition id="id27" controllable="false">
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="guard" x="8" y="51">velocityFront_gua_evol[0] &gt; minVelocityFront</label>
+			<label kind="assignment" x="25" y="101">accelerationFront = -2</label>
+		</transition>
+		<transition id="id28" controllable="false">
+			<source ref="id14"/>
+			<target ref="id11"/>
+			<label kind="guard" x="25" y="-102">velocityFront_gua_evol[1] &lt; maxVelocityFront</label>
+			<label kind="assignment" x="25" y="-85">accelerationFront = 2</label>
+		</transition>
+		<transition id="id29" controllable="false">
+			<source ref="id14"/>
+			<target ref="id13"/>
+			<label kind="assignment" x="-204" y="68">accelerationFront = 0</label>
+			<nail x="-102" y="68"/>
+		</transition>
+		<transition id="id30" controllable="false">
+			<source ref="id10"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-365" y="-280">chooseFront?</label>
+		</transition>
+		<transition id="id31" controllable="false">
+			<source ref="id16"/>
+			<target ref="id14"/>
+			<label kind="select" x="-331" y="-136">i:int[minVelocityFront, maxVelocityFront]</label>
+			<label kind="guard" x="-331" y="-119">i &lt;= velocityEgo_gua_evol[0]</label>
+			<label kind="assignment" x="-331" y="-102">velocityFront_gua_evol[0] = flo(i),
+velocityFront_gua_evol[1] = cei(i),
+distance_gua_evol[0] = maxSensorDistance,
+distance_gua_evol[1] = maxSensorDistance,
+rVelocityFront = i * 1.0,
+rDistance = 1.0*maxSensorDistance</label>
+			<nail x="-340" y="-34"/>
+		</transition>
+	</template>
+	<template>
+		<name>Monitor</name>
+		<declaration>
+double distanceRate(double velFront, double velEgo, double dist){
+    if (dist &gt; maxSensorDistance)
+        return 0.0;
+    else 
+        return velFront - velEgo;
+}
+</declaration>
+		<location id="id32" x="-153" y="-144">
+			<label kind="invariant" x="-315" y="-127">rVelocityEgo' == accelerationEgo &amp;&amp;
+rVelocityFront' == accelerationFront &amp;&amp;
+rDistance'  == distanceRate(rVelocityFront,rVelocityEgo, rDistance) &amp;&amp;
+D' == rDistance</label>
+		</location>
+		<location id="id33" x="-306" y="-144">
+			<committed/>
+		</location>
+		<location id="id34" x="255" y="-76">
+			<name x="222" y="-59">__RESET__</name>
+		</location>
+		<init ref="id33"/>
+		<transition id="id35">
+			<source ref="id33"/>
+			<target ref="id32"/>
+			<label kind="assignment" x="-289" y="-169">rDistance = 20</label>
+		</transition>
+		<transition id="id36">
+			<source ref="id34"/>
+			<target ref="id34"/>
+			<label kind="assignment" x="178" y="-365">distance_gua_evol[0] = 0, 
+distance_gua_evol[1] = 0,
+velocityEgo_gua_evol[0] = 0, 
+velocityEgo_gua_evol[1] = 0, 
+velocityFront_gua_evol[0] = 0,
+velocityFront_gua_evol[1] = 0,
+accelerationEgo = 0,
+accelerationFront = 0,
+rDistance = 0,
+rVelocityEgo = 0,
+rVelocityFront = 0,
+D = 0</label>
+			<nail x="323" y="-144"/>
+			<nail x="179" y="-144"/>
+		</transition>
+	</template>
+	<template>
+		<name>System</name>
+		<location id="id37" x="-68" y="-238">
+			<name x="-85" y="-272">Done</name>
+			<urgent/>
+		</location>
+		<location id="id38" x="-238" y="-238">
+			<name x="-272" y="-272">FrontNext</name>
+			<urgent/>
+		</location>
+		<location id="id39" x="-238" y="-187">
+			<name x="-255" y="-170">Wait</name>
+			<label kind="invariant" x="-280" y="-153">waitTimer &lt;= 1</label>
+		</location>
+		<location id="id40" x="-408" y="-238">
+			<name x="-433" y="-272">EgoNext</name>
+			<urgent/>
+		</location>
+		<init ref="id40"/>
+		<transition id="id41" controllable="false">
+			<source ref="id39"/>
+			<target ref="id40"/>
+			<label kind="guard" x="-450" y="-212">waitTimer == 1</label>
+			<label kind="assignment" x="-467" y="-195">updateDiscrete()</label>
+		</transition>
+		<transition id="id42" controllable="false">
+			<source ref="id37"/>
+			<target ref="id39"/>
+			<label kind="synchronisation" x="-144" y="-195">update!</label>
+			<label kind="assignment" x="-144" y="-212">waitTimer = 0</label>
+		</transition>
+		<transition id="id43" controllable="false">
+			<source ref="id38"/>
+			<target ref="id37"/>
+			<label kind="synchronisation" x="-204" y="-255">chooseFront!</label>
+		</transition>
+		<transition id="id44" controllable="false">
+			<source ref="id40"/>
+			<target ref="id38"/>
+			<label kind="synchronisation" x="-365" y="-255">chooseEgo!</label>
+		</transition>
+	</template>
+	<system>
+system Ego, Front, System, Monitor;
+    </system>
+	<queries>
+		<query>
+			<formula>A[] distance_gua &gt; 5</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>Pr[&lt;=100] (&lt;&gt; distance &lt;= 5)</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=100] {rDistance}</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula/>
+			<comment/>
+		</query>
+		<query>
+			<formula/>
+			<comment>fds</comment>
+		</query>
+		<query>
+			<formula>// Above is the queries used in the paper</formula>
+			<comment>adsf</comment>
+		</query>
+		<query>
+			<formula/>
+			<comment>dsaf</comment>
+		</query>
+		<query>
+			<formula/>
+			<comment>adsf</comment>
+		</query>
+		<query>
+			<formula/>
+			<comment>adsf</comment>
+		</query>
+		<query>
+			<formula/>
+			<comment>asdf</comment>
+		</query>
+		<query>
+			<formula/>
+			<comment/>
+		</query>
+		<query>
+			<formula>strategy safe = control: A[] (distance_gua[0] &gt; 5)
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 0}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>strategy safeFast = minE (D) [&lt;=105]: &lt;&gt; time &gt;= 100 under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>// simulate 1000 [&lt;=100] {velocityEgo, rVelocityEgo}
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>// simulate 1000 [&lt;=100] {velocityFront, rVelocityFront}
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] {rDistance, distance_gua[0], distance_gua[1]}</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] {rVelocityEgo, velocityEgo_gua[0], velocityEgo_gua[1]}</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] {rDistance, distance}</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] {rDistance, distance_gua_evol[0], distance_gua_evol[1]}
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=100] {rDistance} under safeFast</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] {distance, rDistance, accelerationFront - accelerationEgo, velocityFront - velocityEgo, rVelocityFront-rVelocityEgo} </formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] {rDistance, distance, velocityFront - velocityEgo, rVelocityFront - rVelocityEgo} under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] {rVelocityFront, velocityFront, accelerationFront} under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=100] { rVelocityEgo, velocityEgo} under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=100] {rDistance} under safeFast
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>// Pr[&lt;=10] (&lt;&gt; Front.Negative_acc)
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>// simulate 100 [&lt;=100] {Front.Negative_acc, Front.No_acc+2, Front.Positive_acc+4}
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>// E[&lt;=101;1000] (min: Monitor.END * distance)
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>// simulate 5 [&lt;=100] { rVelocityFront}
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>// simulate 10 [&lt;=100] {D}
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>// simulate 10 [&lt;=100] {D} under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>sup{distance == 34}: velocityEgo under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>A[] distance &gt; 5 
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula/>
+			<comment>Dummy
+			</comment>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -30}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -28}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -26}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -24}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -22}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -20}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -18}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -16}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -14}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -12}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -10}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -8}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -6}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -4}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == -2}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 0}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 2}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 4}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 6}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 8}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 10}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 12}: distance under safe
+			</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 14}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 16}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 18}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 20}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 22}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 24}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 26}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 28}: distance under safe</formula>
+			<comment/>
+		</query>
+		<query>
+			<formula>inf{velocityFront - velocityEgo == 30}: distance under safe</formula>
+			<comment/>
+		</query>
+	</queries>
+</nta>
