@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/** This CSMA/CA model is described in the following publication:
+"Computing Nash Equilibrium in Wireless Ad Hoc Networks: A Simulation-Based Approach"
+by Peter E. Bulychev, Alexandre David, Kim G. Larsen, Axel Legay and Marius Mikučionis.
+2nd Internation Workshop on Interactions, Games and Protocols (IWIGP 2012), 
+March 25, 2012, Electronic Proceedings in Theoretical Computer Science (EPTCS).
+DOI: https://doi.org/10.4204/EPTCS.78.1
+*/
+
+//const int N=10; // CORRECT
+const int N=6; // INCORRECT
+
+clock time;
+
+typedef int[0,N-1] id_t;
+
+broadcast chan ready;
+broadcast chan go;
+
+broadcast chan a;
+
+bool isTransmitting[N];
+
+const int macMaxCSMABackoffs = 4; // CORRECT
+//const int macMaxCSMABackoffs = 1; // INCORRECT
+
+// approved consts
+const int UnitBackoff = 20;
+const int CCA_duration = 8; // CORRECT
+const int aTurnaroundTime = 12; // CORRECT
+const int ACK_time = 88;
+const int aMaxFrameRetries = 3; // CORRECT
+
+const int macMinBE = 3; // CORRECT
+const int macMaxBE = 5; // CORRECT
+
+//const int macMinBE = 0; // INCORRECT
+//const int macMaxBE = 0; // INCORRECT
+
+//const int minDataLength = 15*8; // CORRECT
+//const int maxDataLength = 6*8; // CORRECT
+const int data_length = 35*8; // CORRECT 25*8 - is for header 
+//const int data_length = maxDataLength;
+
+//const int data_length = 3; // INCORRECT
+//const int aTurnaroundTime = 2; // INCORRECT
+//const int CCA_duration = 10; // INCORRECT
+
+//const int max_waking_delay=6000;  for sound speed is 300 m/s
+//const int max_waking_delay=10;  //CORRECT for something else
+const int max_waking_delay=1000;  //CORRECT for something else
+//const int max_waking_delay=aTurnaroundTime;  //CORRECT to show that is_disrete_waiting qualitatively affects the model // exist
+//const int max_waking_delay=aTurnaroundTime + data_length + CCA_duration;  //CORRECT to show that is_disrete_waiting qualitatively affects the model // forall
+
+const int aMinLIFSPeriod = 40; // CORRECT
+
+const bool is_discrete_waiting = false;
+const bool acknowledgment_supported = true;
+const bool recover_from_failures = false;
+
+const int wait_after_failure = 0;
+
+hybrid clock energy;
+int RX_Power, TX_Power;</declaration>
+	<template>
+		<name x="5" y="5">Process</name>
+		<parameter>const id_t id</parameter>
+		<declaration>
+int be;
+int nb;
+int nretries;
+
+int backoff;
+
+int waking_delay;
+
+clock x;
+
+bool cca_passed := false;
+bool collision_occured := false;
+
+bool is_busy() {
+    int i;
+    for(i=0; i&lt;N; i++) {
+        if (isTransmitting[i])
+            return true;
+    }
+    return false;
+}
+
+void start_sending() {
+    isTransmitting[id] = true;
+}
+
+void finish_sending() {
+    isTransmitting[id] = false;
+}
+
+bool is_conflict() {
+    bool f = false;
+    int i;
+    for(i=0; i&lt;N; i++) {
+        if (isTransmitting[i]) {
+            if (f)
+                return true;
+            else
+                f = true;
+        }
+    }
+    return false;
+}</declaration>
+		<location id="id0" x="-2315" y="-1582">
+			<label kind="invariant" x="-2307" y="-1630">energy' == RX_Power
+x&lt;=ACK_Time</label>
+		</location>
+		<location id="id1" x="-2523" y="-1846">
+			<urgent/>
+		</location>
+		<location id="id2" x="-2227" y="-1846">
+			<name x="-2227" y="-1830">FAILURE</name>
+		</location>
+		<location id="id3" x="-1891" y="-1846">
+			<urgent/>
+		</location>
+		<location id="id4" x="-2667" y="-1934">
+			<label kind="invariant" x="-2675" y="-1974">x&lt;=MaxWakingDelay</label>
+		</location>
+		<location id="id5" x="-2523" y="-1686">
+			<label kind="invariant" x="-2507" y="-1718">x&lt;=MinLIFS</label>
+		</location>
+		<location id="id6" x="-2523" y="-1934">
+			<urgent/>
+		</location>
+		<location id="id7" x="-2299" y="-1774">
+			<name x="-2379" y="-1798">SUCCESS</name>
+		</location>
+		<location id="id8" x="-2299" y="-1686">
+			<urgent/>
+		</location>
+		<location id="id9" x="-2227" y="-2006">
+			<urgent/>
+		</location>
+		<location id="id10" x="-1891" y="-1582">
+			<label kind="invariant" x="-1883" y="-1614">x&lt;=TurnAround</label>
+		</location>
+		<location id="id11" x="-2123" y="-1686">
+			<label kind="invariant" x="-2115" y="-1718">x&lt;=ACK_time</label>
+		</location>
+		<location id="id12" x="-2123" y="-1846">
+			<label kind="invariant" x="-2195" y="-1878">x&lt;=aTurnaroundTime</label>
+		</location>
+		<location id="id13" x="-1891" y="-2006">
+			<name x="-2027" y="-2038">TRANSMIT_DATA</name>
+			<label kind="invariant" x="-2027" y="-2022">x&lt;=FrameLength</label>
+		</location>
+		<location id="id14" x="-1891" y="-2134">
+			<name x="-1995" y="-2158">VULNERABLE</name>
+			<label kind="invariant" x="-1875" y="-2158">energy' == TX_Power
+&amp;&amp; x&lt;=TurnAround</label>
+		</location>
+		<location id="id15" x="-2227" y="-2134">
+			<name x="-2275" y="-2158">CCA</name>
+			<label kind="invariant" x="-2219" y="-2126">energy' == RX_Power
+&amp;&amp; x&lt;=CCA</label>
+		</location>
+		<location id="id16" x="-2523" y="-2134">
+			<name x="-2643" y="-2158">WAIT_BACKOFF</name>
+			<label kind="invariant" x="-2707" y="-2134">x&lt;=backoff*UnitBackoff</label>
+		</location>
+		<location id="id17" x="-2523" y="-2006">
+			<urgent/>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-2451" y="-1606">x==ACK_Time</label>
+			<nail x="-2523" y="-1582"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-2499" y="-1846">nretries == (MaxFrameRetries-1)</label>
+			<nail x="-2323" y="-1846"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-2515" y="-1886">nretries &lt; (MaxFrameRetries-1)</label>
+			<label kind="assignment" x="-2515" y="-1870">nretries = nretries + 1</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id6"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-2515" y="-1822">x==MinLIFS</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id17"/>
+			<label kind="assignment" x="-2515" y="-1982">be:=macMinBE, nb:=0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-2267" y="-2238">busy?</label>
+			<label kind="assignment" x="-2267" y="-2222">cca_passed:=false</label>
+			<nail x="-2267" y="-2198"/>
+			<nail x="-2179" y="-2198"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-2267" y="-1718">x==ACK</label>
+			<label kind="assignment" x="-2267" y="-1702">nt:=nt-1</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-2219" y="-1974">nb == MaxNB</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-2507" y="-2046">nb &lt; MaxNB</label>
+			<label kind="assignment" x="-2507" y="-2030">be:= (be+1 &gt; MaxBE ? MaxBE: be+1)</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-2107" y="-1678">busy?</label>
+			<label kind="assignment" x="-2107" y="-1662">collision_occured:=true</label>
+			<nail x="-2147" y="-1638"/>
+			<nail x="-2099" y="-1638"/>
+			<nail x="-2115" y="-1662"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-2043" y="-1870">!collision_occured</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-2019" y="-1614">x == TurnAround</label>
+			<label kind="assignment" x="-2019" y="-1598">x:=0</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-1883" y="-1822">collision_occured</label>
+			<nail x="-1891" y="-1710"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-1827" y="-2030">busy?</label>
+			<label kind="assignment" x="-1827" y="-2014">collision_occured:=true</label>
+			<nail x="-1835" y="-2038"/>
+			<nail x="-1835" y="-1966"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-2291" y="-1742">!collision_occured</label>
+			<nail x="-2299" y="-1718"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-2443" y="-1678">collision_occured</label>
+			<label kind="assignment" x="-2371" y="-1710">x:=0</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="guard" x="-2115" y="-1822">x==TurnAround</label>
+			<label kind="synchronisation" x="-2116" y="-1802">busy!</label>
+			<label kind="assignment" x="-2116" y="-1785">collision_occured:=(nt&gt;0)
+nt:=nt+1
+x:=0</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-1883" y="-1958">x==FrameLength</label>
+			<label kind="assignment" x="-1883" y="-1942">x:=0
+nt:=nt-1</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-1883" y="-2118">x==TurnAround</label>
+			<label kind="synchronisation" x="-2147" y="-2166">busy!</label>
+			<label kind="assignment" x="-1883" y="-2102">x:=0,
+collision_occured:=(nt&gt;0),
+nt:=nt+1</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-2147" y="-2182">(x==CCA) &amp;&amp; (cca_passed)</label>
+			<label kind="assignment" x="-2147" y="-2150">x:=0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-2227" y="-2094">(x == CCA_duration) &amp;&amp; !cca_passed</label>
+			<label kind="assignment" x="-2227" y="-2078">nb := nb+1</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-2475" y="-2190">(x==backoff*UnitBackoff)</label>
+			<label kind="assignment" x="-2475" y="-2174">cca_passed:=(nt==0),
+x:=0</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="assignment" x="-2515" y="-2094">backoff := random(0..pow(2,be))
+x:=0</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+system Process;</system>
+	<queries>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
