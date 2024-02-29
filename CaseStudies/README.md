@@ -8,6 +8,8 @@ Abdoulaye Gamatié, Gilles Sassatelli, Marius Mikučionis. *Design, Automation 
 _**[Fluid Model-Checking in UPPAAL for Covid-19](Covid-19)**_,
 Peter G. Jensen, Kenneth Y. Jørgensen, Kim G. Larsen, Marius Mikučionis, Marco Muñiz, and Danny B. Poulsen. *Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2020),* October 2020. Springer-Verlag Berlin Heidelberg.
 
+_**[Guaranteed Control Synthesis for Continuous Systems in UPPAAL TIGA](GuaranteedControl-CyPhy2018)**_, Kim Guldstrand Larsen, Adrien Le Coënt, Marius Mikučionis and Jakob Haahr Taankvist (2018). In: Roger Chamberlain, Walid Taha, and Martin Törngren (eds) Cyber Physical Systems. Model-Based Design. CyPhy WESE 2018. Lecture Notes in Computer Science, vol 11615, Springer, Cham. [[DOI]](https://doi.org/10.1007/978-3-030-23703-5_6) [[Springer]](https://link.springer.com/chapter/10.1007/978-3-030-23703-5_6)
+
 _**[Schedulability of Herschel-Planck Revisited Using Statistical Model Checking](HerschelPlanck2012)**_,
 Alexandre David, Kim G. Larsen, Axel Legay and Marius Mikučionis. *Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2012)*, October 2012, Springer-Verlag Berlin Heidelberg. ISBN 978-3-642-34032-1, 978-3-642-34031-4. [[DOI](https://doi.org/10.1007/978-3-642-34032-1_28)]
 
