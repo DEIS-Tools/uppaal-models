@@ -1,7 +1,7 @@
 # Computing Nash Equilibrium in Wireless Ad Hoc Networks: A Simulation-Based Approach
 
-_**[Computing Nash Equilibrium in Wireless Ad Hoc Networks: A Simulation-Based Approach](CSMA-CA-2012)**_,
-Peter E. Bulychev, Alexandre David, Kim G. Larsen, Axel Legay, Marius Mikučionis. *2nd Internation Workshop on Interactions, Games and Protocols (IWIGP 2012)*, March 25, 2012, Electronic Proceedings in Theoretical Computer Science (EPTCS). [[DOI](https://doi.org/10.4204/EPTCS.78.1)]
+_**Computing Nash Equilibrium in Wireless Ad Hoc Networks: A Simulation-Based Approach**_,
+Peter E. Bulychev, Alexandre David, Kim G. Larsen, Axel Legay, Marius Mikučionis. *2nd Internation Workshop on Interactions, Games and Protocols (IWIGP 2012)*, March 25, 2012, Electronic Proceedings in Theoretical Computer Science (EPTCS). [[DOI:10.4204/EPTCS.78.1](https://doi.org/10.4204/EPTCS.78.1)]
 
 ## Abstract
 
