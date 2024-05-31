@@ -1,0 +1,6 @@
+# Continuous-Time Models for System Design and Analysis
+**Continuous-Time Models for System Design and Analysis**, Rajeev Alur, Mirco Giacobbe, Thomas A. Henzinger, Kim G. Larsen, and Marius Mikučionis. In: Steffen, B., Woeginger, G. (eds) *Computing and Software Science*. Lecture Notes in Computer Science, vol 10000. Springer, Cham. [doi:10.1007/978-3-319-91908-9_22](https://doi.org/10.1007/978-3-319-91908-9_22) [preprint](main.pdf)
+
+## Abstract
+We illustrate the ingredients of the state-of-the-art of model-based approach for the formal design and verification of cyber-physical systems. To capture the interaction between a discrete controller and its continuously evolving environment, we use the formal models of timed and hybrid automata. We explain the steps of modeling and verification in the tools UPPAAL and SPACEEX using a case study based on a dual-chamber implantable pacemaker monitoring a human heart. We show how to design a model as a composition of components, how to construct models at varying levels of detail, how to establish that one model is an abstraction of another, how to specify correctness requirements using temporal logic, and how to verify that a model satisfies a logical requirement.
+
