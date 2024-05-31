@@ -9,7 +9,7 @@ _**[Fluid Model-Checking in UPPAAL for Covid-19](Covid-19)**_,
 Peter G. Jensen, Kenneth Y. Jørgensen, Kim G. Larsen, Marius Mikučionis, Marco Muñiz, and Danny B. Poulsen. *Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2020),* October 2020. Springer-Verlag Berlin Heidelberg.
 
 _**[Continuous-Time Models for System Design and Analysis](Pacemaker2019)**_,
-Rajeev Alur, Mirco Giacobbe, Thomas A. Henzinger, Kim G. Larsen, and Marius Mikučionis. In: Steffen, B., Woeginger, G. (eds) *Computing and Software Science*. Lecture Notes in Computer Science, vol 10000. Springer, Cham.
+Rajeev Alur, Mirco Giacobbe, Thomas A. Henzinger, Kim G. Larsen, and Marius Mikučionis. In: Steffen, B., Woeginger, G. (eds) *Computing and Software Science*. Lecture Notes in Computer Science, vol 10000. Springer, Cham. [doi:10.1007/978-3-319-91908-9_22](https://doi.org/10.1007/978-3-319-91908-9_22)
 
 _**[Schedulability of Herschel-Planck Revisited Using Statistical Model Checking](HerschelPlanck2012)**_,
 Alexandre David, Kim G. Larsen, Axel Legay and Marius Mikučionis. *Leveraging Applications of Formal Methods, Verification and Validation. Applications and Case Studies (ISoLA 2012)*, October 2012, Springer-Verlag Berlin Heidelberg. ISBN 978-3-642-34032-1, 978-3-642-34031-4. [[DOI](https://doi.org/10.1007/978-3-642-34032-1_28)]
