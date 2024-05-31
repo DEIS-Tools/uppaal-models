@@ -1,0 +1,611 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**
+This model is reproduced by Marius Mikucionis &lt;marius@cs.aau.dk&gt; from the following publication:
+"Modeling and Verification of a Dual Chamber Implantable Pacemaker",
+Zhihao Jiang, Miroslav Pajic, Salar Moarref, Rajeev Alur and Rahul Mangharam, TACAS 2012.
+*/
+const int TLRI   = 1000; // time for lower rate interval
+const int TAVI   =  150; // time for atrio-ventrical interval
+const int TPVARP =  100; // time for post ventricular atrial refractory period 
+const int TVRP   =  150; // time for ventricular refractory period
+const int TURI   =  400; // time for upper rate interval
+const int TPVAB  =   50; // time for post ventricular atrial blanking
+
+clock clk; // shared by AtroVentriInt and UpperRateInt</declaration>
+	<template>
+		<name x="5" y="5">LowRateInt</name>
+		<parameter>broadcast chan&amp; AtrioS, broadcast chan&amp; VentriS, broadcast chan&amp; VentriP, broadcast chan&amp; AtrioP</parameter>
+		<declaration>/**
+AtrialS -- atrial event sensed
+AtrialP -- atrial pacing
+VentriS -- ventricular event sensed
+VentriP -- ventricular pacing
+*/
+
+clock t;</declaration>
+		<location id="id0" x="-178" y="0">
+			<name x="-212" y="17">ASed</name>
+		</location>
+		<location id="id1" x="-42" y="0">
+			<name x="-25" y="8">LowRateInterval</name>
+			<label kind="invariant" x="-25" y="25">t&lt;=TLRI-TAVI</label>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-51" y="-85">VentriP?</label>
+			<label kind="assignment" x="-51" y="-68">t=0</label>
+			<nail x="-59" y="-51"/>
+			<nail x="-17" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-59" y="59">t&gt;=TLRI-TAVI</label>
+			<label kind="synchronisation" x="-59" y="76">AtrioP!</label>
+			<label kind="assignment" x="-8" y="76">t=0</label>
+			<nail x="-25" y="59"/>
+			<nail x="-59" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="59" y="-34">VentriS?</label>
+			<label kind="assignment" x="59" y="-17">t=0</label>
+			<nail x="51" y="-34"/>
+			<nail x="51" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-143" y="25">VentriS?</label>
+			<label kind="assignment" x="-143" y="42">t=0</label>
+			<nail x="-153" y="42"/>
+			<nail x="-76" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-144" y="-17">VentriP?</label>
+			<label kind="assignment" x="-144" y="0">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-143" y="-51">AtrioS?</label>
+			<nail x="-84" y="-34"/>
+			<nail x="-144" y="-34"/>
+		</transition>
+	</template>
+	<template>
+		<name>AtrioVentriInt</name>
+		<parameter>broadcast chan&amp; AtrioS, broadcast chan&amp; VentriS, broadcast chan&amp; AtrioP, broadcast chan&amp; VentriP</parameter>
+		<declaration>/**
+AtrialS -- atrial event sensed
+AtrialP -- atrial pacing
+VentriS -- ventricular event sensed
+VentriP -- ventricular pacing
+
+There is a small mistake in the interface diagram where "VP?" should be replaced with "AP?".
+*/
+
+clock t;</declaration>
+		<location id="id2" x="153" y="-102">
+			<name x="170" y="-110">WaitURI</name>
+			<label kind="invariant" x="170" y="-93">clk&lt;=TURI</label>
+		</location>
+		<location id="id3" x="153" y="0">
+			<name x="170" y="-17">AVI</name>
+			<label kind="invariant" x="170" y="0">t&lt;=TAVI</label>
+		</location>
+		<location id="id4" x="0" y="0">
+			<name x="-34" y="8">Idel</name>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="34" y="93">t&gt;=TAVI &amp;&amp;
+clk&gt;=TURI</label>
+			<label kind="synchronisation" x="34" y="127">VentriP!</label>
+			<nail x="153" y="127"/>
+			<nail x="0" y="127"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="43" y="59">VentriS?</label>
+			<nail x="136" y="76"/>
+			<nail x="25" y="76"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-33" y="-161">VentriS?</label>
+			<nail x="153" y="-144"/>
+			<nail x="-51" y="-144"/>
+			<nail x="-51" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="guard" x="17" y="-119">clk&gt;=TURI</label>
+			<label kind="synchronisation" x="17" y="-102">VentriP!</label>
+			<nail x="0" y="-102"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="161" y="-68">t&gt;=TAVI &amp;&amp;
+clk&lt;TURI</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="52" y="17">AtrioP?</label>
+			<label kind="assignment" x="52" y="34">t=0</label>
+			<nail x="25" y="34"/>
+			<nail x="119" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="52" y="-51">AtrioS?</label>
+			<label kind="assignment" x="52" y="-34">t=0</label>
+			<nail x="34" y="-34"/>
+			<nail x="119" y="-34"/>
+		</transition>
+	</template>
+	<template>
+		<name>UpperRateInt</name>
+		<parameter>broadcast chan&amp; VentriS, broadcast chan&amp; VentriP</parameter>
+		<location id="id5" x="0" y="0">
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-119" y="-17">VentriP?</label>
+			<label kind="assignment" x="-102" y="0">clk=0</label>
+			<nail x="-59" y="-25"/>
+			<nail x="-59" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="59" y="-17">VentriS?</label>
+			<label kind="assignment" x="59" y="0">clk=0</label>
+			<nail x="59" y="-25"/>
+			<nail x="59" y="25"/>
+		</transition>
+	</template>
+	<template>
+		<name>PostVentriAtrialRefractoryPeriod</name>
+		<parameter>broadcast chan&amp; Aget, broadcast chan&amp; VentriS, broadcast chan&amp; VentriP, broadcast chan&amp; AtrioS, broadcast chan&amp; AtrioR</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id6" x="246" y="102">
+			<name x="195" y="85">inter1</name>
+			<committed/>
+		</location>
+		<location id="id7" x="246" y="0">
+			<name x="263" y="-17">PVARP</name>
+			<label kind="invariant" x="263" y="0">t&lt;=TPVARP</label>
+		</location>
+		<location id="id8" x="127" y="0">
+			<name x="136" y="8">PVAB</name>
+			<label kind="invariant" x="102" y="25">t&lt;=TPVAB</label>
+		</location>
+		<location id="id9" x="0" y="102">
+			<name x="-42" y="85">inter</name>
+			<committed/>
+		</location>
+		<location id="id10" x="0" y="0">
+			<name x="-34" y="-25">Idle</name>
+		</location>
+		<init ref="id10"/>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id10"/>
+			<label kind="guard" x="25" y="-110">t&gt;=TPVARP</label>
+			<nail x="246" y="-93"/>
+			<nail x="0" y="-93"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="255" y="59">AtrioR!</label>
+			<nail x="306" y="102"/>
+			<nail x="306" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="204" y="42">Aget?</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="guard" x="144" y="-17">t&gt;=TPVAB</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="43" y="-59">VentriP?</label>
+			<label kind="assignment" x="43" y="-42">t=0</label>
+			<nail x="25" y="-42"/>
+			<nail x="102" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="34" y="-17">VentriS?</label>
+			<label kind="assignment" x="42" y="0">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="8" y="59">AtrioS!</label>
+			<nail x="59" y="102"/>
+			<nail x="59" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-42" y="34">Aget?</label>
+		</transition>
+	</template>
+	<template>
+		<name>VentriRefractoryPeriod</name>
+		<parameter>broadcast chan&amp; Vget, broadcast chan&amp; VentriP, broadcast chan&amp; VentriS</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id11" x="127" y="-119">
+			<name x="144" y="-136">VRP</name>
+			<label kind="invariant" x="144" y="-119">t&lt;=TVRP</label>
+		</location>
+		<location id="id12" x="0" y="-119">
+			<name x="-10" y="-153">inter</name>
+			<committed/>
+		</location>
+		<location id="id13" x="0" y="0">
+			<name x="-42" y="-8">Idle</name>
+		</location>
+		<init ref="id13"/>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id13"/>
+			<label kind="guard" x="51" y="-17">t&gt;=TVRP</label>
+			<nail x="127" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="17" y="-85">VentriP?</label>
+			<label kind="assignment" x="17" y="-68">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="18" y="-136">VentriS!</label>
+			<label kind="assignment" x="18" y="-119">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-42" y="-68">Vget?</label>
+		</transition>
+	</template>
+	<template>
+		<name>RandomHeartModel</name>
+		<parameter>broadcast chan&amp; AtrioP, broadcast chan&amp; Aget, const int Aminwait, const int Amaxwait</parameter>
+		<declaration>
+clock x;</declaration>
+		<location id="id14" x="0" y="0">
+			<name x="-25" y="17">AReady</name>
+			<label kind="invariant" x="-42" y="34">x&lt;Amaxwait</label>
+		</location>
+		<init ref="id14"/>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="42" y="-21">AtrioP?</label>
+			<label kind="assignment" x="42" y="-4">x=0</label>
+			<nail x="42" y="-25"/>
+			<nail x="42" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-127" y="-25">x&gt;Aminwait</label>
+			<label kind="synchronisation" x="-85" y="-8">Aget!</label>
+			<label kind="assignment" x="-76" y="9">x=0</label>
+			<nail x="-42" y="-25"/>
+			<nail x="-42" y="25"/>
+		</transition>
+	</template>
+	<template>
+		<name>RandomHeartUnbounded</name>
+		<parameter>broadcast chan&amp; AtrioP, broadcast chan&amp; Aget, const int Aminwait</parameter>
+		<declaration>
+clock x;</declaration>
+		<location id="id15" x="0" y="0">
+			<name x="-25" y="17">AReady</name>
+			<label kind="exponentialrate" x="-10" y="34">1</label>
+		</location>
+		<init ref="id15"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="42" y="-21">AtrioP?</label>
+			<label kind="assignment" x="42" y="-4">x=0</label>
+			<nail x="42" y="-25"/>
+			<nail x="42" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-127" y="-25">x&gt;Aminwait</label>
+			<label kind="synchronisation" x="-85" y="-8">Aget!</label>
+			<label kind="assignment" x="-76" y="9">x=0</label>
+			<nail x="-42" y="-25"/>
+			<nail x="-42" y="25"/>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorLowerRateLimit</name>
+		<parameter>broadcast chan&amp; VentriS, broadcast chan&amp; VentriP</parameter>
+		<declaration>/**
+The most essential function for the pacemaker is to treat bradycardia by 
+maintaining the ventricular rate above a certain threshold. We define 
+the region where the ventricular rate is slow, as unsafe. The monitor 
+is designed to measure interval between ventricular events.
+*/
+clock t;</declaration>
+		<location id="id16" x="255" y="0">
+			<name x="245" y="-34">two_a</name>
+			<committed/>
+		</location>
+		<location id="id17" x="119" y="0">
+			<name x="85" y="-51">wait_2nd</name>
+		</location>
+		<location id="id18" x="-17" y="0">
+			<name x="-68" y="-34">wait_1st</name>
+		</location>
+		<init ref="id18"/>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="17" y="8">VentriP?</label>
+			<label kind="assignment" x="17" y="25">t=0</label>
+			<nail x="8" y="25"/>
+			<nail x="76" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="160" y="0">VentriP?</label>
+			<nail x="160" y="17"/>
+			<nail x="229" y="17"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="assignment" x="161" y="59">t=0</label>
+			<nail x="255" y="59"/>
+			<nail x="119" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="161" y="-34">VentriS?</label>
+			<nail x="161" y="-17"/>
+			<nail x="221" y="-17"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="26" y="-34">VentriS?</label>
+			<label kind="assignment" x="25" y="-17">t=0</label>
+			<nail x="8" y="-17"/>
+			<nail x="85" y="-17"/>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorUpperRateLimit</name>
+		<parameter>broadcast chan&amp; VentriS, broadcast chan&amp; VentriP</parameter>
+		<declaration>/**
+The pacemaker is not designed to treat tachycardia so it can only pace the heart
+to increase its rate and cannot slow it down. However, it is still important to
+guarantee it does not pace the ventricles beyond a maximum rate to ensure safe
+operation. To this effect, an upper rate limit is specified such that the pacemaker
+can increase the ventricular rate up to this limit.
+We require that a ventricle pace (VP) can only occur at least TURI after a
+ventricle event (VS, VP).
+*/
+clock t;</declaration>
+		<location id="id19" x="255" y="0">
+			<name x="229" y="-34">interval</name>
+			<committed/>
+		</location>
+		<location id="id20" x="119" y="0">
+			<name x="93" y="-34">wait_vp</name>
+		</location>
+		<location id="id21" x="-17" y="0">
+			<name x="-68" y="-34">wait_v</name>
+		</location>
+		<init ref="id21"/>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="17" y="8">VentriP?</label>
+			<label kind="assignment" x="17" y="25">t=0</label>
+			<nail x="8" y="25"/>
+			<nail x="76" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="153" y="-17">VentriP?</label>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id20"/>
+			<label kind="assignment" x="186" y="25">t=0</label>
+			<nail x="229" y="25"/>
+			<nail x="178" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="93" y="51">VentriS?</label>
+			<label kind="assignment" x="94" y="68">t=0</label>
+			<nail x="161" y="68"/>
+			<nail x="76" y="68"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="17" y="-34">VentriS?</label>
+			<label kind="assignment" x="17" y="-17">t=0</label>
+			<nail x="8" y="-17"/>
+			<nail x="85" y="-17"/>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorSupraventriTachycardia</name>
+		<parameter>broadcast chan&amp; VentriS, broadcast chan&amp; VentriP</parameter>
+		<declaration>/**
+The most essential function for the pacemaker is to treat bradycardia by 
+maintaining the ventricular rate above a certain threshold. We define 
+the region where the ventricular rate is slow, as unsafe. The monitor 
+is designed to measure interval between ventricular events.
+*/
+clock t;</declaration>
+		<location id="id22" x="365" y="0">
+			<name x="355" y="-34">err</name>
+		</location>
+		<location id="id23" x="255" y="0">
+			<name x="245" y="-34">two_v</name>
+			<committed/>
+		</location>
+		<location id="id24" x="119" y="0">
+			<name x="85" y="-51">wait_2nd</name>
+		</location>
+		<location id="id25" x="-17" y="0">
+			<name x="-68" y="-34">wait_1st</name>
+		</location>
+		<init ref="id25"/>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id22"/>
+			<label kind="guard" x="280" y="-17">t&gt;TURI</label>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="17" y="8">VentriP?</label>
+			<label kind="assignment" x="17" y="25">t=0</label>
+			<nail x="8" y="25"/>
+			<nail x="76" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="160" y="0">VentriP?</label>
+			<nail x="160" y="17"/>
+			<nail x="229" y="17"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="guard" x="153" y="42">t&lt;=TURI</label>
+			<label kind="assignment" x="161" y="59">t=0</label>
+			<nail x="255" y="59"/>
+			<nail x="119" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="161" y="-34">VentriS?</label>
+			<nail x="161" y="-17"/>
+			<nail x="221" y="-17"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="26" y="-34">VentriS?</label>
+			<label kind="assignment" x="25" y="-17">t=0</label>
+			<nail x="8" y="-17"/>
+			<nail x="85" y="-17"/>
+		</transition>
+	</template>
+	<system>broadcast chan AtrioS, AtrioP;
+broadcast chan VentriS, VentriP;
+broadcast chan AtrioR;
+broadcast chan Aget, Vget;
+
+LRI=LowRateInt(AtrioS, VentriS, VentriP, AtrioP);
+AVI=AtrioVentriInt(AtrioS, VentriS, AtrioP, VentriP);
+URI=UpperRateInt(VentriS, VentriP);
+PVARP=PostVentriAtrialRefractoryPeriod(Aget, VentriS, VentriP, AtrioS, AtrioR);
+VRP=VentriRefractoryPeriod(Vget, VentriP, VentriS);
+//RHM=RandomHeartModel(AtrioP, Aget, 100, 4000);
+RHM=RandomHeartUnbounded(AtrioP, Aget, 0);
+
+Pvv = MonitorLowerRateLimit(VentriS, VentriP);
+PURI_test = MonitorUpperRateLimit(VentriS, VentriP);
+
+Pv_v = MonitorSupraventriTachycardia(VentriS, VentriP);
+
+system LRI, AVI, URI, PVARP, VRP, RHM, Pvv, PURI_test, Pv_v;
+    </system>
+	<queries>
+		<query>
+			<formula>// Section 4.1 Lower Rate  Limit</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { 4*Pvv.wait_1st, 2*Pvv.wait_2nd, Pvv.two_a }</formula>
+			<comment>Inspect the behavior of Pvv (MonitorLowerRateLimit).
+Pvv hits two_a many times at random intervals.</comment>
+		</query>
+		<query>
+			<formula>A[] (Pvv.two_a imply Pvv.t&lt;=TLRI)
+			</formula>
+			<comment>Check that ventricuilar rate is above the threashold (the interval is less than TLRI).
+Satisfied. Takes up to 1s.</comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>// Section 4.2 Upper Rate  Limit</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { 4*PURI_test.wait_v, 2*PURI_test.wait_vp, PURI_test.interval }</formula>
+			<comment>Inspect the behavior of PURI_test (MonitorUpperRateLimit).
+PURI_test hits interval many times at random intervals.</comment>
+		</query>
+		<query>
+			<formula>A[] (PURI_test.interval imply PURI_test.t&gt;=TURI)
+			</formula>
+			<comment>Check that ventricular rate is not higher than threashold (the interval is no less than TURI).
+Satisfied.
+			</comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E[] (not Pv_v.err)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+	</queries>
+</nta>

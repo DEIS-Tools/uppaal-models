@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<sspaceex xmlns="http://www-verimag.imag.fr/xml-namespaces/sspaceex" version="0.2" math="SpaceEx">
+  <component id="HA">
+    <param name="in_on" type="label" local="false" />
+    <param name="in_off" type="label" local="false" />
+    <param name="get" type="label" local="false" />
+    <param name="x" type="real" local="true" d1="1" d2="1" dynamics="any" />
+    <param name="y" type="real" local="true" d1="1" d2="1" dynamics="any" />
+    <param name="a_rest" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="b_rest" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="i_stim" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="b_stim" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="a_up" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="b_up" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="a_erp" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="b_erp" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="V_R" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="V_T" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="V_O" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="X_max" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="out_on" type="label" local="false" />
+    <param name="out_off" type="label" local="false" />
+    <location id="1" name="rest" x="411.0" y="231.0" width="186.0" height="130.0">
+      <invariant>0 &lt;= x - y &amp;&amp;
+x - y &lt;= V_R &amp;&amp;
+0 &lt;= x &amp;&amp; x &lt;= X_max &amp;&amp;
+0 &lt;= y &amp;&amp; y &lt;= X_max</invariant>
+      <flow>x' == a_rest * x &amp;&amp;
+y' == b_rest * y</flow>
+    </location>
+    <location id="2" name="stim" x="772.0" y="221.0" width="182.0" height="132.0">
+      <invariant>0 &lt;= x - y &amp;&amp;
+x - y &lt;= V_T &amp;&amp;
+0 &lt;= x &amp;&amp; x &lt;= X_max &amp;&amp;
+0 &lt;= y &amp;&amp; y &lt;= X_max</invariant>
+      <flow>x' == i_stim &amp;&amp;
+y' == b_stim * y</flow>
+    </location>
+    <location id="3" name="up" x="774.0" y="606.0" width="184.0" height="130.0">
+      <invariant>V_T &lt;= x - y &amp;&amp;
+x - y &lt;= V_O &amp;&amp;
+0 &lt;= x &amp;&amp; x &lt;= X_max &amp;&amp;
+0 &lt;= y &amp;&amp; y &lt;= X_max</invariant>
+      <flow>x' == a_up * x &amp;&amp;
+y' == b_up * y</flow>
+    </location>
+    <location id="4" name="erp" x="409.0" y="607.0" width="178.0" height="132.0">
+      <invariant>x - y &lt;= V_O &amp;&amp;
+x - y &gt;= V_R &amp;&amp;
+0 &lt;= x &amp;&amp; x &lt;= X_max &amp;&amp;
+0 &lt;= y &amp;&amp; y &lt;= X_max</invariant>
+      <flow>x' == a_erp * x &amp;&amp;
+y' == b_erp * y</flow>
+    </location>
+    <transition source="1" target="2">
+      <label>in_on</label>
+      <assignment>x' == x &amp;&amp;
+y' == y</assignment>
+      <labelposition x="-37.0" y="-77.0" width="86.0" height="68.0" />
+      <middlepoint x="587.5" y="187.5" />
+    </transition>
+    <transition source="2" target="1">
+      <label>in_off</label>
+      <guard>x - y &lt;= V_T</guard>
+      <assignment>x' == x &amp;&amp;
+y' == y</assignment>
+      <labelposition x="-54.0" y="12.0" width="122.0" height="82.0" />
+      <middlepoint x="589.5" y="259.5" />
+    </transition>
+    <transition source="2" target="3">
+      <label>out_on</label>
+      <guard>x - y &gt;= V_T</guard>
+      <assignment>x' == x &amp;&amp;
+y' == y</assignment>
+      <labelposition x="25.0" y="-40.0" width="94.0" height="78.0" />
+      <middlepoint x="775.0" y="433.5" />
+    </transition>
+    <transition source="3" target="4">
+      <label>get</label>
+      <guard>x - y &gt;= V_O</guard>
+      <assignment>x' == x &amp;&amp;
+y' == y</assignment>
+      <labelposition x="-54.0" y="-84.0" width="120.0" height="80.0" />
+    </transition>
+    <transition source="4" target="1">
+      <label>out_off</label>
+      <guard>x - y &lt;= V_R</guard>
+      <assignment>x' == x &amp;&amp;
+y' == y</assignment>
+      <labelposition x="-115.0" y="-46.0" width="98.0" height="90.0" />
+    </transition>
+    <transition source="2" target="2">
+      <label>in_on</label>
+      <labelposition x="22.0" y="-20.0" />
+      <middlepoint x="126.0" y="-5.0" />
+    </transition>
+    <transition source="3" target="3">
+      <label>in_on</label>
+      <labelposition x="20.0" y="-19.0" />
+      <middlepoint x="127.0" y="-4.0" />
+    </transition>
+    <transition source="3" target="3">
+      <label>in_off</label>
+      <labelposition x="-20.0" y="16.0" />
+      <middlepoint x="4.0" y="105.0" />
+    </transition>
+    <transition source="4" target="4">
+      <label>in_on</label>
+      <labelposition x="-62.0" y="-19.0" />
+      <middlepoint x="-123.0" y="10.0" />
+    </transition>
+    <transition source="4" target="4">
+      <label>in_off</label>
+      <labelposition x="-13.0" y="11.0" />
+      <middlepoint x="-1.0" y="105.0" />
+    </transition>
+    <transition source="1" target="1">
+      <label>in_off</label>
+      <labelposition x="-67.0" y="-18.0" />
+      <middlepoint x="-127.0" y="-4.0" />
+    </transition>
+  </component>
+  <component id="TA">
+    <param name="in_on" type="label" local="false" />
+    <param name="in_off" type="label" local="false" />
+    <param name="get" type="label" local="false" />
+    <param name="t" type="real" local="true" d1="1" d2="1" dynamics="any" />
+    <param name="stim_ub" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="get_ub" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="get_lb" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="erp_ub" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="erp_lb" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="out_on" type="label" local="false" />
+    <param name="out_off" type="label" local="false" />
+    <location id="1" name="rest" x="474.0" y="239.0" width="114.0" height="84.0">
+      <invariant>0 &lt;= t</invariant>
+      <flow>t' == 1</flow>
+    </location>
+    <location id="2" name="stim" x="835.0" y="229.0" width="108.0" height="94.0">
+      <invariant>0 &lt;= t &amp;&amp;
+t &lt;= stim_ub</invariant>
+      <flow>t' == 1</flow>
+    </location>
+    <location id="3" name="up" x="844.0" y="585.0" width="90.0" height="88.0">
+      <invariant>t &lt;= get_ub</invariant>
+      <flow>t' == 1</flow>
+    </location>
+    <location id="4" name="erp" x="480.0" y="584.0" width="92.0" height="86.0">
+      <invariant>t &lt;= erp_ub</invariant>
+      <flow>t' == 1</flow>
+    </location>
+    <transition source="1" target="2">
+      <label>in_on</label>
+      <assignment>t' == 0</assignment>
+      <labelposition x="-21.0" y="-46.0" />
+      <middlepoint x="650.5" y="195.5" />
+    </transition>
+    <transition source="2" target="1">
+      <label>in_off</label>
+      <assignment>t' == 0</assignment>
+      <labelposition x="-43.0" y="8.0" width="100.0" height="64.0" />
+      <middlepoint x="652.5" y="267.5" />
+    </transition>
+    <transition source="2" target="3">
+      <label>out_on</label>
+      <assignment>t' == 0</assignment>
+      <labelposition x="8.0" y="-52.0" width="94.0" height="78.0" />
+    </transition>
+    <transition source="3" target="4">
+      <label>get</label>
+      <assignment>t' == 0</assignment>
+      <labelposition x="-43.0" y="-59.0" width="98.0" height="64.0" />
+    </transition>
+    <transition source="4" target="1">
+      <label>out_off</label>
+      <assignment>t' == 0</assignment>
+      <labelposition x="-114.0" y="-46.0" width="100.0" height="66.0" />
+    </transition>
+    <transition source="2" target="2">
+      <label>in_on</label>
+      <labelposition x="14.0" y="-21.0" />
+      <middlepoint x="92.0" y="-1.0" />
+    </transition>
+    <transition source="3" target="3">
+      <label>in_on</label>
+      <labelposition x="18.0" y="-20.0" />
+      <middlepoint x="84.0" y="1.0" />
+    </transition>
+    <transition source="3" target="3">
+      <label>in_off</label>
+      <labelposition x="-20.0" y="10.0" />
+      <middlepoint x="4.0" y="80.0" />
+    </transition>
+    <transition source="4" target="4">
+      <label>in_on</label>
+      <labelposition x="-58.0" y="-21.0" />
+      <middlepoint x="-82.0" y="-4.0" />
+    </transition>
+    <transition source="4" target="4">
+      <label>in_off</label>
+      <labelposition x="-23.0" y="10.0" />
+      <middlepoint x="1.0" y="79.0" />
+    </transition>
+    <transition source="1" target="1">
+      <label>in_off</label>
+      <labelposition x="-64.0" y="-25.0" />
+      <middlepoint x="-100.0" y="-3.0" />
+    </transition>
+  </component>
+  <component id="TAcomp">
+    <param name="in_on" type="label" local="false" />
+    <param name="in_off" type="label" local="false" />
+    <param name="get" type="label" local="false" />
+    <param name="t" type="real" local="true" d1="1" d2="1" dynamics="any" />
+    <param name="stim_ub" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="get_ub" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="get_lb" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="erp_ub" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="erp_lb" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <param name="out_on" type="label" local="false" />
+    <param name="out_off" type="label" local="false" />
+    <param name="eps" type="real" local="false" d1="1" d2="1" dynamics="const" />
+    <location id="1" name="rest" x="474.0" y="239.0" width="114.0" height="84.0">
+      <invariant>0 &lt;= t</invariant>
+      <flow>t' == 1</flow>
+    </location>
+    <location id="2" name="stim" x="831.0" y="231.0" width="108.0" height="94.0">
+      <invariant>0 &lt;= t</invariant>
+      <flow>t' == 1</flow>
+    </location>
+    <location id="3" name="up" x="835.0" y="587.0" width="90.0" height="88.0">
+      <invariant>0 &lt;= t</invariant>
+      <flow>t' == 1</flow>
+    </location>
+    <location id="4" name="erp" x="478.0" y="587.0" width="92.0" height="86.0">
+      <invariant>0 &lt;= t</invariant>
+      <flow>t' == 1</flow>
+    </location>
+    <location id="6" name="rest_reject" x="377.0" y="63.0" />
+    <location id="7" name="stim_reject" x="917.0" y="70.0" />
+    <location id="5" name="up_reject" x="1088.0" y="719.0" />
+    <location id="8" name="erp_reject" x="202.0" y="721.0" />
+    <transition source="1" target="2">
+      <label>in_on</label>
+      <assignment>t' == 0</assignment>
+      <labelposition x="-21.0" y="-46.0" />
+      <middlepoint x="650.5" y="195.5" />
+    </transition>
+    <transition source="2" target="1">
+      <label>in_off</label>
+      <assignment>t' == 0</assignment>
+      <labelposition x="-43.0" y="8.0" width="100.0" height="64.0" />
+      <middlepoint x="652.5" y="267.5" />
+    </transition>
+    <transition source="2" target="3">
+      <label>out_on</label>
+      <guard>t &lt;= stim_ub</guard>
+      <assignment>t' == 0</assignment>
+      <labelposition x="16.0" y="-64.0" width="94.0" height="78.0" />
+    </transition>
+    <transition source="3" target="4">
+      <label>get</label>
+      <guard>t &lt;= get_ub</guard>
+      <assignment>t' == 0</assignment>
+      <labelposition x="-45.0" y="-86.0" width="98.0" height="80.0" />
+    </transition>
+    <transition source="4" target="1">
+      <label>out_off</label>
+      <guard>t &lt;= erp_ub</guard>
+      <assignment>t' == 0</assignment>
+      <labelposition x="-106.0" y="-51.0" width="100.0" height="82.0" />
+    </transition>
+    <transition source="1" target="6">
+      <label>get</label>
+      <labelposition x="9.0" y="-35.0" width="80.0" height="72.0" />
+      <middlepoint x="462.5" y="129.0" />
+    </transition>
+    <transition source="2" target="7">
+      <label>get</label>
+      <labelposition x="-88.0" y="-29.0" width="84.0" height="70.0" />
+    </transition>
+    <transition source="2" target="7">
+      <label>out_on</label>
+      <guard>t &gt;= stim_ub + eps</guard>
+      <labelposition x="15.0" y="-9.0" width="126.0" height="56.0" />
+      <middlepoint x="928.0" y="167.5" />
+    </transition>
+    <transition source="3" target="5">
+      <label>get</label>
+      <guard>t &gt;= get_ub + eps</guard>
+      <labelposition x="-37.0" y="20.0" width="136.0" height="52.0" />
+      <middlepoint x="926.5" y="716.5" />
+    </transition>
+    <transition source="1" target="6">
+      <label>out_on</label>
+      <labelposition x="-58.0" y="-20.0" />
+    </transition>
+    <transition source="4" target="8">
+      <label>get</label>
+      <labelposition x="7.0" y="5.0" />
+    </transition>
+    <transition source="4" target="8">
+      <label>out_off</label>
+      <guard>t &gt;= erp_ub + eps</guard>
+      <labelposition x="-26.0" y="20.0" width="142.0" height="50.0" />
+      <middlepoint x="389.0" y="707.0" />
+    </transition>
+    <transition source="2" target="2">
+      <label>in_on</label>
+      <labelposition x="23.0" y="-7.0" />
+      <middlepoint x="88.0" y="17.0" />
+    </transition>
+    <transition source="1" target="1">
+      <label>in_off</label>
+      <labelposition x="-56.0" y="-10.0" />
+      <middlepoint x="-95.0" y="22.0" />
+    </transition>
+    <transition source="1" target="6">
+      <label>out_off</label>
+      <labelposition x="-71.0" y="-10.0" />
+      <middlepoint x="342.5" y="175.0" />
+    </transition>
+    <transition source="2" target="7">
+      <label>out_off</label>
+      <labelposition x="-66.0" y="-29.0" />
+      <middlepoint x="796.0" y="117.5" />
+    </transition>
+    <transition source="3" target="3">
+      <label>in_on</label>
+      <labelposition x="17.0" y="-17.0" />
+      <middlepoint x="87.0" y="0.0" />
+    </transition>
+    <transition source="3" target="3">
+      <label>in_off</label>
+      <labelposition x="-30.0" y="18.0" />
+      <middlepoint x="2.0" y="83.0" />
+    </transition>
+    <transition source="4" target="4">
+      <label>in_off</label>
+      <labelposition x="-20.0" y="8.0" />
+      <middlepoint x="4.0" y="91.0" />
+    </transition>
+    <transition source="4" target="4">
+      <label>in_on</label>
+      <labelposition x="-57.0" y="-25.0" />
+      <middlepoint x="-89.0" y="-15.0" />
+    </transition>
+    <transition source="3" target="5">
+      <label>out_on</label>
+      <labelposition x="-17.0" y="-27.0" />
+    </transition>
+    <transition source="3" target="5">
+      <label>out_off</label>
+      <labelposition x="-5.0" y="-16.0" />
+      <middlepoint x="1006.5" y="609.0" />
+    </transition>
+    <transition source="4" target="8">
+      <label>out_on</label>
+      <labelposition x="-48.0" y="-24.0" />
+      <middlepoint x="312.0" y="600.0" />
+    </transition>
+  </component>
+  <component id="system">
+    <param name="in_on" type="label" local="false" />
+    <param name="in_off" type="label" local="false" />
+    <param name="get" type="label" local="false" x="150.0" y="316.0" />
+    <param name="a_rest" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="b_rest" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="i_stim" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="b_stim" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="a_up" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="b_up" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="a_erp" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="b_erp" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="V_R" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="V_T" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="V_O" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="stim_ub" type="real" local="false" d1="1" d2="1" dynamics="const" controlled="true" />
+    <param name="out_on" type="label" local="false" />
+    <param name="out_off" type="label" local="false" />
+    <bind component="HA" as="HA_1" x="570.0" y="164.0" width="112.0" height="82.0">
+      <map key="in_on">in_on</map>
+      <map key="in_off">in_off</map>
+      <map key="get">get</map>
+      <map key="a_rest">-0.98</map>
+      <map key="b_rest">-0.16</map>
+      <map key="i_stim">1</map>
+      <map key="b_stim">-0.16</map>
+      <map key="a_up">15</map>
+      <map key="b_up">1.4</map>
+      <map key="a_erp">-0.98</map>
+      <map key="b_erp">-0.16</map>
+      <map key="V_R">10</map>
+      <map key="V_T">10</map>
+      <map key="V_O">83</map>
+      <map key="X_max">100</map>
+      <map key="out_on">out_on</map>
+      <map key="out_off">out_off</map>
+    </bind>
+    <bind component="TAcomp" as="TAcomp_1" x="682.0" y="465.0" width="104.0" height="82.0">
+      <map key="in_on">in_on</map>
+      <map key="in_off">in_off</map>
+      <map key="get">get</map>
+      <map key="stim_ub">10</map>
+      <map key="get_ub">0.5</map>
+      <map key="get_lb">0.14</map>
+      <map key="erp_ub">7.5</map>
+      <map key="erp_lb">2.15</map>
+      <map key="eps">0.01</map>
+      <map key="out_on">out_on</map>
+      <map key="out_off">out_off</map>
+    </bind>
+  </component>
+  <component id="systemcopy">
+    <param name="in_on" type="label" local="false" />
+    <param name="in_off" type="label" local="false" />
+    <param name="get" type="label" local="false" />
+    <param name="out_on" type="label" local="false" />
+    <param name="out_off" type="label" local="false" />
+    <bind component="HA" as="HA_1" x="346.0" y="215.0" width="112.0" height="82.0">
+      <map key="in_on">in_on</map>
+      <map key="in_off">in_off</map>
+      <map key="get">get</map>
+      <map key="a_rest">-0.98</map>
+      <map key="b_rest">-0.16</map>
+      <map key="i_stim">1</map>
+      <map key="b_stim">-0.16</map>
+      <map key="a_up">15</map>
+      <map key="b_up">1.4</map>
+      <map key="a_erp">-0.98</map>
+      <map key="b_erp">-0.16</map>
+      <map key="V_R">10</map>
+      <map key="V_T">10</map>
+      <map key="V_O">83</map>
+      <map key="X_max">100</map>
+      <map key="out_on">out_on</map>
+      <map key="out_off">out_off</map>
+    </bind>
+  </component>
+</sspaceex>
+

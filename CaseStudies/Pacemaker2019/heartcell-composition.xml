@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**
+This model is reproduced by Marius Mikucionis &lt;marius@cs.aau.dk&gt; from the following publication:
+"Modeling and Verification of a Dual Chamber Implantable Pacemaker",
+Zhihao Jiang, Miroslav Pajic, Salar Moarref, Rajeev Alur and Rahul Mangharam, TACAS 2012.
+*/
+
+/*
+const int TAVI   =  150; // time for atrio-ventrical interval
+const int TLRI   = 1000; // time for lower rate interval
+int TPVARP =  100; // time for post ventricular atrial refractory period (changed in the VP-AS-counter
+const int TVRP   =  150; // time for ventricular refractory period
+const int TURI   =  400; // time for upper rate interval
+const int TPVAB  =   50; // time for post ventricular atrial blanking
+
+clock clk; // shared by AtroVentriInt and UpperRateInt
+*/
+
+bool error;</declaration>
+	<template>
+		<name>Pulse</name>
+		<parameter>const int period, broadcast chan&amp; on, broadcast chan&amp; off</parameter>
+		<declaration>clock t;
+
+const int on_lb = 1; // less than 1 will move HeartCellTAC to Rest and then Error
+const int on_ub = 10;//0 - on_lb;
+const int off_lb = period-on_ub;
+const int off_ub = period-on_lb;</declaration>
+		<location id="id0" x="-170" y="-102">
+			<committed/>
+		</location>
+		<location id="id1" x="-51" y="-102">
+			<name x="-34" y="-110">On</name>
+			<label kind="invariant" x="-85" y="-93">t&lt;=on_ub</label>
+		</location>
+		<location id="id2" x="-51" y="-187">
+			<committed/>
+		</location>
+		<location id="id3" x="-170" y="-187">
+			<name x="-187" y="-238">Off</name>
+			<label kind="invariant" x="-187" y="-221">t&lt;=off_ub</label>
+		</location>
+		<location id="id4" x="-51" y="-238">
+			<label kind="invariant" x="-102" y="-246">t&lt;=2</label>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-42" y="-221">t&gt;=1</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-161" y="-161">off!</label>
+			<label kind="assignment" x="-161" y="-144">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-136" y="-119">t&gt;on_lb</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-42" y="-161">on!</label>
+			<label kind="assignment" x="-42" y="-144">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-144" y="-204">t&gt;=off_lb</label>
+		</transition>
+	</template>
+	<template>
+		<name>HeartCellTAold</name>
+		<parameter>broadcast chan&amp; in1, broadcast chan&amp; in0, broadcast chan&amp; get, broadcast chan&amp; out1, broadcast chan&amp; out0</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+const int Lget  = 1; // floor(1.41ms)
+const int Tget   = 2; //  ceil(1.52ms)
+const int Lout0 = 2; // floor(2.04ms)
+const int Tout0  = 3; //  ceil(2.15ms)
+const int Tout1  = 1; //  ceil(0.00047ms)
+
+/*
+const int T_get  = 1;  // floor(1.5ms)
+const int Tget   = 2;  //  ceil(1.5ms)
+const int T_out0 = 2; // floor(2.15ms)
+const int Tout0  = 8;  //  ceil(7.5ms)
+const int Tout1  = 1;  //  ceil(1.0ms)
+*/
+
+clock t;</declaration>
+		<location id="id5" x="-8" y="110">
+			<name x="-25" y="127">repolarization</name>
+			<label kind="invariant" x="-25" y="144">t&lt;=Tout0</label>
+			<label kind="comments" x="-110" y="135">Dropping voltage
+refractary = 
+not stimulable</label>
+		</location>
+		<location id="id6" x="127" y="110">
+			<name x="102" y="127">upstroke</name>
+			<label kind="invariant" x="102" y="144">t&lt;=Tget</label>
+			<label kind="comments" x="119" y="135">High rising voltage</label>
+		</location>
+		<location id="id7" x="127" y="0">
+			<name x="93" y="-51">stimulus</name>
+			<label kind="invariant" x="93" y="-34">t&lt;=Tout1</label>
+			<label kind="comments" x="119" y="-34">Low rising voltage</label>
+		</location>
+		<location id="id8" x="-8" y="0">
+			<name x="-51" y="-34">resting</name>
+			<label kind="comments" x="-76" y="-34">Low voltage</label>
+		</location>
+		<init ref="id8"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id8"/>
+			<label kind="guard" x="0" y="34">t&gt;=Lout0</label>
+			<label kind="synchronisation" x="0" y="51">out0!</label>
+			<label kind="assignment" x="0" y="68">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="guard" x="42" y="76">t&gt;=Lget</label>
+			<label kind="synchronisation" x="42" y="93">get!</label>
+			<label kind="assignment" x="42" y="110">t=0</label>
+			<label kind="comments" x="42" y="127">peak</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="136" y="34">out1!</label>
+			<label kind="assignment" x="136" y="51">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="34" y="0">in0?</label>
+			<nail x="93" y="17"/>
+			<nail x="25" y="17"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="34" y="-17">in1?</label>
+			<label kind="assignment" x="68" y="-17">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>HeartCellTA</name>
+		<parameter>broadcast chan&amp; in1, broadcast chan&amp; in0, broadcast chan&amp; get, broadcast chan&amp; out1, broadcast chan&amp; out0</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+//const int Lget  = 1; // floor(1.41ms)
+const int Tget   = 1; // ceil(0.5ms)
+const int Tstim  = 1;
+const int Tout0  = 8; //  ceil(7.5ms)
+const int Tout1  = 1; //  ceil(1.0ms)
+
+/*
+const int T_get  = 1;  // floor(1.5ms)
+const int Tget   = 2;  //  ceil(1.5ms)
+const int T_out0 = 2; // floor(2.15ms)
+const int Tout0  = 8;  //  ceil(7.5ms)
+const int Tout1  = 1;  //  ceil(1.0ms)
+*/
+
+clock t, t_lb;</declaration>
+		<location id="id9" x="-8" y="110">
+			<name x="-25" y="127">repolarization</name>
+			<label kind="invariant" x="-25" y="144">t&lt;=Tout0</label>
+			<label kind="comments" x="-110" y="135">Dropping voltage
+refractary = 
+not stimulable</label>
+		</location>
+		<location id="id10" x="127" y="110">
+			<name x="102" y="127">upstroke</name>
+			<label kind="invariant" x="102" y="144">t&lt;=Tget</label>
+			<label kind="comments" x="119" y="135">High rising voltage</label>
+		</location>
+		<location id="id11" x="127" y="0">
+			<name x="93" y="-51">stimulus</name>
+			<label kind="invariant" x="93" y="-34">t&lt;=Tout1</label>
+			<label kind="comments" x="119" y="-34">Low rising voltage</label>
+		</location>
+		<location id="id12" x="-8" y="0">
+			<name x="-51" y="-34">resting</name>
+			<label kind="comments" x="-76" y="-34">Low voltage</label>
+		</location>
+		<init ref="id12"/>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id12"/>
+			<label kind="guard" x="0" y="34">t_lb&gt;Tstim</label>
+			<label kind="synchronisation" x="0" y="51">out0!</label>
+			<label kind="assignment" x="0" y="68">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="42" y="93">get!</label>
+			<label kind="assignment" x="42" y="110">t=0</label>
+			<label kind="comments" x="42" y="127">peak</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="136" y="34">out1!</label>
+			<label kind="assignment" x="136" y="51">t=0,
+t_lb=0</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="25" y="0">in0?</label>
+			<nail x="93" y="17"/>
+			<nail x="25" y="17"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="25" y="-17">in1?</label>
+			<label kind="assignment" x="68" y="-17">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorDuration</name>
+		<parameter>broadcast chan&amp; from, broadcast chan&amp; till</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id13" x="110" y="0">
+			<name x="93" y="17">Max</name>
+		</location>
+		<location id="id14" x="0" y="0">
+		</location>
+		<location id="id15" x="51" y="-76">
+			<name x="68" y="-85">Min</name>
+			<committed/>
+		</location>
+		<init ref="id14"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="assignment" x="0" y="-51">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="85" y="-51">till?</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="34" y="-17">from?</label>
+			<label kind="assignment" x="34" y="0">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Limit</name>
+		<declaration>clock t;</declaration>
+		<location id="id16" x="0" y="0">
+			<label kind="invariant" x="-10" y="17">t&lt;=20</label>
+		</location>
+		<init ref="id16"/>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id16"/>
+			<nail x="68" y="-17"/>
+			<nail x="17" y="-51"/>
+		</transition>
+	</template>
+	<system>clock time;
+
+// channels for heart cells:
+const int N = 6;
+typedef int[0,N-1] id_t;
+typedef int[0,N] sig_t;
+broadcast chan get[sig_t], on[sig_t], off[sig_t];
+
+beat = Pulse(100, on[0], off[0]);
+
+cells(const id_t i) = HeartCellTA(on[i], off[i], get[i], on[i+1], off[i+1]);
+
+D = MonitorDuration(on[0], on[N]);
+
+const int red    = 0;
+const int green  = 1;
+const int blue   = 2;
+const int purple = 3;
+const int orange = 5;
+const int yellow = 6;
+const int cyan   = 9;
+
+system beat, cells; //, D; //, Limit;
+
+//system beat, cells, D; //, Limit;
+
+//system beat, cells, D, Limit;
+
+
+gantt {
+  C(i:id_t):
+    cells(i).resting -&gt; red,
+    cells(i).stimulus -&gt; yellow,
+    cells(i).upstroke -&gt; green,
+    cells(i).repolarization -&gt; blue;
+}</system>
+	<queries>
+		<query>
+			<formula>simulate 1 [&lt;=15] { 
+cells(0).Stimulus+2*cells(0).Upstroke+3*cells(0).ERP_RRP,  
+cells(1).Stimulus+2*cells(1).Upstroke+3*cells(1).ERP_RRP+4*1,
+cells(2).Stimulus+2*cells(2).Upstroke+3*cells(2).ERP_RRP+4*2,
+cells(3).Stimulus+2*cells(3).Upstroke+3*cells(3).ERP_RRP+4*3
+}
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=5000] { 
+cells(0).Stimulus+2*cells(0).Upstroke+3*cells(0).ERP_RRP,  
+cells(1).Stimulus+2*cells(1).Upstroke+3*cells(1).ERP_RRP+4*1,
+cells(2).Stimulus+2*cells(2).Upstroke+3*cells(2).ERP_RRP+4*2,
+cells(3).Stimulus+2*cells(3).Upstroke+3*cells(3).ERP_RRP+4*3,
+beat.On+4*4
+}
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1000 [&lt;=5000] { 
+cells(0).Stimulus+2*cells(0).Upstroke+3*cells(0).ERP_RRP,  
+cells(1).Stimulus+2*cells(1).Upstroke+3*cells(1).ERP_RRP+4*1,
+cells(2).Stimulus+2*cells(2).Upstroke+3*cells(2).ERP_RRP+4*2,
+cells(3).Stimulus+2*cells(3).Upstroke+3*cells(3).ERP_RRP+4*3
+} : 1 : error
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>cells(0).stimulus --&gt; cells(N-1).stimulus
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=100](&lt;&gt; cells(N-1).stimulus)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>inf{D.Min}: D.t
+			</formula>
+			<comment>min delay between atrium and ventricle: 0
+			</comment>
+		</query>
+		<query>
+			<formula>sup{D.Max}: D.t
+			</formula>
+			<comment>max delay between atrium and ventricle: N
+			</comment>
+		</query>
+		<query>
+			<formula>E[&lt;=500;10000](max:D.t)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=20](&lt;&gt; cells(5).Rest &amp;&amp; time&gt;8)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+	</queries>
+</nta>

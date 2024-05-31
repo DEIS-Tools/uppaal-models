@@ -1,0 +1,592 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>bool error = false;</declaration>
+	<template>
+		<name>Template0</name>
+		<location id="id0" x="0" y="0">
+		</location>
+		<init ref="id0"/>
+	</template>
+	<template>
+		<name>SANode</name>
+		<parameter>const int erp_lb, const int erp_ub, broadcast chan&amp; in_on, broadcast chan&amp; in_off, broadcast chan&amp; get, broadcast chan&amp; out_on, broadcast chan&amp; out_off</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+/* these parameters are chosen to emulate steep rising slope, in ECRTS10 these are so short as negligible. */
+//const int stim_lb = 1;
+const int stim_ub = 1;
+const int get_ub = 1; // 0.5
+
+clock t;</declaration>
+		<location id="id1" x="-8" y="153">
+			<name x="-85" y="136">ERP_RRP</name>
+			<label kind="invariant" x="-102" y="153">t&lt;=erp_ub</label>
+			<label kind="comments" x="-144" y="178">Dropping voltage
+refractary = 
+not stimulable</label>
+		</location>
+		<location id="id2" x="144" y="153">
+			<name x="161" y="136">Upstroke</name>
+			<label kind="invariant" x="161" y="153">t&lt;=get_ub</label>
+			<label kind="comments" x="161" y="178">High rising voltage</label>
+		</location>
+		<location id="id3" x="144" y="0">
+			<name x="161" y="-17">Stimulus</name>
+			<label kind="invariant" x="161" y="0">t&lt;=stim_ub</label>
+			<label kind="comments" x="161" y="-34">Low rising voltage</label>
+		</location>
+		<location id="id4" x="-8" y="0">
+			<name x="-59" y="-17">Rest</name>
+			<label kind="invariant" x="-85" y="0">t&lt;=950</label>
+			<label kind="comments" x="-110" y="-34">Low voltage</label>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="42" y="51">t&gt;=850</label>
+			<label kind="assignment" x="42" y="68">t=0</label>
+			<nail x="34" y="68"/>
+			<nail x="102" y="68"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-85" y="42">t&gt;=erp_lb</label>
+			<label kind="synchronisation" x="-85" y="59">out_off!</label>
+			<label kind="assignment" x="-85" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="42" y="136">get!</label>
+			<label kind="assignment" x="42" y="153">t=0</label>
+			<label kind="comments" x="42" y="170">peak</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="119" y="59">out_on!</label>
+			<label kind="assignment" x="119" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="51" y="17">in_off?</label>
+			<nail x="110" y="34"/>
+			<nail x="42" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="51" y="-17">in_on?</label>
+			<label kind="assignment" x="51" y="0">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>SANodeSimple</name>
+		<parameter>const int erp_lb, const int erp_ub, broadcast chan&amp; in_on, broadcast chan&amp; in_off, broadcast chan&amp; get, broadcast chan&amp; out_on, broadcast chan&amp; out_off</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+/* these parameters are chosen to emulate steep rising slope, in ECRTS10 these are so short as negligible. */
+//const int stim_lb = 1;
+const int stim_ub = 1;
+const int get_ub = 1; // 0.5
+
+clock t;</declaration>
+		<location id="id5" x="153" y="0">
+		</location>
+		<location id="id6" x="-8" y="0">
+			<name x="-59" y="-17">Rest</name>
+			<label kind="invariant" x="-85" y="0">t&lt;=950</label>
+			<label kind="comments" x="-110" y="-34">Low voltage</label>
+		</location>
+		<init ref="id6"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<nail x="153" y="59"/>
+			<nail x="-8" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="guard" x="34" y="-17">t&gt;=900</label>
+			<label kind="synchronisation" x="34" y="0">out_on!</label>
+			<label kind="assignment" x="42" y="17">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>HeartCellTA</name>
+		<parameter>const int erp_lb, const int erp_ub, broadcast chan&amp; in_on, broadcast chan&amp; in_off, broadcast chan&amp; get, broadcast chan&amp; out_on, broadcast chan&amp; out_off</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+/* these parameters are chosen to emulate steep rising slope, in ECRTS10 these are so short as negligible. */
+//const int stim_lb = 1;
+const int stim_ub = 1;
+const int get_ub = 1; // 0.5
+
+clock t;</declaration>
+		<location id="id7" x="-8" y="153">
+			<name x="-85" y="136">ERP_RRP</name>
+			<label kind="invariant" x="-102" y="153">t&lt;=erp_ub</label>
+			<label kind="comments" x="-144" y="178">Dropping voltage
+refractary = 
+not stimulable</label>
+		</location>
+		<location id="id8" x="144" y="153">
+			<name x="161" y="136">Upstroke</name>
+			<label kind="invariant" x="161" y="153">t&lt;=get_ub</label>
+			<label kind="comments" x="161" y="178">High rising voltage</label>
+		</location>
+		<location id="id9" x="144" y="0">
+			<name x="161" y="-17">Stimulus</name>
+			<label kind="invariant" x="161" y="0">t&lt;=stim_ub</label>
+			<label kind="comments" x="161" y="-34">Low rising voltage</label>
+		</location>
+		<location id="id10" x="-8" y="0">
+			<name x="-59" y="-17">Rest</name>
+			<label kind="comments" x="-110" y="-34">Low voltage</label>
+		</location>
+		<init ref="id10"/>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-85" y="42">t&gt;=erp_lb</label>
+			<label kind="synchronisation" x="-85" y="59">out_off!</label>
+			<label kind="assignment" x="-85" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="42" y="136">get!</label>
+			<label kind="assignment" x="42" y="153">t=0</label>
+			<label kind="comments" x="42" y="170">peak</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="119" y="59">out_on!</label>
+			<label kind="assignment" x="119" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="51" y="17">in_off?</label>
+			<nail x="110" y="34"/>
+			<nail x="42" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="51" y="-17">in_on?</label>
+			<label kind="assignment" x="51" y="0">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>HeartCellTAC</name>
+		<parameter>const int erp_lb, const int erp_ub, urgent broadcast chan&amp; in_on, urgent broadcast chan&amp; in_off, urgent broadcast chan&amp; get, urgent broadcast chan&amp; out_on, urgent broadcast chan&amp; out_off</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+/* these parameters are chosen to emulate steep rising slope, in ECRTS10 these are so short as negligible. */
+//const int stim_lb = 1;
+const int stim_ub = 1;
+const int get_ub = 1; // 0.5
+
+clock t;</declaration>
+		<location id="id11" x="-127" y="153">
+			<name x="-153" y="119">Err2</name>
+			<committed/>
+		</location>
+		<location id="id12" x="272" y="0">
+			<name x="280" y="-25">Err</name>
+		</location>
+		<location id="id13" x="-8" y="153">
+			<name x="-8" y="178">ERP_RRP</name>
+		</location>
+		<location id="id14" x="144" y="153">
+			<name x="93" y="170">Upstroke</name>
+		</location>
+		<location id="id15" x="144" y="0">
+			<name x="110" y="-25">Stimulus</name>
+		</location>
+		<location id="id16" x="-8" y="0">
+			<name x="-59" y="-17">Rest</name>
+		</location>
+		<init ref="id16"/>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="42" y="-102">get?</label>
+			<nail x="34" y="-85"/>
+			<nail x="212" y="-85"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="187" y="68">in_off?</label>
+			<nail x="178" y="85"/>
+			<nail x="246" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="187" y="85">in_on?</label>
+			<nail x="178" y="102"/>
+			<nail x="255" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="42" y="-85">out_on?</label>
+			<nail x="25" y="-68"/>
+			<nail x="212" y="-68"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-93" y="85">in_off?</label>
+			<nail x="-25" y="102"/>
+			<nail x="-102" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-93" y="102">in_on?</label>
+			<nail x="-25" y="119"/>
+			<nail x="-93" y="119"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-93" y="119">out_on?</label>
+			<nail x="-25" y="136"/>
+			<nail x="-93" y="136"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-93" y="136">get?</label>
+			<nail x="-34" y="153"/>
+			<nail x="-102" y="153"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id11"/>
+			<label kind="guard" x="-93" y="187">t&lt;erp_lb</label>
+			<label kind="synchronisation" x="-93" y="204">out_off?</label>
+			<nail x="-25" y="204"/>
+			<nail x="-102" y="204"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<nail x="-127" y="221"/>
+			<nail x="272" y="221"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id11"/>
+			<label kind="guard" x="-93" y="153">t&gt;erp_ub</label>
+			<label kind="synchronisation" x="-93" y="170">out_off?</label>
+			<nail x="-25" y="170"/>
+			<nail x="-102" y="170"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="42" y="-68">out_off?</label>
+			<nail x="17" y="-51"/>
+			<nail x="212" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="42" y="-51">in_off?</label>
+			<nail x="8" y="-34"/>
+			<nail x="212" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="178" y="102">out_off?</label>
+			<nail x="178" y="119"/>
+			<nail x="255" y="119"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="178" y="119">out_on?</label>
+			<nail x="178" y="136"/>
+			<nail x="263" y="136"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="187" y="17">get?</label>
+			<nail x="178" y="34"/>
+			<nail x="246" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="guard" x="178" y="136">t&gt;get_ub</label>
+			<label kind="synchronisation" x="178" y="153">get?</label>
+			<nail x="263" y="153"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id12"/>
+			<label kind="guard" x="170" y="-17">t&gt;stim_ub</label>
+			<label kind="synchronisation" x="170" y="0">out_on?</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-85" y="17">t&gt;=erp_lb</label>
+			<label kind="synchronisation" x="-85" y="34">out_off!</label>
+			<label kind="assignment" x="-85" y="51">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id13"/>
+			<label kind="guard" x="42" y="119">t&lt;=get_ub</label>
+			<label kind="synchronisation" x="42" y="136">get?</label>
+			<label kind="assignment" x="42" y="153">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="119" y="34">t&lt;=stim_ub</label>
+			<label kind="synchronisation" x="119" y="51">out_on?</label>
+			<label kind="assignment" x="119" y="68">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="43" y="17">in_off?</label>
+			<nail x="102" y="34"/>
+			<nail x="34" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="42" y="-17">in_on?</label>
+			<label kind="assignment" x="42" y="0">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorGet</name>
+		<parameter>broadcast chan&amp; get</parameter>
+		<declaration>clock t;
+const int T = 1000;</declaration>
+		<location id="id17" x="51" y="-93">
+			<name x="41" y="-127">Error</name>
+		</location>
+		<location id="id18" x="-68" y="-93">
+		</location>
+		<init ref="id18"/>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-42" y="-127">t&gt;T</label>
+			<label kind="synchronisation" x="-42" y="-110">get?</label>
+			<label kind="assignment" x="-42" y="-93">error=1</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-92" y="-178">t&lt;=T</label>
+			<label kind="synchronisation" x="-93" y="-161">get?</label>
+			<label kind="assignment" x="-93" y="-144">t=0</label>
+			<nail x="-110" y="-144"/>
+			<nail x="-42" y="-144"/>
+		</transition>
+	</template>
+	<system>clock time;
+
+broadcast chan AtrioS, AtrioP;
+broadcast chan VentriS, VentriP;
+broadcast chan AtrioR;
+broadcast chan Aget, Vget;
+broadcast chan VP_AS, reset;
+
+broadcast chan DDD, VDI;
+broadcast chan Fast, Slow, du_end, du_beg;
+
+broadcast chan VentriB, ABLOCK;
+broadcast chan A_act, V_act;
+
+urgent broadcast chan in_on, in_off;
+urgent broadcast chan get, out_on, out_off;
+
+
+
+
+// Table I from "Real-time Heart Model for Implantable Cardiac Device Validation and Verification."
+AtriumCell(broadcast chan&amp; start, broadcast chan&amp; stop, broadcast chan&amp; get, broadcast chan&amp; in, broadcast chan&amp; out) = 
+     HeartCell(150+100, 150+100/2, 300+100, start, stop, get, in, out);
+AVNodeCell(broadcast chan&amp; start, broadcast chan&amp; stop, broadcast chan&amp; get, broadcast chan&amp; in, broadcast chan&amp; out) = 
+     HeartCell(230+200, 230+200/2, 300+200, start, stop, get, in, out);
+HisPurkinjeCell(broadcast chan&amp; start, broadcast chan&amp; stop, broadcast chan&amp; get, broadcast chan&amp; in, broadcast chan&amp; out) = 
+     HeartCell(300+ 50, 300+ 50/2, 350+ 50, start, stop, get, in, out);
+VentricleCell(broadcast chan&amp; start, broadcast chan&amp; stop, broadcast chan&amp; get, broadcast chan&amp; in, broadcast chan&amp; out) =
+     HeartCell(200+100, 200+100/2, 290+100, start, stop, get, in, out);
+
+cellHA = HeartCellHA(in_on, in_off, get, out_off, out_on);
+
+cellTAC = HeartCellTAC(2, 8, in_on, in_off, get, out_on, out_off);
+
+system cellHA, cellTAC;</system>
+	<queries>
+		<query>
+			<formula>simulate 1 [&lt;=20] { 1000*(cellHA.v_x-cellHA.v_y)   }
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=2] { cellHA.v_x-cellHA.v_y, cellHA.ERP_RRP, cellHA.Upstroke+2, cellHA.Stimulus+4  }
+			</formula>
+			<comment>Cell potential in Volts.
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=2] { 
+cellTAC.Stimulus+2*cellTAC.Upstroke+3*cellTAC.ERP_RRP-cellTAC.Err,  
+cellHA.Stimulus+2*cellHA.Upstroke+3*cellHA.ERP_RRP+4*1
+}
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] not error
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=5] { 1000*(cell.v_x - cell.v_y), cell.ERP_RRP+6, cell.Upstroke+4, cell.Stimulus+2, cell.Rest }
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>// Section 4.1 Lower Rate  Limit
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { 4*Pvv.wait_1st, 2*Pvv.wait_2nd, Pvv.two_a }
+			</formula>
+			<comment>Inspect the behavior of Pvv (MonitorLowerRateLimit).
+Pvv hits two_a many times at random intervals.
+			</comment>
+		</query>
+		<query>
+			<formula>A[] (Pvv.two_a imply Pvv.t&lt;=TLRI)
+			</formula>
+			<comment>Check that ventricuilar rate is above the threashold (the interval is less than TLRI).
+Satisfied. Takes 5min (291s) witch swithing algorithm with heart [100;750] and other monitors.
+Not satisfied with heart [100;751].
+			</comment>
+		</query>
+		<query>
+			<formula>// Section 4.2 Upper Rate  Limit
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { 4*PURI_test.wait_v, 2*PURI_test.wait_vp, PURI_test.interval }
+			</formula>
+			<comment>Inspect the behavior of PURI_test (MonitorUpperRateLimit)
+			</comment>
+		</query>
+		<query>
+			<formula>A[] (PURI_test.interval imply PURI_test.t&gt;=TURI)
+			</formula>
+			<comment>Check that ventricular rate is not higher than threashold (the interval is no less than TURI).
+Satisfied on the simple model, but NOT on the switching algorithm.
+			</comment>
+		</query>
+		<query>
+			<formula>E[] (not Pv_v.err)
+			</formula>
+			<comment>Correctness of the mode-switching algorithm.
+We expect the violation of this property, since during VDI mode the ventricular rate of the heart
+model is less than the Upper Rate Limit and will not trigger ventricular pacing.
+The counter example of the violation should show that mode-switch algorithm
+successfully switches the mode of the pacemaker to VDI mode. However, this
+property is still satisfied, indicating the mode-switch algorithm failed to elim-
+inate the PMT scenario. Then we further restrict the atrial interval of RHM
+to [100, 200]. Since the atrial rate for the new heart model is always above the
+trigger rate, mode switch to VDI mode should always eventually happen. The
+monitor PMS for the new property is shown in Fig. 10.
+			</comment>
+		</query>
+		<query>
+			<formula>A&lt;&gt; (PMS.err)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=10000] { 4*Pvv.wait_1st, 2*Pvv.wait_2nd, Pvv.two_a }
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=10000] { 6+PELT_det.err, 4+PELT_det.VSed, 2+PELT_det.AS1, PELT_det.VP1 }
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E[] ((not PELT_det.err) &amp;&amp; (not Pv_v2.err))
+			</formula>
+			<comment>"The existence fails on pacemaker without an anti-ELT algorithm"
+			</comment>
+		</query>
+		<query>
+			<formula>A&lt;&gt; (PMS.err)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>
+			</formula>
+			<comment>Set RandomHeartModel interval to 100,200.
+Not satisfied.
+The counter-example shows that some of the atrial events fall into the Post Ventricular Atrial Blanking period.
+(PVAB) and got ignored. As a result, two fast intervals may be considered as one slow interval (see Fig. 11(b)).
+If this happens more than one out of the Entry Count, mode-switch from DDD to VDI may never happen.
+			</comment>
+		</query>
+	</queries>
+</nta>

@@ -1,0 +1,2870 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/**
+This model is reproduced by Marius Mikucionis &lt;marius@cs.aau.dk&gt; from the following publication:
+"Modeling and Verification of a Dual Chamber Implantable Pacemaker",
+Zhihao Jiang, Miroslav Pajic, Salar Moarref, Rajeev Alur and Rahul Mangharam, TACAS 2012.
+*/
+
+const int TAVI   =  150; // time for atrio-ventrical interval
+const int TLRI   = 1000; // time for lower rate interval
+int TPVARP =  100; // time for post ventricular atrial refractory period (changed in the VP-AS-counter
+const int TVRP   =  150; // time for ventricular refractory period
+const int TURI   =  400; // time for upper rate interval
+const int TPVAB  =   50; // time for post ventricular atrial blanking
+
+clock clk; // shared by AtroVentriInt and UpperRateInt
+
+bool error;</declaration>
+	<template>
+		<name x="5" y="5">LowRateInt</name>
+		<parameter>broadcast chan&amp; AS, broadcast chan&amp; VS, broadcast chan&amp; VP, broadcast chan&amp; AP</parameter>
+		<declaration>/**
+AS -- atrial event sensed
+AP -- atrial pacing
+VS -- ventricular event sensed
+VP -- ventricular pacing
+*/
+
+clock t;</declaration>
+		<location id="id0" x="-178" y="0">
+			<name x="-212" y="17">ASed</name>
+		</location>
+		<location id="id1" x="-42" y="0">
+			<name x="-25" y="8">LowRateInterval</name>
+			<label kind="invariant" x="-25" y="25">t&lt;=TLRI-TAVI</label>
+			<label kind="comments" x="-195" y="-110">Old LRI from Fig.3(a)</label>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-51" y="-85">VP?</label>
+			<label kind="assignment" x="-51" y="-68">t=0</label>
+			<nail x="-59" y="-51"/>
+			<nail x="-17" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-59" y="59">t&gt;=TLRI-TAVI</label>
+			<label kind="synchronisation" x="-59" y="76">AP!</label>
+			<label kind="assignment" x="-59" y="93">t=0</label>
+			<nail x="-25" y="59"/>
+			<nail x="-59" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="59" y="-34">VS?</label>
+			<label kind="assignment" x="59" y="-17">t=0</label>
+			<nail x="51" y="-34"/>
+			<nail x="51" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-143" y="25">VS?</label>
+			<label kind="assignment" x="-143" y="42">t=0</label>
+			<nail x="-153" y="42"/>
+			<nail x="-76" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-144" y="-17">VP?</label>
+			<label kind="assignment" x="-144" y="0">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-143" y="-51">AS?</label>
+			<nail x="-84" y="-34"/>
+			<nail x="-144" y="-34"/>
+		</transition>
+	</template>
+	<template>
+		<name>LowRateIntNew</name>
+		<parameter>broadcast chan&amp; AS, broadcast chan&amp; VS, broadcast chan&amp; VP, broadcast chan&amp; DDD, broadcast chan&amp; VDI, broadcast chan&amp; AP</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id2" x="34" y="153">
+			<name x="0" y="162">aSensed</name>
+		</location>
+		<location id="id3" x="144" y="68">
+			<name x="161" y="59">DDD_LRI</name>
+			<label kind="invariant" x="161" y="76">t&lt;=TLRI-TAVI</label>
+			<label kind="comments" x="-102" y="-68">New LRI component from Fig.9</label>
+		</location>
+		<location id="id4" x="-34" y="68">
+			<name x="-110" y="51">VDI_LRI</name>
+			<label kind="invariant" x="-119" y="68">t&lt;=TLRI</label>
+		</location>
+		<init ref="id3"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-59" y="1">VS?</label>
+			<label kind="assignment" x="-59" y="17">t=0</label>
+			<nail x="-68" y="34"/>
+			<nail x="-34" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-110" y="119">t&gt;=TLRI</label>
+			<label kind="synchronisation" x="-110" y="136">VP!</label>
+			<label kind="assignment" x="-76" y="136">t=0</label>
+			<nail x="-101" y="119"/>
+			<nail x="-59" y="119"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="18" y="25">VDI?</label>
+			<nail x="68" y="42"/>
+			<nail x="0" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="0" y="51">DDD?</label>
+			<label kind="assignment" x="51" y="51">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-17" y="136">VDI?</label>
+			<nail x="-34" y="153"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="93" y="0">VP?</label>
+			<label kind="assignment" x="93" y="17">t=0</label>
+			<nail x="85" y="34"/>
+			<nail x="127" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id3"/>
+			<label kind="guard" x="135" y="127">t&gt;=TLRI-TAVI</label>
+			<label kind="synchronisation" x="135" y="144">AP!</label>
+			<label kind="assignment" x="169" y="144">t=0</label>
+			<label kind="comments" x="135" y="170">Paper does not reset t,
+which is crucial here!</label>
+			<nail x="178" y="127"/>
+			<nail x="144" y="127"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="152" y="1">VS?</label>
+			<label kind="assignment" x="152" y="17">t=0</label>
+			<nail x="144" y="34"/>
+			<nail x="186" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="8" y="93">VP?</label>
+			<label kind="assignment" x="8" y="110">t=0</label>
+			<nail x="34" y="93"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="59" y="93">VS?</label>
+			<label kind="assignment" x="68" y="119">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="68" y="153">AS?</label>
+			<nail x="101" y="153"/>
+		</transition>
+	</template>
+	<template>
+		<name>AtrioVentriInt</name>
+		<parameter>broadcast chan&amp; AS, broadcast chan&amp; VS, broadcast chan&amp; AP, broadcast chan&amp; VP</parameter>
+		<declaration>/**
+AtrialS -- atrial event sensed
+AtrialP -- atrial pacing
+VS -- ventricular event sensed
+VP -- ventricular pacing
+
+There is a small mistake in the interface diagram where "VP?" should be replaced with "AP?".
+*/
+
+clock t;</declaration>
+		<location id="id5" x="153" y="-127">
+			<name x="170" y="-135">WaitURI</name>
+			<label kind="invariant" x="170" y="-118">clk&lt;=TURI</label>
+		</location>
+		<location id="id6" x="153" y="0">
+			<name x="170" y="-17">AVI</name>
+			<label kind="invariant" x="170" y="0">t&lt;=TAVI</label>
+		</location>
+		<location id="id7" x="0" y="0">
+			<name x="-34" y="8">Idel</name>
+			<label kind="comments" x="-34" y="-221">Old AVI from Fig.3(b)</label>
+		</location>
+		<init ref="id7"/>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="34" y="-102">t&gt;=TAVI &amp;&amp;
+clk&gt;=TURI</label>
+			<label kind="synchronisation" x="34" y="-68">VP!</label>
+			<nail x="136" y="-68"/>
+			<nail x="17" y="-68"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="43" y="17">VS?</label>
+			<nail x="136" y="34"/>
+			<nail x="25" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-33" y="-186">VS?</label>
+			<nail x="153" y="-169"/>
+			<nail x="-34" y="-170"/>
+			<nail x="-34" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id7"/>
+			<label kind="guard" x="17" y="-144">clk&gt;=TURI</label>
+			<label kind="synchronisation" x="17" y="-127">VP!</label>
+			<nail x="0" y="-127"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="guard" x="161" y="-93">t&gt;=TAVI &amp;&amp;
+clk&lt;TURI</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="42" y="-17">AP?</label>
+			<label kind="assignment" x="42" y="0">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="42" y="-51">AS?</label>
+			<label kind="assignment" x="42" y="-34">t=0</label>
+			<nail x="34" y="-34"/>
+			<nail x="119" y="-34"/>
+		</transition>
+	</template>
+	<template>
+		<name>AtrioVentriIntNew</name>
+		<parameter>broadcast chan&amp; AS, broadcast chan&amp; VS, broadcast chan&amp; AP, broadcast chan&amp; DDD, broadcast chan&amp; VDI, broadcast chan&amp; VP</parameter>
+		<declaration>/**
+AtrialS -- atrial event sensed
+AtrialP -- atrial pacing
+VS -- ventricular event sensed
+VP -- ventricular pacing
+
+There is a small mistake in the interface diagram where "VP?" should be replaced with "AP?".
+*/
+
+clock t;</declaration>
+		<location id="id8" x="136" y="-102">
+			<name x="153" y="-110">WaitURI</name>
+			<label kind="invariant" x="153" y="-93">clk&lt;=TURI</label>
+		</location>
+		<location id="id9" x="136" y="0">
+			<name x="153" y="-17">AVI</name>
+			<label kind="invariant" x="153" y="0">t&lt;=TAVI</label>
+		</location>
+		<location id="id10" x="8" y="0">
+			<name x="-26" y="-17">Idle</name>
+			<label kind="comments" x="-60" y="-212">New AVI component from Fig.9</label>
+		</location>
+		<location id="id11" x="136" y="119">
+			<name x="153" y="102">VDI_AVI</name>
+			<label kind="invariant" x="153" y="119">t&lt;=TAVI</label>
+		</location>
+		<location id="id12" x="8" y="119">
+			<name x="-34" y="136">VDI_Idle</name>
+		</location>
+		<init ref="id10"/>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="169" y="51">VDI?</label>
+			<nail x="169" y="42"/>
+			<nail x="169" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="93" y="34">DDD?</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-26" y="51">VDI?</label>
+			<nail x="-26" y="34"/>
+			<nail x="-26" y="77"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="8" y="34">DDD?</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="50" y="-169">VDI?</label>
+			<label kind="assignment" x="93" y="-169">t=0</label>
+			<nail x="136" y="-153"/>
+			<nail x="-34" y="-153"/>
+			<nail x="-34" y="119"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="guard" x="34" y="-93">t&gt;=TAVI &amp;&amp;
+clk&gt;=TURI</label>
+			<label kind="synchronisation" x="34" y="-59">VP!</label>
+			<nail x="110" y="-59"/>
+			<nail x="25" y="-59"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="43" y="8">VS?</label>
+			<nail x="110" y="25"/>
+			<nail x="25" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="51" y="-144">VS?</label>
+			<nail x="119" y="-127"/>
+			<nail x="-17" y="-127"/>
+			<nail x="-17" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="guard" x="8" y="-119">clk&gt;=TURI</label>
+			<label kind="synchronisation" x="93" y="-119">VP!</label>
+			<nail x="8" y="-102"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="guard" x="144" y="-68">t&gt;=TAVI &amp;&amp;
+clk&lt;=TURI</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="42" y="-17">AP?</label>
+			<label kind="assignment" x="76" y="-17">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="42" y="-42">AS?</label>
+			<label kind="assignment" x="76" y="-42">t=0</label>
+			<nail x="34" y="-25"/>
+			<nail x="110" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="guard" x="42" y="51">t&gt;=TAVI</label>
+			<nail x="110" y="68"/>
+			<nail x="33" y="68"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="43" y="127">VS?</label>
+			<nail x="110" y="144"/>
+			<nail x="34" y="144"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="42" y="102">AP?</label>
+			<label kind="assignment" x="76" y="102">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="42" y="76">AS?</label>
+			<label kind="assignment" x="76" y="76">t=0</label>
+			<nail x="34" y="93"/>
+			<nail x="110" y="93"/>
+		</transition>
+	</template>
+	<template>
+		<name>UpperRateInt</name>
+		<parameter>broadcast chan&amp; VS, broadcast chan&amp; VP</parameter>
+		<location id="id13" x="0" y="0">
+			<label kind="comments" x="-93" y="-51">URI from Fig.3(c)</label>
+		</location>
+		<init ref="id13"/>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-93" y="-17">VP?</label>
+			<label kind="assignment" x="-102" y="0">clk=0</label>
+			<nail x="-59" y="-25"/>
+			<nail x="-59" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="59" y="-17">VS?</label>
+			<label kind="assignment" x="59" y="0">clk=0</label>
+			<nail x="59" y="-25"/>
+			<nail x="59" y="25"/>
+		</transition>
+	</template>
+	<template>
+		<name>PostVentriAtrialRefractoryPeriod</name>
+		<parameter>broadcast chan&amp; Aget, broadcast chan&amp; VS, broadcast chan&amp; VP, broadcast chan&amp; AS, broadcast chan&amp; AR</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id14" x="246" y="102">
+			<name x="195" y="85">inter1</name>
+			<committed/>
+		</location>
+		<location id="id15" x="246" y="0">
+			<name x="263" y="-17">PVARP</name>
+			<label kind="invariant" x="263" y="0">t&lt;=TPVARP</label>
+		</location>
+		<location id="id16" x="127" y="0">
+			<name x="136" y="8">PVAB</name>
+			<label kind="invariant" x="102" y="25">t&lt;=TPVAB</label>
+		</location>
+		<location id="id17" x="0" y="102">
+			<name x="-42" y="85">inter</name>
+			<committed/>
+		</location>
+		<location id="id18" x="0" y="0">
+			<name x="-34" y="-25">Idle</name>
+			<label kind="comments" x="-8" y="-136">Old PVARP from Fig.3(d)</label>
+		</location>
+		<init ref="id18"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id18"/>
+			<label kind="guard" x="25" y="-110">t&gt;=TPVARP</label>
+			<nail x="246" y="-93"/>
+			<nail x="0" y="-93"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="255" y="59">AR!</label>
+			<nail x="306" y="102"/>
+			<nail x="306" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="204" y="42">Aget?</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="guard" x="144" y="-17">t&gt;=TPVAB</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="43" y="-59">VP?</label>
+			<label kind="assignment" x="43" y="-42">t=0</label>
+			<nail x="25" y="-42"/>
+			<nail x="102" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="34" y="-17">VS?</label>
+			<label kind="assignment" x="42" y="0">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="8" y="59">AS!</label>
+			<nail x="59" y="102"/>
+			<nail x="59" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="-42" y="34">Aget?</label>
+		</transition>
+	</template>
+	<template>
+		<name>PostVentriAtrialRefractoryPeriodNew</name>
+		<parameter>broadcast chan&amp; A_act, broadcast chan&amp; Aget, broadcast chan&amp; ABlock, broadcast chan&amp; VS, broadcast chan&amp; VP, broadcast chan&amp; AS, broadcast chan&amp; AR</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id19" x="127" y="102">
+			<name x="93" y="110">ABI</name>
+			<committed/>
+		</location>
+		<location id="id20" x="263" y="102">
+			<name x="212" y="110">inter1</name>
+			<committed/>
+		</location>
+		<location id="id21" x="263" y="0">
+			<name x="280" y="-17">PVARP</name>
+			<label kind="invariant" x="280" y="0">t&lt;=TPVARP</label>
+		</location>
+		<location id="id22" x="127" y="0">
+			<name x="144" y="8">PVAB</name>
+			<label kind="invariant" x="161" y="25">t&lt;=TPVAB</label>
+		</location>
+		<location id="id23" x="0" y="102">
+			<name x="-42" y="110">inter</name>
+			<committed/>
+		</location>
+		<location id="id24" x="0" y="0">
+			<name x="-34" y="-25">Idle</name>
+			<label kind="comments" x="-42" y="-136">New PVARP model from Fig.15(3)</label>
+		</location>
+		<init ref="id24"/>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="204" y="42">A_act?</label>
+			<nail x="229" y="51"/>
+			<nail x="229" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="-51" y="42">A_act?</label>
+			<nail x="-34" y="17"/>
+			<nail x="-34" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="68" y="42">A_act?</label>
+			<nail x="93" y="34"/>
+			<nail x="93" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="144" y="102">ABlock!</label>
+			<nail x="170" y="102"/>
+			<nail x="170" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="110" y="59">Aget?</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id24"/>
+			<label kind="guard" x="25" y="-68">t&gt;=TPVARP</label>
+			<label kind="assignment" x="127" y="-68">TPVARP=100</label>
+			<nail x="263" y="-51"/>
+			<nail x="0" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="synchronisation" x="280" y="102">AR!</label>
+			<nail x="306" y="102"/>
+			<nail x="306" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="246" y="59">Aget?</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id21"/>
+			<label kind="guard" x="144" y="-17">t&gt;=TPVAB</label>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="25" y="-42">VP?</label>
+			<label kind="assignment" x="68" y="-42">t=0</label>
+			<nail x="25" y="-25"/>
+			<nail x="102" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="25" y="-17">VS?</label>
+			<label kind="assignment" x="68" y="-17">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="17" y="102">AS!</label>
+			<nail x="59" y="102"/>
+			<nail x="59" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="0" y="59">Aget?</label>
+		</transition>
+	</template>
+	<template>
+		<name>VentriRefractoryPeriod</name>
+		<parameter>broadcast chan&amp; Vget, broadcast chan&amp; VP, broadcast chan&amp; VS</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id25" x="110" y="-119">
+			<name x="127" y="-127">VRP</name>
+			<label kind="invariant" x="102" y="-102">t&lt;=TVRP</label>
+		</location>
+		<location id="id26" x="0" y="-119">
+			<name x="-10" y="-153">inter</name>
+			<committed/>
+		</location>
+		<location id="id27" x="0" y="-34">
+			<name x="-42" y="-42">Idle</name>
+			<label kind="comments" x="-25" y="-221">VRP from Fig.3(e)</label>
+		</location>
+		<init ref="id27"/>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id27"/>
+			<label kind="guard" x="25" y="-34">t&gt;=TVRP</label>
+			<nail x="59" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="34" y="-102">VP?</label>
+			<label kind="assignment" x="25" y="-85">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="18" y="-136">VS!</label>
+			<label kind="assignment" x="51" y="-136">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="-42" y="-85">Vget?</label>
+		</transition>
+	</template>
+	<template>
+		<name>RandomHeartModel</name>
+		<parameter>broadcast chan&amp; AP, broadcast chan&amp; Aget, const int Aminwait, const int Amaxwait</parameter>
+		<declaration>clock x;</declaration>
+		<location id="id28" x="0" y="0">
+			<name x="-25" y="17">AReady</name>
+			<label kind="invariant" x="-42" y="34">x&lt;Amaxwait</label>
+			<label kind="comments" x="-136" y="-59">Random heart model for the Atrial Channel Fig.4</label>
+		</location>
+		<init ref="id28"/>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="42" y="-21">AP?</label>
+			<label kind="assignment" x="42" y="-4">x=0</label>
+			<nail x="42" y="-25"/>
+			<nail x="42" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id28"/>
+			<label kind="guard" x="-127" y="-25">x&gt;Aminwait</label>
+			<label kind="synchronisation" x="-85" y="-8">Aget!</label>
+			<label kind="assignment" x="-76" y="9">x=0</label>
+			<nail x="-42" y="-25"/>
+			<nail x="-42" y="25"/>
+		</transition>
+	</template>
+	<template>
+		<name>RandomHeartNew</name>
+		<parameter>broadcast chan&amp; Pace, broadcast chan&amp; Act, broadcast chan&amp; Get, const int Aminwait, const int Amaxwait</parameter>
+		<declaration>clock x;</declaration>
+		<location id="id29" x="0" y="0">
+			<name x="-25" y="17">AReady</name>
+			<label kind="invariant" x="-42" y="34">x&lt;Amaxwait</label>
+			<label kind="comments" x="-136" y="-170">Adjusted heart model for one channel Fig.14.
+One template: either atrium or ventricle:
+Pace = { AP, VP },
+Get = { Aget, Vget }.
+Act = { A_act, V_act }</label>
+		</location>
+		<init ref="id29"/>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-8" y="-76">Act?</label>
+			<label kind="assignment" x="-8" y="-59">x=0</label>
+			<nail x="-17" y="-42"/>
+			<nail x="17" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="51" y="-17">Pace?</label>
+			<label kind="assignment" x="51" y="0">x=0</label>
+			<nail x="42" y="-25"/>
+			<nail x="42" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id29"/>
+			<label kind="guard" x="-127" y="-25">x&gt;Aminwait</label>
+			<label kind="synchronisation" x="-76" y="-8">Get!</label>
+			<label kind="assignment" x="-76" y="9">x=0</label>
+			<nail x="-42" y="-25"/>
+			<nail x="-42" y="25"/>
+		</transition>
+	</template>
+	<template>
+		<name>RandomHeartNewUnb</name>
+		<parameter>broadcast chan&amp; Pace, broadcast chan&amp; Act, broadcast chan&amp; Get, const int Aminwait</parameter>
+		<declaration>clock x;</declaration>
+		<location id="id30" x="0" y="0">
+			<name x="-25" y="17">AReady</name>
+			<label kind="comments" x="-136" y="-170">Adjusted heart model for one channel Fig.14.
+One template: either atrium or ventricle:
+Pace = { AP, VP },
+Get = { Aget, Vget }.
+Act = { A_act, V_act }</label>
+		</location>
+		<init ref="id30"/>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="-8" y="-76">Act?</label>
+			<label kind="assignment" x="-8" y="-59">x=0</label>
+			<nail x="-17" y="-42"/>
+			<nail x="17" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="51" y="-17">Pace?</label>
+			<label kind="assignment" x="51" y="0">x=0</label>
+			<nail x="42" y="-25"/>
+			<nail x="42" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id30"/>
+			<label kind="guard" x="-127" y="-25">x&gt;Aminwait</label>
+			<label kind="synchronisation" x="-76" y="-8">Get!</label>
+			<label kind="assignment" x="-76" y="9">x=0</label>
+			<nail x="-42" y="-25"/>
+			<nail x="-42" y="25"/>
+		</transition>
+	</template>
+	<template>
+		<name>HeartConduction</name>
+		<parameter>broadcast chan&amp; Aget, broadcast chan&amp; Vget, broadcast chan&amp; AP, broadcast chan&amp; VP, broadcast chan&amp; A_act, broadcast chan&amp; V_act</parameter>
+		<declaration>const int Tantemin =  100;
+const int Tantemax = 1500;
+const int Tretromin=  100;
+const int Tretromax= 1500;
+clock t;</declaration>
+		<location id="id31" x="280" y="0">
+			<name x="297" y="-17">Retro</name>
+			<label kind="invariant" x="297" y="0">t&lt;=Tretromax</label>
+		</location>
+		<location id="id32" x="-195" y="0">
+			<name x="-246" y="-17">Ante</name>
+			<label kind="invariant" x="-297" y="8">t&lt;=Tantemax</label>
+		</location>
+		<location id="id33" x="51" y="0">
+			<name x="17" y="-42">Idle</name>
+			<label kind="comments" x="-221" y="-127">Heart conduction component from Fig.14.
+Non-determinism is replaced with stochastic edges.
+(they are still non-deterministic in symbolic semantics)</label>
+		</location>
+		<location id="id34" x="144" y="59">
+			<committed/>
+		</location>
+		<location id="id35" x="-34" y="59">
+			<committed/>
+		</location>
+		<branchpoint id="id36" x="195" y="42">
+		</branchpoint>
+		<branchpoint id="id37" x="-110" y="42">
+		</branchpoint>
+		<init ref="id33"/>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id33"/>
+			<label kind="probability" x="-25" y="17">1</label>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id32"/>
+			<label kind="assignment" x="-178" y="25">t=0</label>
+			<label kind="probability" x="-178" y="42">1</label>
+			<nail x="-195" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id37"/>
+		</transition>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id36"/>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id33"/>
+			<label kind="probability" x="110" y="17">1</label>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id31"/>
+			<label kind="assignment" x="221" y="25">t=0</label>
+			<label kind="probability" x="221" y="42">1</label>
+			<nail x="280" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id33"/>
+			<label kind="synchronisation" x="153" y="-68">Aget?</label>
+			<nail x="255" y="-51"/>
+			<nail x="144" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id33"/>
+			<label kind="synchronisation" x="153" y="-42">AP?</label>
+			<nail x="255" y="-25"/>
+			<nail x="136" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id33"/>
+			<label kind="guard" x="152" y="-17">t&gt;=Tretromin</label>
+			<label kind="synchronisation" x="153" y="0">A_act!</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id34"/>
+			<label kind="synchronisation" x="68" y="76">VP?</label>
+			<nail x="68" y="93"/>
+			<nail x="127" y="93"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id34"/>
+			<label kind="synchronisation" x="76" y="42">Vget?</label>
+			<label kind="comments" x="-76" y="110">"The conduction is non-deterministic 
+so that the old RHM is a special case 
+for the new RHM"</label>
+			<nail x="76" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id35"/>
+			<label kind="synchronisation" x="-8" y="76">AP?</label>
+			<nail x="42" y="93"/>
+			<nail x="-17" y="93"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id35"/>
+			<label kind="synchronisation" x="-8" y="42">Aget?</label>
+			<nail x="34" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="synchronisation" x="-153" y="-68">Vget?</label>
+			<nail x="-161" y="-51"/>
+			<nail x="-25" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="synchronisation" x="-153" y="-42">VP?</label>
+			<nail x="-170" y="-25"/>
+			<nail x="-59" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-153" y="-17">t&gt;=Tantemin</label>
+			<label kind="synchronisation" x="-153" y="0">V_act!</label>
+		</transition>
+	</template>
+	<template>
+		<name>OldHeartSANode</name>
+		<parameter>const int TLerp, const int Terp, const int Trrp, const int TLrest, const int Trest, broadcast chan&amp; Trig</parameter>
+		<declaration>/**
+Single heart cell.
+Based on Fig.3 from the following publication:
+Jiang, Z., M. Pajic , A. Connolly , S. Dixit and R. Mangharam. 
+"Real-time Heart Model for Implantable Cardiac Device Validation and Verification."
+Presented at 22nd Euromicro Conference on Real-Time Systems (ECRTS10), July 6-9, 2010, Brussels, Belgium.
+*/
+
+clock t;</declaration>
+		<location id="id38" x="-51" y="76">
+			<name x="-127" y="59">RRP</name>
+			<label kind="invariant" x="-127" y="76">t&lt;=Trrp</label>
+		</location>
+		<location id="id39" x="93" y="76">
+			<name x="110" y="59">ERP</name>
+			<label kind="invariant" x="110" y="76">t&lt;=Terp</label>
+		</location>
+		<location id="id40" x="17" y="-25">
+			<name x="7" y="-59">Rest</name>
+			<label kind="invariant" x="42" y="-34">t&lt;=Trest</label>
+		</location>
+		<init ref="id40"/>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id40"/>
+			<label kind="guard" x="-85" y="0">t&gt;=Trrp</label>
+			<label kind="synchronisation" x="-85" y="16">Trig!</label>
+			<label kind="assignment" x="-85" y="34">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id38"/>
+			<label kind="guard" x="-8" y="59">t&gt;=TLerp</label>
+			<label kind="assignment" x="0" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id39"/>
+			<label kind="guard" x="68" y="0">t&gt;=TLrest</label>
+			<label kind="assignment" x="68" y="17">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>OldHeartCell</name>
+		<parameter>const int TDmin, const int Tlow, const int TDmax, broadcast chan&amp; start, broadcast chan&amp; stop, broadcast chan&amp; get, broadcast chan&amp; in, broadcast chan&amp; out</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+/* these parameters are chosen to emulate steep rising slope, in ECRTS10 these are so short as negligible. */
+const int TSmin = 1;
+const int TSmax = 2;
+const int TUmin = 1;
+const int Thigh = 2;
+const int TUmax = 5;
+
+clock t;</declaration>
+		<location id="id41" x="-8" y="153">
+			<name x="-85" y="136">ERP_RRP</name>
+			<label kind="invariant" x="-102" y="153">t&lt;=TDmax</label>
+			<label kind="comments" x="-170" y="195">Dropping voltage
+refractary = 
+not stimulable</label>
+		</location>
+		<location id="id42" x="144" y="153">
+			<name x="170" y="136">Upstroke</name>
+			<label kind="invariant" x="170" y="153">t&lt;=TUmax</label>
+			<label kind="comments" x="161" y="170">High rising voltage</label>
+		</location>
+		<location id="id43" x="144" y="0">
+			<name x="161" y="-17">Stimulus</name>
+			<label kind="invariant" x="161" y="0">t&lt;=TSmax</label>
+			<label kind="comments" x="161" y="-42">Low rising voltage</label>
+		</location>
+		<location id="id44" x="-8" y="0">
+			<name x="-59" y="-25">Rest</name>
+			<label kind="comments" x="-119" y="-8">Low voltage</label>
+		</location>
+		<init ref="id44"/>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id41"/>
+			<label kind="guard" x="-34" y="204">t&lt;=Tlow</label>
+			<label kind="synchronisation" x="-25" y="221">out!</label>
+			<nail x="25" y="204"/>
+			<nail x="-34" y="204"/>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id42"/>
+			<label kind="guard" x="110" y="204">t&gt;=Thigh</label>
+			<label kind="synchronisation" x="136" y="221">out!</label>
+			<nail x="161" y="204"/>
+			<nail x="127" y="204"/>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id44"/>
+			<label kind="guard" x="-85" y="59">t&gt;=TDmin</label>
+			<label kind="assignment" x="-85" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id42"/>
+			<label kind="synchronisation" x="204" y="68">in?</label>
+			<label kind="assignment" x="195" y="85">t=0</label>
+			<nail x="195" y="51"/>
+			<nail x="195" y="119"/>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id42"/>
+			<label kind="synchronisation" x="34" y="59">in?</label>
+			<label kind="assignment" x="34" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id41"/>
+			<label kind="guard" x="34" y="119">t&gt;=TUmin</label>
+			<label kind="synchronisation" x="42" y="136">get!</label>
+			<label kind="assignment" x="42" y="153">t=0</label>
+			<label kind="comments" x="42" y="170">peak</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id42"/>
+			<label kind="guard" x="119" y="59">t&gt;=TSmin</label>
+			<label kind="assignment" x="119" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id44"/>
+			<label kind="synchronisation" x="51" y="17">stop?</label>
+			<nail x="110" y="34"/>
+			<nail x="51" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id43"/>
+			<label kind="synchronisation" x="51" y="-17">start?</label>
+			<label kind="assignment" x="51" y="0">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>SANodeCell</name>
+		<parameter>const int erp_lb, const int erp_ub, broadcast chan&amp; in_on, broadcast chan&amp; in_off, broadcast chan&amp; get, broadcast chan&amp; out_on, broadcast chan&amp; out_off</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+/* these parameters are chosen to emulate steep rising slope, in ECRTS10 these are so short as negligible. */
+//const int stim_lb = 1;
+const int stim_ub = 1;
+const int get_ub = 1; // 0.5
+
+clock t;</declaration>
+		<location id="id45" x="-8" y="153">
+			<name x="-85" y="136">ERP_RRP</name>
+			<label kind="invariant" x="-102" y="153">t&lt;=erp_ub</label>
+			<label kind="comments" x="-144" y="178">Dropping voltage
+refractary = 
+not stimulable</label>
+		</location>
+		<location id="id46" x="144" y="153">
+			<name x="161" y="136">Upstroke</name>
+			<label kind="invariant" x="161" y="153">t&lt;=get_ub</label>
+			<label kind="comments" x="161" y="178">High rising voltage</label>
+		</location>
+		<location id="id47" x="144" y="0">
+			<name x="119" y="-51">Stimulus</name>
+			<label kind="invariant" x="119" y="-34">t&lt;=stim_ub</label>
+			<label kind="comments" x="119" y="-68">Low rising voltage</label>
+		</location>
+		<location id="id48" x="-8" y="0">
+			<name x="-59" y="-17">Rest</name>
+			<label kind="invariant" x="-85" y="0">t&lt;=1000</label>
+			<label kind="comments" x="-110" y="-34">Low voltage</label>
+		</location>
+		<init ref="id48"/>
+		<transition>
+			<source ref="id48"/>
+			<target ref="id47"/>
+			<label kind="guard" x="42" y="51">t&gt;=950</label>
+			<label kind="assignment" x="42" y="68">t=0</label>
+			<nail x="34" y="68"/>
+			<nail x="102" y="68"/>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id48"/>
+			<label kind="guard" x="-85" y="42">t&gt;=erp_lb</label>
+			<label kind="synchronisation" x="-85" y="59">out_off!</label>
+			<label kind="assignment" x="-85" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id45"/>
+			<label kind="synchronisation" x="42" y="136">get!</label>
+			<label kind="assignment" x="42" y="153">t=0</label>
+			<label kind="comments" x="42" y="170">peak</label>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id46"/>
+			<label kind="synchronisation" x="119" y="59">out_on!</label>
+			<label kind="assignment" x="119" y="76">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="synchronisation" x="51" y="17">in_off?</label>
+			<nail x="110" y="34"/>
+			<nail x="42" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id48"/>
+			<target ref="id47"/>
+			<label kind="synchronisation" x="51" y="-17">in_on?</label>
+			<label kind="assignment" x="51" y="0">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Beat1</name>
+		<parameter>const int lb, const int ub, broadcast chan&amp; beat</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id49" x="-204" y="-25">
+			<label kind="invariant" x="-214" y="-8">t&lt;=ub</label>
+		</location>
+		<init ref="id49"/>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id49"/>
+			<label kind="guard" x="-228" y="-127">t&gt;=lb</label>
+			<label kind="synchronisation" x="-228" y="-110">beat!</label>
+			<label kind="assignment" x="-228" y="-93">t=0</label>
+			<nail x="-161" y="-93"/>
+			<nail x="-246" y="-93"/>
+		</transition>
+	</template>
+	<template>
+		<name>Beat2</name>
+		<parameter>broadcast chan&amp; beat</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id50" x="-204" y="-25">
+			<label kind="invariant" x="-214" y="-8">t&lt;=1700</label>
+		</location>
+		<init ref="id50"/>
+		<transition>
+			<source ref="id50"/>
+			<target ref="id50"/>
+			<label kind="guard" x="-228" y="-127">t&gt;=1700</label>
+			<label kind="synchronisation" x="-228" y="-110">beat!</label>
+			<label kind="assignment" x="-228" y="-93">t=0</label>
+			<nail x="-161" y="-93"/>
+			<nail x="-246" y="-93"/>
+		</transition>
+	</template>
+	<template>
+		<name>HeartCellTA</name>
+		<parameter>const int rep_lb, const int rep_ub, broadcast chan&amp; in1, broadcast chan&amp; in0, broadcast chan&amp; get, broadcast chan&amp; out1, broadcast chan&amp; out0</parameter>
+		<declaration>/**
+Single heart cell based on the following publication:
+Quantitative verification of implantable cardiac pacemakers over hybrid heart models
+Taolue Chen, Marco Diciolla, Marta Kwiatkowska ∗ , Alexandru Mereacre
+
+*/
+
+/* these parameters are chosen to emulate steep rising slope, in ECRTS10 these are so short as negligible. */
+//const int stim_lb = 1;
+const int stim_ub = 1;
+const int get_ub = 1; // 0.5
+
+clock t;</declaration>
+		<location id="id51" x="-8" y="110">
+			<name x="-51" y="119">repolarization</name>
+			<label kind="invariant" x="-42" y="136">t&lt;=rep_ub</label>
+			<label kind="comments" x="-110" y="135">Dropping voltage
+refractary = 
+not stimulable</label>
+		</location>
+		<location id="id52" x="127" y="110">
+			<name x="102" y="127">upstroke</name>
+			<label kind="invariant" x="102" y="144">t&lt;=get_ub</label>
+			<label kind="comments" x="119" y="135">High rising voltage</label>
+		</location>
+		<location id="id53" x="127" y="0">
+			<name x="93" y="-51">stimulus</name>
+			<label kind="invariant" x="93" y="-34">t&lt;=stim_ub</label>
+			<label kind="comments" x="119" y="-34">Low rising voltage</label>
+		</location>
+		<location id="id54" x="-8" y="0">
+			<name x="-42" y="-34">resting</name>
+			<label kind="comments" x="-76" y="-34">Low voltage</label>
+		</location>
+		<init ref="id54"/>
+		<transition>
+			<source ref="id51"/>
+			<target ref="id54"/>
+			<label kind="guard" x="0" y="34">t&gt;=rep_lb</label>
+			<label kind="synchronisation" x="0" y="51">out0!</label>
+			<label kind="assignment" x="0" y="68">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id52"/>
+			<target ref="id51"/>
+			<label kind="synchronisation" x="42" y="93">get!</label>
+			<label kind="assignment" x="42" y="110">t=0</label>
+			<label kind="comments" x="42" y="127">peak</label>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id52"/>
+			<label kind="synchronisation" x="136" y="34">out1!</label>
+			<label kind="assignment" x="136" y="51">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id54"/>
+			<label kind="synchronisation" x="34" y="8">in0?</label>
+			<nail x="93" y="25"/>
+			<nail x="25" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id53"/>
+			<label kind="synchronisation" x="17" y="-17">in1?</label>
+			<label kind="assignment" x="68" y="-17">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Pacing</name>
+		<parameter>const int delta, broadcast chan&amp; beat, broadcast chan&amp; pace, broadcast chan&amp; on, broadcast chan&amp; off</parameter>
+		<declaration>/** 
+* From IC14 Marta, Fig.11
+*/
+
+clock t;</declaration>
+		<location id="id55" x="127" y="51">
+			<name x="103" y="68">q_2</name>
+			<label kind="invariant" x="76" y="85">t&lt;=delta</label>
+		</location>
+		<location id="id56" x="127" y="-59">
+			<name x="144" y="-68">q_1</name>
+			<committed/>
+		</location>
+		<location id="id57" x="-34" y="-59">
+			<name x="-44" y="-93">q_0</name>
+		</location>
+		<init ref="id57"/>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id55"/>
+			<label kind="synchronisation" x="221" y="68">beat?</label>
+			<label kind="assignment" x="221" y="85">t=0</label>
+			<nail x="212" y="68"/>
+			<nail x="212" y="93"/>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id55"/>
+			<label kind="synchronisation" x="221" y="0">pace?</label>
+			<label kind="assignment" x="221" y="17">t=0</label>
+			<nail x="212" y="0"/>
+			<nail x="204" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id57"/>
+			<target ref="id56"/>
+			<label kind="synchronisation" x="10" y="-42">beat?</label>
+			<nail x="-8" y="-25"/>
+			<nail x="93" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id57"/>
+			<label kind="guard" x="-16" y="17">t&gt;=delta</label>
+			<label kind="synchronisation" x="-16" y="34">off!</label>
+			<label kind="assignment" x="-16" y="51">t=0</label>
+			<nail x="-34" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id56"/>
+			<target ref="id55"/>
+			<label kind="synchronisation" x="127" y="-21">on!</label>
+			<label kind="assignment" x="127" y="-4">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id57"/>
+			<target ref="id56"/>
+			<label kind="synchronisation" x="8" y="-76">pace?</label>
+		</transition>
+	</template>
+	<template>
+		<name>Interval</name>
+		<parameter>broadcast chan&amp; AS, broadcast chan&amp; AR, broadcast chan&amp; AP, broadcast chan&amp; Fast, broadcast chan&amp; Slow</parameter>
+		<declaration>clock t;
+const int thresh = 350; // 350ms = 170bpm</declaration>
+		<location id="id58" x="68" y="85">
+			<name x="9" y="76">APed</name>
+			<committed/>
+		</location>
+		<location id="id59" x="306" y="0">
+			<name x="296" y="-34">Resett</name>
+			<committed/>
+		</location>
+		<location id="id60" x="153" y="0">
+			<name x="127" y="-51">Wait2nd</name>
+		</location>
+		<location id="id61" x="25" y="0">
+			<name x="-25" y="-34">Wait1st</name>
+			<label kind="comments" x="-17" y="-93">Interval from Fig.8(1)</label>
+		</location>
+		<init ref="id61"/>
+		<transition>
+			<source ref="id59"/>
+			<target ref="id60"/>
+			<label kind="guard" x="187" y="51">t&gt;thresh</label>
+			<label kind="synchronisation" x="187" y="68">Slow!</label>
+			<label kind="assignment" x="237" y="68">t=0</label>
+			<nail x="297" y="85"/>
+			<nail x="169" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id59"/>
+			<target ref="id60"/>
+			<label kind="guard" x="196" y="8">t&lt;=thresh</label>
+			<label kind="synchronisation" x="196" y="25">Fast!</label>
+			<label kind="assignment" x="246" y="25">t=0</label>
+			<nail x="289" y="42"/>
+			<nail x="178" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id61"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="50" y="17">AS?</label>
+			<label kind="assignment" x="84" y="17">t=0</label>
+			<nail x="42" y="34"/>
+			<nail x="110" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id61"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="50" y="-51">AP?</label>
+			<label kind="assignment" x="84" y="-51">t=0</label>
+			<nail x="42" y="-34"/>
+			<nail x="118" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id60"/>
+			<target ref="id59"/>
+			<label kind="synchronisation" x="195" y="-42">AS?</label>
+			<nail x="187" y="-25"/>
+			<nail x="272" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id58"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="93" y="68">Slow!</label>
+			<label kind="assignment" x="93" y="85">t=0</label>
+			<nail x="144" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id60"/>
+			<target ref="id58"/>
+			<label kind="synchronisation" x="68" y="42">AP?</label>
+		</transition>
+		<transition>
+			<source ref="id60"/>
+			<target ref="id59"/>
+			<label kind="synchronisation" x="195" y="-17">AR?</label>
+		</transition>
+		<transition>
+			<source ref="id61"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="50" y="-17">AR?</label>
+			<label kind="assignment" x="84" y="-17">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Counter</name>
+		<parameter>broadcast chan&amp; Fast, broadcast chan&amp; Slow, broadcast chan&amp; du_end, broadcast chan&amp; DDD, broadcast chan&amp; VDI, broadcast chan&amp; du_beg</parameter>
+		<location id="id62" x="901" y="17">
+			<committed/>
+		</location>
+		<location id="id63" x="136" y="-85">
+			<committed/>
+		</location>
+		<location id="id64" x="59" y="68">
+			<name x="33" y="85">switch1</name>
+			<committed/>
+		</location>
+		<location id="id65" x="136" y="17">
+			<name x="119" y="34">fast1</name>
+		</location>
+		<location id="id66" x="17" y="17">
+			<name x="7" y="-17">Init</name>
+			<label kind="comments" x="-8" y="-136">Counter from Fig.8(2)</label>
+		</location>
+		<location id="id67" x="246" y="-85">
+			<committed/>
+		</location>
+		<location id="id68" x="246" y="17">
+			<name x="237" y="34">fast2</name>
+		</location>
+		<location id="id69" x="366" y="17">
+			<name x="349" y="34">fast3</name>
+		</location>
+		<location id="id70" x="476" y="17">
+			<name x="467" y="34">fast4</name>
+		</location>
+		<location id="id71" x="366" y="-85">
+			<committed/>
+		</location>
+		<location id="id72" x="476" y="-85">
+			<committed/>
+		</location>
+		<location id="id73" x="816" y="17">
+			<name x="799" y="34">fast7</name>
+		</location>
+		<location id="id74" x="696" y="17">
+			<name x="687" y="34">fast6</name>
+		</location>
+		<location id="id75" x="586" y="17">
+			<name x="569" y="34">fast5</name>
+		</location>
+		<location id="id76" x="586" y="-85">
+			<committed/>
+		</location>
+		<location id="id77" x="696" y="-85">
+			<committed/>
+		</location>
+		<location id="id78" x="994" y="17">
+			<name x="985" y="34">fast8</name>
+		</location>
+		<location id="id79" x="816" y="-85">
+			<committed/>
+		</location>
+		<location id="id80" x="994" y="-85">
+			<name x="984" y="-119">switch2</name>
+			<committed/>
+		</location>
+		<init ref="id66"/>
+		<transition>
+			<source ref="id62"/>
+			<target ref="id78"/>
+			<label kind="synchronisation" x="919" y="0">du_beg!</label>
+		</transition>
+		<transition>
+			<source ref="id75"/>
+			<target ref="id70"/>
+			<label kind="synchronisation" x="510" y="25">Slow?</label>
+			<nail x="552" y="42"/>
+			<nail x="510" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id75"/>
+			<label kind="synchronisation" x="510" y="0">Fast?</label>
+		</transition>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id68"/>
+			<label kind="synchronisation" x="289" y="25">Slow?</label>
+			<nail x="331" y="42"/>
+			<nail x="280" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id68"/>
+			<target ref="id69"/>
+			<label kind="synchronisation" x="289" y="0">Fast?</label>
+		</transition>
+		<transition>
+			<source ref="id65"/>
+			<target ref="id68"/>
+			<label kind="synchronisation" x="170" y="0">Fast?</label>
+		</transition>
+		<transition>
+			<source ref="id65"/>
+			<target ref="id64"/>
+			<label kind="synchronisation" x="68" y="34">Slow?</label>
+		</transition>
+		<transition>
+			<source ref="id68"/>
+			<target ref="id65"/>
+			<label kind="synchronisation" x="170" y="25">Slow?</label>
+			<nail x="212" y="42"/>
+			<nail x="171" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id63"/>
+			<target ref="id65"/>
+			<label kind="synchronisation" x="102" y="-68">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id65"/>
+			<target ref="id63"/>
+			<label kind="synchronisation" x="136" y="-51">du_end?</label>
+			<nail x="161" y="-8"/>
+			<nail x="161" y="-60"/>
+		</transition>
+		<transition>
+			<source ref="id64"/>
+			<target ref="id66"/>
+			<label kind="synchronisation" x="0" y="42">DDD!</label>
+		</transition>
+		<transition>
+			<source ref="id66"/>
+			<target ref="id65"/>
+			<label kind="synchronisation" x="42" y="0">Fast?</label>
+		</transition>
+		<transition>
+			<source ref="id67"/>
+			<target ref="id68"/>
+			<label kind="synchronisation" x="212" y="-59">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id68"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="246" y="-42">du_end?</label>
+			<nail x="271" y="-17"/>
+			<nail x="272" y="-59"/>
+		</transition>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id70"/>
+			<label kind="synchronisation" x="400" y="0">Fast?</label>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id69"/>
+			<label kind="synchronisation" x="400" y="25">Slow?</label>
+			<nail x="442" y="42"/>
+			<nail x="401" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id71"/>
+			<target ref="id69"/>
+			<label kind="synchronisation" x="332" y="-68">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id71"/>
+			<label kind="synchronisation" x="366" y="-51">du_end?</label>
+			<nail x="391" y="-8"/>
+			<nail x="391" y="-60"/>
+		</transition>
+		<transition>
+			<source ref="id72"/>
+			<target ref="id70"/>
+			<label kind="synchronisation" x="442" y="-59">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id72"/>
+			<label kind="synchronisation" x="476" y="-42">du_end?</label>
+			<nail x="501" y="-17"/>
+			<nail x="502" y="-59"/>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id74"/>
+			<label kind="synchronisation" x="739" y="25">Slow?</label>
+			<nail x="781" y="42"/>
+			<nail x="730" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id74"/>
+			<target ref="id73"/>
+			<label kind="synchronisation" x="739" y="0">Fast?</label>
+		</transition>
+		<transition>
+			<source ref="id75"/>
+			<target ref="id74"/>
+			<label kind="synchronisation" x="620" y="0">Fast?</label>
+		</transition>
+		<transition>
+			<source ref="id74"/>
+			<target ref="id75"/>
+			<label kind="synchronisation" x="620" y="25">Slow?</label>
+			<nail x="662" y="42"/>
+			<nail x="621" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id76"/>
+			<target ref="id75"/>
+			<label kind="synchronisation" x="552" y="-68">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id75"/>
+			<target ref="id76"/>
+			<label kind="synchronisation" x="586" y="-51">du_end?</label>
+			<nail x="611" y="-8"/>
+			<nail x="611" y="-60"/>
+		</transition>
+		<transition>
+			<source ref="id77"/>
+			<target ref="id74"/>
+			<label kind="synchronisation" x="662" y="-59">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id74"/>
+			<target ref="id77"/>
+			<label kind="synchronisation" x="696" y="-42">du_end?</label>
+			<nail x="721" y="-17"/>
+			<nail x="722" y="-59"/>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id62"/>
+			<label kind="synchronisation" x="841" y="0">Fast?</label>
+		</transition>
+		<transition>
+			<source ref="id78"/>
+			<target ref="id73"/>
+			<label kind="synchronisation" x="850" y="25">Slow?</label>
+			<nail x="952" y="42"/>
+			<nail x="851" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id79"/>
+			<target ref="id73"/>
+			<label kind="synchronisation" x="782" y="-68">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id79"/>
+			<label kind="synchronisation" x="816" y="-51">du_end?</label>
+			<nail x="841" y="-8"/>
+			<nail x="841" y="-60"/>
+		</transition>
+		<transition>
+			<source ref="id80"/>
+			<target ref="id78"/>
+			<label kind="synchronisation" x="960" y="-59">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id78"/>
+			<target ref="id80"/>
+			<label kind="synchronisation" x="994" y="-42">du_end?</label>
+			<nail x="1019" y="-17"/>
+			<nail x="1020" y="-59"/>
+		</transition>
+	</template>
+	<template>
+		<name>CounterWithInt</name>
+		<parameter>broadcast chan&amp; Fast, broadcast chan&amp; Slow, broadcast chan&amp; du_end, broadcast chan&amp; DDD, broadcast chan&amp; VDI, broadcast chan&amp; du_beg</parameter>
+		<declaration>const int N=8;
+int i = 0;</declaration>
+		<location id="id81" x="136" y="110">
+			<committed/>
+		</location>
+		<location id="id82" x="246" y="-17">
+			<committed/>
+		</location>
+		<location id="id83" x="136" y="-102">
+			<committed/>
+		</location>
+		<location id="id84" x="17" y="110">
+			<name x="-9" y="127">switch1</name>
+			<committed/>
+		</location>
+		<location id="id85" x="136" y="17">
+			<name x="85" y="-8">fast_i</name>
+		</location>
+		<location id="id86" x="17" y="17">
+			<name x="7" y="-17">Init</name>
+			<label kind="comments" x="0" y="-153">Compressed counter from Fig.8(2)</label>
+		</location>
+		<location id="id87" x="373" y="-102">
+			<name x="390" y="-110">switch2</name>
+			<committed/>
+		</location>
+		<location id="id88" x="373" y="0">
+			<name x="364" y="17">fastN</name>
+		</location>
+		<init ref="id86"/>
+		<transition>
+			<source ref="id81"/>
+			<target ref="id85"/>
+			<label kind="guard" x="84" y="51">i&gt;0</label>
+			<nail x="110" y="85"/>
+			<nail x="110" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id82"/>
+			<target ref="id85"/>
+			<label kind="guard" x="187" y="0">i&lt;N</label>
+			<nail x="229" y="17"/>
+		</transition>
+		<transition>
+			<source ref="id85"/>
+			<target ref="id81"/>
+			<label kind="synchronisation" x="144" y="51">Slow?</label>
+			<label kind="assignment" x="144" y="68">i--</label>
+		</transition>
+		<transition>
+			<source ref="id82"/>
+			<target ref="id88"/>
+			<label kind="guard" x="271" y="-34">i==N</label>
+			<label kind="synchronisation" x="271" y="-17">du_beg!</label>
+			<nail x="339" y="-17"/>
+		</transition>
+		<transition>
+			<source ref="id88"/>
+			<target ref="id85"/>
+			<label kind="synchronisation" x="271" y="17">Slow?</label>
+			<label kind="assignment" x="271" y="34">i--</label>
+			<nail x="339" y="34"/>
+			<nail x="187" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id85"/>
+			<target ref="id82"/>
+			<label kind="synchronisation" x="187" y="-34">Fast?</label>
+			<label kind="assignment" x="187" y="-17">i++</label>
+			<nail x="178" y="-17"/>
+		</transition>
+		<transition>
+			<source ref="id83"/>
+			<target ref="id85"/>
+			<label kind="synchronisation" x="102" y="-68">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id85"/>
+			<target ref="id83"/>
+			<label kind="synchronisation" x="161" y="-68">du_end?</label>
+			<nail x="161" y="-34"/>
+			<nail x="161" y="-77"/>
+		</transition>
+		<transition>
+			<source ref="id84"/>
+			<target ref="id86"/>
+			<label kind="synchronisation" x="25" y="59">DDD!</label>
+		</transition>
+		<transition>
+			<source ref="id81"/>
+			<target ref="id84"/>
+			<label kind="guard" x="59" y="93">i==0</label>
+		</transition>
+		<transition>
+			<source ref="id86"/>
+			<target ref="id85"/>
+			<label kind="synchronisation" x="42" y="0">Fast?</label>
+			<label kind="assignment" x="42" y="17">i++</label>
+		</transition>
+		<transition>
+			<source ref="id87"/>
+			<target ref="id88"/>
+			<label kind="synchronisation" x="339" y="-68">VDI!</label>
+		</transition>
+		<transition>
+			<source ref="id88"/>
+			<target ref="id87"/>
+			<label kind="synchronisation" x="407" y="-68">du_end?</label>
+			<nail x="398" y="-34"/>
+			<nail x="399" y="-76"/>
+		</transition>
+	</template>
+	<template>
+		<name>Duration</name>
+		<parameter>broadcast chan&amp; VS, broadcast chan&amp; VP, broadcast chan&amp; du_beg, broadcast chan&amp; du_end</parameter>
+		<location id="id89" x="204" y="0">
+			<name x="195" y="17">V1</name>
+		</location>
+		<location id="id90" x="102" y="0">
+			<name x="85" y="17">V0</name>
+		</location>
+		<location id="id91" x="0" y="0">
+			<name x="-8" y="17">Init</name>
+			<label kind="comments" x="-8" y="-93">Duration counter from Fig.8(3)</label>
+		</location>
+		<location id="id92" x="306" y="0">
+			<name x="297" y="17">V2</name>
+		</location>
+		<location id="id93" x="408" y="0">
+			<name x="399" y="17">V3</name>
+		</location>
+		<location id="id94" x="510" y="0">
+			<name x="501" y="17">V4</name>
+		</location>
+		<location id="id95" x="612" y="0">
+			<name x="603" y="17">V5</name>
+		</location>
+		<location id="id96" x="714" y="0">
+			<name x="705" y="17">V6</name>
+		</location>
+		<location id="id97" x="816" y="0">
+			<name x="807" y="17">V7</name>
+		</location>
+		<location id="id98" x="918" y="0">
+			<name x="909" y="17">V8</name>
+			<committed/>
+		</location>
+		<init ref="id91"/>
+		<transition>
+			<source ref="id98"/>
+			<target ref="id91"/>
+			<label kind="synchronisation" x="18" y="-68">du_end!</label>
+			<nail x="918" y="-51"/>
+			<nail x="0" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id90"/>
+			<target ref="id89"/>
+			<label kind="synchronisation" x="128" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id90"/>
+			<target ref="id89"/>
+			<label kind="synchronisation" x="128" y="-42">VS?</label>
+			<nail x="119" y="-25"/>
+			<nail x="179" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id91"/>
+			<target ref="id90"/>
+			<label kind="synchronisation" x="18" y="-17">du_beg?</label>
+		</transition>
+		<transition>
+			<source ref="id89"/>
+			<target ref="id92"/>
+			<label kind="synchronisation" x="230" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id89"/>
+			<target ref="id92"/>
+			<label kind="synchronisation" x="230" y="-42">VS?</label>
+			<nail x="221" y="-25"/>
+			<nail x="281" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id92"/>
+			<target ref="id93"/>
+			<label kind="synchronisation" x="332" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id92"/>
+			<target ref="id93"/>
+			<label kind="synchronisation" x="332" y="-42">VS?</label>
+			<nail x="323" y="-25"/>
+			<nail x="383" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id93"/>
+			<target ref="id94"/>
+			<label kind="synchronisation" x="434" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id93"/>
+			<target ref="id94"/>
+			<label kind="synchronisation" x="434" y="-42">VS?</label>
+			<nail x="425" y="-25"/>
+			<nail x="485" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id94"/>
+			<target ref="id95"/>
+			<label kind="synchronisation" x="536" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id94"/>
+			<target ref="id95"/>
+			<label kind="synchronisation" x="536" y="-42">VS?</label>
+			<nail x="527" y="-25"/>
+			<nail x="587" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id95"/>
+			<target ref="id96"/>
+			<label kind="synchronisation" x="638" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id95"/>
+			<target ref="id96"/>
+			<label kind="synchronisation" x="638" y="-42">VS?</label>
+			<nail x="629" y="-25"/>
+			<nail x="689" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id96"/>
+			<target ref="id97"/>
+			<label kind="synchronisation" x="740" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id96"/>
+			<target ref="id97"/>
+			<label kind="synchronisation" x="740" y="-42">VS?</label>
+			<nail x="731" y="-25"/>
+			<nail x="791" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id97"/>
+			<target ref="id98"/>
+			<label kind="synchronisation" x="842" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id97"/>
+			<target ref="id98"/>
+			<label kind="synchronisation" x="842" y="-42">VS?</label>
+			<nail x="833" y="-25"/>
+			<nail x="893" y="-25"/>
+		</transition>
+	</template>
+	<template>
+		<name>DurationWithInt</name>
+		<parameter>broadcast chan&amp; VS, broadcast chan&amp; VP, broadcast chan&amp; du_beg, broadcast chan&amp; du_end</parameter>
+		<declaration>const int M = 8;
+int i = 0;</declaration>
+		<location id="id99" x="187" y="0">
+			<committed/>
+		</location>
+		<location id="id100" x="102" y="0">
+			<name x="68" y="8">Vi</name>
+		</location>
+		<location id="id101" x="0" y="0">
+			<name x="-8" y="17">Init</name>
+			<label kind="comments" x="-17" y="-93">Compressed duration counter from Fig.8(3)</label>
+		</location>
+		<init ref="id101"/>
+		<transition>
+			<source ref="id99"/>
+			<target ref="id101"/>
+			<label kind="guard" x="17" y="-68">i==M</label>
+			<label kind="synchronisation" x="76" y="-68">du_end!</label>
+			<label kind="assignment" x="153" y="-68">i=0</label>
+			<nail x="187" y="-51"/>
+			<nail x="0" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id99"/>
+			<target ref="id100"/>
+			<label kind="guard" x="119" y="17">i&lt;M</label>
+			<label kind="assignment" x="153" y="17">i++</label>
+			<nail x="187" y="34"/>
+			<nail x="102" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id100"/>
+			<target ref="id99"/>
+			<label kind="synchronisation" x="128" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id100"/>
+			<target ref="id99"/>
+			<label kind="synchronisation" x="128" y="-42">VS?</label>
+			<nail x="127" y="-25"/>
+			<nail x="162" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id101"/>
+			<target ref="id100"/>
+			<label kind="synchronisation" x="18" y="-17">du_beg?</label>
+		</transition>
+	</template>
+	<template>
+		<name>VP_AS_Counter</name>
+		<parameter>broadcast chan&amp; VP_AS, broadcast chan&amp; reset</parameter>
+		<location id="id102" x="102" y="0">
+			<name x="76" y="8">E1</name>
+		</location>
+		<location id="id103" x="0" y="0">
+			<name x="-34" y="17">Init</name>
+			<label kind="comments" x="-8" y="-102">Counter for VP-AS pattern from Fig.15(2)</label>
+		</location>
+		<location id="id104" x="204" y="0">
+			<name x="178" y="8">E2</name>
+		</location>
+		<location id="id105" x="306" y="0">
+			<name x="280" y="8">E3</name>
+		</location>
+		<location id="id106" x="408" y="0">
+			<name x="382" y="8">E4</name>
+		</location>
+		<location id="id107" x="518" y="0">
+			<name x="492" y="8">E5</name>
+		</location>
+		<location id="id108" x="620" y="0">
+			<name x="594" y="8">E6</name>
+		</location>
+		<location id="id109" x="722" y="0">
+			<name x="696" y="8">E7</name>
+		</location>
+		<location id="id110" x="824" y="0">
+			<name x="798" y="8">E8</name>
+			<committed/>
+		</location>
+		<init ref="id103"/>
+		<transition>
+			<source ref="id102"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="110" y="-42">reset?</label>
+			<nail x="102" y="-42"/>
+			<nail x="34" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id103"/>
+			<target ref="id102"/>
+			<label kind="synchronisation" x="18" y="-17">VP_AS?</label>
+		</transition>
+		<transition>
+			<source ref="id104"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="212" y="-42">reset?</label>
+			<nail x="204" y="-42"/>
+			<nail x="34" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id102"/>
+			<target ref="id104"/>
+			<label kind="synchronisation" x="120" y="-17">VP_AS?</label>
+		</transition>
+		<transition>
+			<source ref="id105"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="314" y="-42">reset?</label>
+			<nail x="306" y="-42"/>
+			<nail x="34" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id104"/>
+			<target ref="id105"/>
+			<label kind="synchronisation" x="222" y="-17">VP_AS?</label>
+		</transition>
+		<transition>
+			<source ref="id106"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="416" y="-42">reset?</label>
+			<nail x="408" y="-42"/>
+			<nail x="34" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id105"/>
+			<target ref="id106"/>
+			<label kind="synchronisation" x="324" y="-17">VP_AS?</label>
+		</transition>
+		<transition>
+			<source ref="id107"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="526" y="-42">reset?</label>
+			<nail x="518" y="-42"/>
+			<nail x="34" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id106"/>
+			<target ref="id107"/>
+			<label kind="synchronisation" x="434" y="-17">VP_AS?</label>
+		</transition>
+		<transition>
+			<source ref="id108"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="628" y="-42">reset?</label>
+			<nail x="620" y="-42"/>
+			<nail x="34" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id107"/>
+			<target ref="id108"/>
+			<label kind="synchronisation" x="536" y="-17">VP_AS?</label>
+		</transition>
+		<transition>
+			<source ref="id109"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="731" y="-42">reset?</label>
+			<nail x="722" y="-42"/>
+			<nail x="34" y="-42"/>
+		</transition>
+		<transition>
+			<source ref="id108"/>
+			<target ref="id109"/>
+			<label kind="synchronisation" x="638" y="-17">VP_AS?</label>
+		</transition>
+		<transition>
+			<source ref="id110"/>
+			<target ref="id103"/>
+			<label kind="assignment" x="714" y="-68">TPVARP=500</label>
+			<nail x="824" y="-51"/>
+			<nail x="0" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id109"/>
+			<target ref="id110"/>
+			<label kind="synchronisation" x="740" y="-17">VP_AS?</label>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorLowerRateLimit</name>
+		<parameter>broadcast chan&amp; VS, broadcast chan&amp; VP</parameter>
+		<declaration>/**
+The most essential function for the pacemaker is to treat bradycardia by 
+maintaining the ventricular rate above a certain threshold. We define 
+the region where the ventricular rate is slow, as unsafe. The monitor 
+is designed to measure interval between ventricular events.
+*/
+clock t;</declaration>
+		<location id="id111" x="212" y="0">
+			<name x="187" y="17">two_a</name>
+			<committed/>
+		</location>
+		<location id="id112" x="119" y="0">
+			<name x="68" y="17">wait_2nd</name>
+			<label kind="comments" x="-34" y="51">A[] (Pvv.two_a imply Pvv.t&lt;=TLRI)</label>
+		</location>
+		<location id="id113" x="0" y="0">
+			<name x="-17" y="17">wait_1st</name>
+			<label kind="comments" x="-25" y="-76">Monitor for LRL from Fig.5(a)</label>
+		</location>
+		<init ref="id113"/>
+		<transition>
+			<source ref="id113"/>
+			<target ref="id112"/>
+			<label kind="synchronisation" x="25" y="-17">VP?</label>
+			<label kind="assignment" x="59" y="-17">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id112"/>
+			<target ref="id111"/>
+			<label kind="synchronisation" x="153" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id111"/>
+			<target ref="id112"/>
+			<label kind="assignment" x="153" y="0">t=0</label>
+			<nail x="187" y="17"/>
+			<nail x="153" y="17"/>
+		</transition>
+		<transition>
+			<source ref="id112"/>
+			<target ref="id111"/>
+			<label kind="synchronisation" x="153" y="-42">VS?</label>
+			<nail x="144" y="-25"/>
+			<nail x="187" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id113"/>
+			<target ref="id112"/>
+			<label kind="synchronisation" x="25" y="-42">VS?</label>
+			<label kind="assignment" x="59" y="-42">t=0</label>
+			<nail x="16" y="-25"/>
+			<nail x="93" y="-25"/>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorUpperRateLimit</name>
+		<parameter>broadcast chan&amp; VS, broadcast chan&amp; VP</parameter>
+		<declaration>/**
+The pacemaker is not designed to treat tachycardia so it can only pace the heart
+to increase its rate and cannot slow it down. However, it is still important to
+guarantee it does not pace the ventricles beyond a maximum rate to ensure safe
+operation. To this effect, an upper rate limit is specified such that the pacemaker
+can increase the ventricular rate up to this limit.
+We require that a ventricle pace (VP) can only occur at least TURI after a
+ventricle event (VS, VP).
+*/
+clock t;</declaration>
+		<location id="id114" x="212" y="0">
+			<name x="187" y="17">interval</name>
+			<committed/>
+		</location>
+		<location id="id115" x="119" y="0">
+			<name x="85" y="17">wait_vp</name>
+			<label kind="comments" x="-51" y="68">A[] (PURI_test.interval imply PURI_test.t&gt;=TURI)</label>
+		</location>
+		<location id="id116" x="0" y="0">
+			<name x="-25" y="17">wait_v</name>
+			<label kind="comments" x="-51" y="-102">Monitor for URL from Fig.5(b)</label>
+		</location>
+		<init ref="id116"/>
+		<transition>
+			<source ref="id116"/>
+			<target ref="id115"/>
+			<label kind="synchronisation" x="25" y="-17">VP?</label>
+			<label kind="assignment" x="59" y="-17">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id115"/>
+			<target ref="id114"/>
+			<label kind="synchronisation" x="153" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id114"/>
+			<target ref="id115"/>
+			<label kind="assignment" x="153" y="0">t=0</label>
+			<nail x="178" y="17"/>
+			<nail x="144" y="17"/>
+		</transition>
+		<transition>
+			<source ref="id115"/>
+			<target ref="id115"/>
+			<label kind="synchronisation" x="110" y="-51">VS?</label>
+			<label kind="assignment" x="110" y="-34">t=0</label>
+			<nail x="102" y="-17"/>
+			<nail x="102" y="-34"/>
+			<nail x="144" y="-34"/>
+			<nail x="144" y="-17"/>
+		</transition>
+		<transition>
+			<source ref="id116"/>
+			<target ref="id115"/>
+			<label kind="synchronisation" x="25" y="-42">VS?</label>
+			<label kind="assignment" x="59" y="-42">t=0</label>
+			<nail x="25" y="-25"/>
+			<nail x="84" y="-25"/>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorSupraVentriTachycardia</name>
+		<parameter>broadcast chan&amp; VS, broadcast chan&amp; VP</parameter>
+		<declaration>/**
+The most essential function for the pacemaker is to treat bradycardia by 
+maintaining the ventricular rate above a certain threshold. We define 
+the region where the ventricular rate is slow, as unsafe. The monitor 
+is designed to measure interval between ventricular events.
+*/
+clock t;</declaration>
+		<location id="id117" x="348" y="0">
+			<name x="338" y="-34">err</name>
+		</location>
+		<location id="id118" x="238" y="0">
+			<name x="228" y="-34">two_v</name>
+			<committed/>
+		</location>
+		<location id="id119" x="119" y="0">
+			<name x="51" y="17">wait_2nd</name>
+		</location>
+		<location id="id120" x="-17" y="0">
+			<name x="-68" y="-34">wait_1st</name>
+			<label kind="comments" x="-51" y="-85">Monitor for SVT from Fig.7</label>
+		</location>
+		<init ref="id120"/>
+		<transition>
+			<source ref="id118"/>
+			<target ref="id117"/>
+			<label kind="guard" x="263" y="-17">t&gt;TURI</label>
+		</transition>
+		<transition>
+			<source ref="id120"/>
+			<target ref="id119"/>
+			<label kind="synchronisation" x="17" y="-17">VP?</label>
+			<label kind="assignment" x="17" y="0">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id119"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="144" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id118"/>
+			<target ref="id119"/>
+			<label kind="guard" x="144" y="17">t&lt;=TURI</label>
+			<label kind="assignment" x="153" y="34">t=0</label>
+			<nail x="221" y="34"/>
+			<nail x="136" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id119"/>
+			<target ref="id118"/>
+			<label kind="synchronisation" x="144" y="-51">VS?</label>
+			<nail x="144" y="-34"/>
+			<nail x="204" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id120"/>
+			<target ref="id119"/>
+			<label kind="synchronisation" x="17" y="-51">VS?</label>
+			<label kind="assignment" x="16" y="-34">t=0</label>
+			<nail x="8" y="-34"/>
+			<nail x="85" y="-34"/>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorSupraVentriTachycardiaNew</name>
+		<parameter>broadcast chan&amp; VP</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id121" x="289" y="0">
+			<name x="279" y="-34">err</name>
+		</location>
+		<location id="id122" x="204" y="0">
+			<name x="194" y="-34">V2</name>
+			<committed/>
+		</location>
+		<location id="id123" x="110" y="0">
+			<name x="100" y="-34">V1</name>
+			<label kind="comments" x="-17" y="51">E[] (not Pv_v.err)</label>
+		</location>
+		<location id="id124" x="8" y="0">
+			<name x="-2" y="-34">Init</name>
+			<label kind="comments" x="-9" y="-68">Upper Rate detection from Fig.13</label>
+		</location>
+		<init ref="id124"/>
+		<transition>
+			<source ref="id122"/>
+			<target ref="id123"/>
+			<label kind="guard" x="127" y="8">t&lt;=TURI</label>
+			<label kind="assignment" x="128" y="25">t=0</label>
+			<nail x="195" y="25"/>
+			<nail x="119" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id122"/>
+			<target ref="id121"/>
+			<label kind="guard" x="221" y="-17">t&gt;TURI</label>
+		</transition>
+		<transition>
+			<source ref="id123"/>
+			<target ref="id122"/>
+			<label kind="synchronisation" x="136" y="-17">VP?</label>
+		</transition>
+		<transition>
+			<source ref="id124"/>
+			<target ref="id123"/>
+			<label kind="synchronisation" x="26" y="-17">VP?</label>
+			<label kind="assignment" x="59" y="-17">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorVDI</name>
+		<parameter>broadcast chan&amp; VDI</parameter>
+		<location id="id125" x="76" y="0">
+			<name x="66" y="-34">err</name>
+			<label kind="comments" x="-25" y="25">A&lt;&gt; (PMS.err)</label>
+		</location>
+		<location id="id126" x="0" y="0">
+			<label kind="comments" x="-34" y="-51">VDI mode switch test from Fig.10</label>
+		</location>
+		<init ref="id126"/>
+		<transition>
+			<source ref="id126"/>
+			<target ref="id125"/>
+			<label kind="synchronisation" x="18" y="-17">VDI?</label>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorAtrioVentri</name>
+		<parameter>broadcast chan&amp; AS, broadcast chan&amp; AP, broadcast chan&amp; AR, broadcast chan&amp; ABLOCK, broadcast chan&amp; VentriB, broadcast chan&amp; VS, broadcast chan&amp; VP</parameter>
+		<location id="id127" x="25" y="42">
+			<name x="0" y="68">VP1</name>
+		</location>
+		<location id="id128" x="25" y="-51">
+			<name x="-17" y="-76">err</name>
+			<label kind="comments" x="-136" y="93">E[] ((not PELT_det.err) &amp;&amp; (not Pv_v2.err))</label>
+		</location>
+		<location id="id129" x="25" y="-136">
+			<name x="15" y="-170">AS1</name>
+		</location>
+		<location id="id130" x="-127" y="-51">
+			<name x="-178" y="-59">VSed</name>
+			<label kind="comments" x="-136" y="-204">Fig.13: PELT_det in the paper.</label>
+		</location>
+		<init ref="id130"/>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="25" y="0">VS?</label>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="25" y="-102">AP?</label>
+			<nail x="42" y="-119"/>
+			<nail x="42" y="-76"/>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="-101" y="8">VS?</label>
+			<nail x="-119" y="25"/>
+			<nail x="0" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="203" y="-17">VP?</label>
+			<nail x="229" y="25"/>
+			<nail x="229" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="161" y="0">AP?</label>
+			<nail x="195" y="25"/>
+			<nail x="195" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="127" y="-17">ABLOCK?</label>
+			<nail x="144" y="25"/>
+			<nail x="144" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="144" y="-102">VentriB?</label>
+			<nail x="204" y="-119"/>
+			<nail x="204" y="-76"/>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="119" y="-119">VS?</label>
+			<nail x="144" y="-119"/>
+			<nail x="144" y="-76"/>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="76" y="-102">ABLOCK?</label>
+			<nail x="110" y="-119"/>
+			<nail x="110" y="-85"/>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id127"/>
+			<label kind="synchronisation" x="237" y="-59">VP?</label>
+			<nail x="263" y="-136"/>
+			<nail x="263" y="51"/>
+			<nail x="51" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id129"/>
+			<label kind="synchronisation" x="272" y="-42">AS?</label>
+			<nail x="42" y="59"/>
+			<nail x="297" y="59"/>
+			<nail x="297" y="-153"/>
+			<nail x="59" y="-153"/>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="85" y="0">AR?</label>
+			<nail x="110" y="25"/>
+			<nail x="110" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="51" y="-17">VentriB?</label>
+			<nail x="85" y="25"/>
+			<nail x="85" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id127"/>
+			<label kind="synchronisation" x="-102" y="25">VP?</label>
+			<nail x="-127" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="-101" y="-17">VentriB?</label>
+			<nail x="-119" y="0"/>
+			<nail x="0" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="-101" y="-42">ABLOCK?</label>
+			<nail x="-119" y="-25"/>
+			<nail x="0" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="-102" y="-68">AR?</label>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="51" y="-119">AR?</label>
+			<nail x="76" y="-119"/>
+			<nail x="76" y="-85"/>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="-25" y="-119">AS?</label>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id128"/>
+			<label kind="synchronisation" x="-101" y="-110">AP?</label>
+			<nail x="-119" y="-93"/>
+			<nail x="0" y="-93"/>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id129"/>
+			<label kind="synchronisation" x="-109" y="-153">AS?</label>
+			<nail x="-127" y="-136"/>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorVentriAtrio</name>
+		<parameter>broadcast chan&amp; AS, broadcast chan&amp; AP, broadcast chan&amp; AR, broadcast chan&amp; VS, broadcast chan&amp; VP, broadcast chan&amp; VP_AS, broadcast chan&amp; reset</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id131" x="195" y="0">
+			<name x="178" y="17">AS1</name>
+			<committed/>
+		</location>
+		<location id="id132" x="102" y="0">
+			<name x="110" y="17">vp1</name>
+		</location>
+		<location id="id133" x="0" y="0">
+			<name x="-34" y="-25">Init</name>
+			<label kind="comments" x="-59" y="-187">Fig.15(1)
+Detects the VP-AS with ventricular rate 
+at upper rate limit and sends out VP_AS
+event if the interval qualifies.</label>
+		</location>
+		<location id="id134" x="0" y="51">
+			<name x="-59" y="43">cancel</name>
+			<committed/>
+		</location>
+		<init ref="id133"/>
+		<transition>
+			<source ref="id134"/>
+			<target ref="id133"/>
+			<label kind="synchronisation" x="-51" y="17">reset!</label>
+		</transition>
+		<transition>
+			<source ref="id132"/>
+			<target ref="id134"/>
+			<label kind="synchronisation" x="42" y="84">AR?</label>
+			<nail x="102" y="102"/>
+			<nail x="17" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id132"/>
+			<target ref="id134"/>
+			<label kind="synchronisation" x="43" y="59">AP?</label>
+			<nail x="93" y="76"/>
+			<nail x="25" y="76"/>
+		</transition>
+		<transition>
+			<source ref="id132"/>
+			<target ref="id134"/>
+			<label kind="synchronisation" x="42" y="34">VS?</label>
+			<nail x="93" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id131"/>
+			<target ref="id133"/>
+			<label kind="guard" x="59" y="-102">t&gt;200</label>
+			<nail x="195" y="-85"/>
+			<nail x="0" y="-85"/>
+		</transition>
+		<transition>
+			<source ref="id131"/>
+			<target ref="id133"/>
+			<label kind="guard" x="59" y="-76">t&lt;150</label>
+			<nail x="178" y="-59"/>
+			<nail x="17" y="-59"/>
+		</transition>
+		<transition>
+			<source ref="id131"/>
+			<target ref="id133"/>
+			<label kind="guard" x="25" y="-51">t&gt;=150 &amp;&amp; t&lt;=200</label>
+			<label kind="synchronisation" x="68" y="-34">VP_AS!</label>
+			<nail x="170" y="-34"/>
+			<nail x="25" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id132"/>
+			<target ref="id131"/>
+			<label kind="synchronisation" x="127" y="-17">AS?</label>
+		</transition>
+		<transition>
+			<source ref="id133"/>
+			<target ref="id132"/>
+			<label kind="synchronisation" x="25" y="-17">VP?</label>
+			<label kind="assignment" x="25" y="0">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorGet</name>
+		<parameter>broadcast chan&amp; get, const int T</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id135" x="34" y="-93">
+			<name x="24" y="-127">Error</name>
+		</location>
+		<location id="id136" x="-68" y="-93">
+		</location>
+		<init ref="id136"/>
+		<transition>
+			<source ref="id136"/>
+			<target ref="id135"/>
+			<label kind="guard" x="-34" y="-127">t&gt;T</label>
+			<label kind="synchronisation" x="-34" y="-110">get?</label>
+			<label kind="assignment" x="-42" y="-93">error=1</label>
+		</transition>
+		<transition>
+			<source ref="id136"/>
+			<target ref="id136"/>
+			<label kind="guard" x="-93" y="-161">t&lt;=T</label>
+			<label kind="synchronisation" x="-93" y="-144">get?</label>
+			<label kind="assignment" x="-93" y="-127">t=0</label>
+			<nail x="-102" y="-119"/>
+			<nail x="-102" y="-144"/>
+			<nail x="-51" y="-144"/>
+			<nail x="-51" y="-119"/>
+		</transition>
+	</template>
+	<template>
+		<name>MonitorChan</name>
+		<parameter>broadcast chan&amp; c</parameter>
+		<declaration>clock t;</declaration>
+		<location id="id137" x="102" y="0">
+			<name x="92" y="-34">OK</name>
+			<label kind="invariant" x="92" y="17">t&lt;=10</label>
+			<label kind="comments" x="-42" y="51">Uppaal plot bug:
+the events are filtered out if the delay is very short (like 1t.u. over 10000t.u. plot)</label>
+		</location>
+		<location id="id138" x="0" y="0">
+			<name x="-10" y="-34">idle</name>
+		</location>
+		<init ref="id138"/>
+		<transition>
+			<source ref="id137"/>
+			<target ref="id138"/>
+			<nail x="85" y="25"/>
+			<nail x="8" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id138"/>
+			<target ref="id137"/>
+			<label kind="synchronisation" x="17" y="-17">c?</label>
+			<label kind="assignment" x="18" y="0">t=0</label>
+		</transition>
+	</template>
+	<system>clock time;
+
+// channels for pacemaker:
+broadcast chan AtrioS, AtrioP;
+broadcast chan VentriS, VentriP;
+broadcast chan AtrioR;
+broadcast chan Aget, Vget;
+broadcast chan VP_AS;
+broadcast chan reset;
+
+broadcast chan DDD, VDI;
+broadcast chan Fast, Slow, du_end, du_beg;
+
+broadcast chan VentriB, ABLOCK;
+broadcast chan A_act, V_act;
+
+LRI=LowRateIntNew(AtrioS, VentriS, VentriP, DDD, VDI, AtrioP);
+AVI=AtrioVentriIntNew(AtrioS, VentriS, AtrioP, DDD, VDI, VentriP);
+
+URI = UpperRateInt(VentriS, VentriP);
+//PVARP=PostVentriAtrialRefractoryPeriod(Aget, VentriS, VentriP, AtrioS, AtrioR);
+PVARP = PostVentriAtrialRefractoryPeriodNew(A_act, Aget, ABLOCK, VentriS, VentriP, AtrioS, AtrioR); // Aget = get[1] from cell #1
+VRP = VentriRefractoryPeriod(Vget, VentriP, VentriS); // Vget = get[4] from cell #4
+
+interval = Interval(AtrioS, AtrioR, AtrioP, Fast, Slow);
+counter = Counter(Fast, Slow, du_end, DDD, VDI, du_beg);
+duration = Duration(VentriS, VentriP, du_beg, du_end);
+
+//RHM = RandomHeartModel(AtrioP, Aget, 0, 1&lt;&lt;28);
+//RHM = RandomHeartModel(AtrioP, Aget, 100, 200);
+//RHM = RandomHeartModel(AtrioP, Aget, 500, 800); // when checking for SVT
+//RHMA = RandomHeartNew(AtrioP,  A_act, Aget, 100, 10000); // atrium
+//RHMV = RandomHeartNew(VentriP, V_act, Vget, 100, 10000); // ventricle
+RHMA = RandomHeartNewUnb(AtrioP,  A_act, Aget, 0); // atrium
+RHMV = RandomHeartNewUnb(VentriP, V_act, Vget, 0); // ventricle
+Cond = HeartConduction(Aget, Vget, AtrioP, VentriP, A_act, V_act);
+
+L = MonitorLowerRateLimit(VentriS, VentriP);
+U = MonitorUpperRateLimit(VentriS, VentriP);
+
+Pv_v = MonitorSupraVentriTachycardia(VentriS, VentriP);
+Pv_v2 = MonitorSupraVentriTachycardiaNew(VentriP);
+
+PMS = MonitorVDI(VDI);
+
+PELT_det = MonitorAtrioVentri(AtrioS, AtrioP, AtrioR, ABLOCK, VentriB, VentriS, VentriP);
+AntiELT = MonitorVentriAtrio(AtrioS, AtrioP, AtrioR, VentriS, VentriP, VP_AS, reset);
+VPASCounter = VP_AS_Counter(VP_AS, reset);
+
+
+system 
+RHMA, RHMV, Cond
+,LRI, AVI, URI, PVARP, VRP, interval, counter, duration, AntiELT, VPASCounter // pacemaker
+//, L
+, U
+;</system>
+	<queries>
+		<query>
+			<formula>// Section 4.1 Lower Rate  Limit
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { 4*L.wait_1st, 2*L.wait_2nd, L.two_a }
+			</formula>
+			<comment>Inspect the behavior of Pvv (MonitorLowerRateLimit).
+Pvv hits two_a many times at random intervals.
+			</comment>
+		</query>
+		<query>
+			<formula>A[] (L.two_a imply L.t&lt;=TLRI)
+			</formula>
+			<comment>Check that ventricular rate is above the threashold (the interval is less than TLRI).
+Satisfied by the basic DDD pacemaker (only). Takes 5min (291s) witch swithing algorithm with heart [100;750] and other monitors.
+Not satisfied with heart [100;751].</comment>
+		</query>
+		<query>
+			<formula>A[] (L.two_a imply L.t&lt;=1500)</formula>
+			<comment>RH(100,750) -&gt; 1400
+RH(100,3000) -&gt; 1500
+RH[0,inf) -&gt; 1500, took 148.58s, 267.78MB
+
+</comment>
+		</query>
+		<query>
+			<formula>// Section 4.2 Upper Rate  Limit
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { 4*U.wait_v, 2*U.wait_vp, U.interval }
+			</formula>
+			<comment>Inspect the behavior of PURI_test (MonitorUpperRateLimit)
+			</comment>
+		</query>
+		<query>
+			<formula>A[] (U.interval imply U.t&gt;=TURI)
+			</formula>
+			<comment>Check that ventricular rate is not higher than threashold (the interval is no less than TURI).
+Satisfied on the simple model, but NOT on the switching algorithm.
+RH(100, 2000): took 92.52s 147.8MB with 
+RH[0,inf): took 129.57s, 263.15MB</comment>
+		</query>
+		<query>
+			<formula>E[] (not Pv_v.err)
+			</formula>
+			<comment>Without VDI-DDD switching: satisfied, i.e. there is ill behavior.
+With VDI-DDD switching: is not satisfied when beat(500,800)
+
+From the paper:
+Correctness of the mode-switching algorithm.
+We expect the violation of this property, since during VDI mode the ventricular rate of the heart
+model is less than the Upper Rate Limit and will not trigger ventricular pacing.
+The counter example of the violation should show that mode-switch algorithm
+successfully switches the mode of the pacemaker to VDI mode. However, this
+property is still satisfied, indicating the mode-switch algorithm failed to elim-
+inate the PMT scenario. Then we further restrict the atrial interval of RHM
+to [100, 200]. Since the atrial rate for the new heart model is always above the
+trigger rate, mode switch to VDI mode should always eventually happen. The
+monitor PMS for the new property is shown in Fig. 10.
+			</comment>
+		</query>
+		<query>
+			<formula>E[] (not Pv_v2.err)</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>A&lt;&gt; (PMS.err)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=10000] { 4*Pvv.wait_1st, 2*Pvv.wait_2nd, Pvv.two_a }
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=10000] { 6+PELT_det.err, 4+PELT_det.VSed, 2+PELT_det.AS1, PELT_det.VP1 }
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E[] ((not PELT_det.err) &amp;&amp; (not Pv_v2.err))
+			</formula>
+			<comment>"The existence fails on pacemaker without an anti-ELT algorithm"
+			</comment>
+		</query>
+		<query>
+			<formula>A&lt;&gt; (PMS.err)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1 [&lt;=5000] { 
+cells(0).Stimulus+2*cells(0).Upstroke+3*cells(0).ERP_RRP,  
+cells(1).Stimulus+2*cells(1).Upstroke+3*cells(1).ERP_RRP+4*1,
+cells(2).Stimulus+2*cells(2).Upstroke+3*cells(2).ERP_RRP+4*2,
+cells(3).Stimulus+2*cells(3).Upstroke+3*cells(3).ERP_RRP+4*3
+}
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>sup: monitorGet(0).t
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] not monitorGet(2).Error
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] not error
+			</formula>
+			<comment>takes about 45s with beat1  (slow heart)
+and 2s without beat1 (dead heart)
+			</comment>
+		</query>
+		<query>
+			<formula>simulate 1000 [&lt;=5000] { 
+cells(0).Stimulus+2*cells(0).Upstroke+3*cells(0).ERP_RRP,  
+cells(1).Stimulus+2*cells(1).Upstroke+3*cells(1).ERP_RRP+4*1,
+cells(2).Stimulus+2*cells(2).Upstroke+3*cells(2).ERP_RRP+4*2,
+cells(3).Stimulus+2*cells(3).Upstroke+3*cells(3).ERP_RRP+4*3
+} : 1 : error</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; mAS.OK</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { 2+mAS.OK, 2-mAP.OK, 2+mAR.OK, -mVP.OK, -mVS.OK }</formula>
+			<comment>Replicate plot from Fig.2b</comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { mAS.OK, 0-mVS.OK }</formula>
+			<comment>Replicate the plot in Fig.6a SVT with ODO</comment>
+		</query>
+		<query>
+			<formula>simulate 10 [&lt;=10000] { mAS.OK, mAR.OK, mAP.OK, -mVP.OK, -mVS.OK }</formula>
+			<comment>Replicate the plot in Fig.6b SVT with DDD</comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment>
+			</comment>
+		</query>
+	</queries>
+</nta>
