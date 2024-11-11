@@ -29,7 +29,7 @@
      inkscape:deskcolor="#ffffff"
      showgrid="false"
      inkscape:zoom="1.2688172"
-     inkscape:cx="-19.309322"
+     inkscape:cx="-98.911017"
      inkscape:cy="93.394068"
      inkscape:window-width="2560"
      inkscape:window-height="1376"
@@ -41,6 +41,15 @@
      id="title424">Bouncing ball 2 in UPPAAL</title>
   <desc
      id="desc426">Creator: FreeHEP Graphics2D Driver Producer: org.freehep.graphicsio.svg.SVGGraphics2D Revision Source:  Date: Monday, November 11, 2024, 11:55:17 AM Central European Standard Time</desc>
+  <rect
+     style="fill:#ffffff;stroke-linecap:round;stroke-linejoin:round"
+     id="rect4664"
+     width="297.91525"
+     height="200.18645"
+     x="-7.8813558"
+     y="-4.7288136"
+     rx="17.647058"
+     ry="15" />
   <g
      stroke-dashoffset="0"
      stroke-linejoin="miter"
