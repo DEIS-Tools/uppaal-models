@@ -19,6 +19,7 @@ clock velocity = 0.0;
 ```
 
 The dynamics can be modeled using differential equations at one process location invariant with an edge for inverting the velocity during bounce:
+
 ![Ball0](Ball0.svg)
 
 However UPPAAL complains: *"A general hybrid guard is enabled without urgent synchronization"*, which means that the guard condition is too complicated to find all time intervals where the guard is satisfied and it suggests making it `urgent`.
@@ -53,7 +54,6 @@ We fix the model by adding an escape edge when the velocity is too small:
 
 Finally the `simulate` query yields the following result:
 ![Simulate query result](simulate.svg)
-
 
 The models:
 - [Final model](Ball.xml)
