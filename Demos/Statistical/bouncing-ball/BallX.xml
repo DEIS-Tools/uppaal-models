@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<template>
+		<name x="5" y="5">Ball0</name>
+		<declaration>const double GRAVITY = 9.81;
+const int FLOOR = 0;
+const double EFFICIENCY = 0.8;
+clock height = 10.0;
+clock velocity = 0.0;
+</declaration>
+		<location id="id0" x="348" y="144">
+			<name x="374" y="136">Fly</name>
+			<label kind="invariant" x="297" y="161">height' == velocity &amp;&amp;
+velocity' == -GRAVITY &amp;&amp;
+height &gt;= FLOOR</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="297" y="25">height &lt;= FLOOR &amp;&amp; 
+velocity &lt;= 0</label>
+			<label kind="assignment" x="297" y="67">velocity = -EFFICIENCY * velocity</label>
+			<label kind="comments" x="433" y="102">"A general hybrid guard is enabled
+without urgent synchronization"</label>
+			<nail x="323" y="93"/>
+			<nail x="374" y="93"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Ball1</name>
+		<declaration>const double GRAVITY = 9.81;
+const int FLOOR = 0;
+const double EFFICIENCY = 0.8;
+clock height = 10.0;
+clock velocity = 0.0;
+urgent broadcast chan ASAP;</declaration>
+		<location id="id1" x="348" y="144">
+			<name x="374" y="136">Fly</name>
+			<label kind="invariant" x="297" y="161">height' == velocity &amp;&amp;
+velocity' == -GRAVITY &amp;&amp;
+height &gt;= FLOOR</label>
+			<label kind="comments" x="518" y="110">"Time-lock error: in ball.Fly 
+State: ( ball.Fly ) 
+#t(0)=0 #time=11.43438 ball.height=0 
+ball.velocity=0.00143"</label>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="297" y="17">height &lt;= FLOOR &amp;&amp; 
+velocity &lt;= 0</label>
+			<label kind="synchronisation" x="297" y="59">ASAP!</label>
+			<label kind="assignment" x="297" y="76">velocity = -EFFICIENCY * velocity</label>
+			<nail x="323" y="102"/>
+			<nail x="374" y="102"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Ball2</name>
+		<declaration>const double GRAVITY = 9.81;
+const int FLOOR = 0;
+const double EFFICIENCY = 0.8;
+clock height = 10.0;
+clock velocity = 0.0;
+urgent broadcast chan ASAP;
+</declaration>
+		<location id="id2" x="348" y="144">
+			<name x="374" y="136">Fly</name>
+			<label kind="invariant" x="297" y="161">height' == velocity &amp;&amp;
+velocity' == -GRAVITY</label>
+		</location>
+		<init ref="id2"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="guard" x="297" y="17">height &lt;= FLOOR &amp;&amp; 
+velocity &lt;= 0</label>
+			<label kind="synchronisation" x="297" y="59">ASAP!</label>
+			<label kind="assignment" x="297" y="76">velocity = -EFFICIENCY * velocity</label>
+			<label kind="comments" x="484" y="102">"Probably Zeno behavior 
+(infinitely many discrete transitions in finite amount of time): 
+Executed more than 100000 discrete transition while delaying only 0.000145868 time units.
+State: ( ball.Fly ) #t(0)=0#time=11.4345 ball.height=-1.4101e-05 ball.velocity=-0"</label>
+			<nail x="323" y="102"/>
+			<nail x="374" y="102"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Ball3</name>
+		<declaration>const double GRAVITY = 9.81;
+const int FLOOR = 0;
+const double EFFICIENCY = 0.8;
+clock height = 10.0;
+clock velocity = 0.0;
+urgent broadcast chan ASAP;
+</declaration>
+		<location id="id3" x="688" y="144">
+			<name x="678" y="110">Stop</name>
+			<label kind="invariant" x="654" y="161">height' == 0 &amp;&amp;
+velocity' == 0</label>
+		</location>
+		<location id="id4" x="348" y="144">
+			<name x="297" y="136">Fly</name>
+			<label kind="invariant" x="297" y="161">height' == velocity &amp;&amp;
+velocity' == -GRAVITY</label>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="501" y="102">height &lt;= FLOOR &amp;&amp;
+velocity &lt;= 0 &amp;&amp;
+velocity &gt; -1e-5</label>
+			<label kind="synchronisation" x="501" y="161">ASAP!</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="guard" x="297" y="17">height &lt;= FLOOR &amp;&amp; 
+velocity &lt;= 0</label>
+			<label kind="synchronisation" x="297" y="59">ASAP!</label>
+			<label kind="assignment" x="297" y="76">velocity = -EFFICIENCY * velocity</label>
+			<nail x="323" y="102"/>
+			<nail x="374" y="102"/>
+		</transition>
+	</template>
+	<system>ball = Ball4();
+system ball;</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=15]{ ball.height, ball.velocity }
+</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

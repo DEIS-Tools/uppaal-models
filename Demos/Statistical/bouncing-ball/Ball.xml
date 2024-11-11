@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<template>
+		<name x="5" y="5">Ball</name>
+		<declaration>const double GRAVITY = 9.81;
+const int FLOOR = 0;
+const double EFFICIENCY = 0.8;
+clock height = 10.0;
+clock velocity = 0.0;
+urgent broadcast chan ASAP;
+</declaration>
+		<location id="id0" x="688" y="144">
+			<name x="678" y="110">Stop</name>
+			<label kind="invariant" x="654" y="161">height' == 0 &amp;&amp;
+velocity' == 0</label>
+		</location>
+		<location id="id1" x="348" y="144">
+			<name x="297" y="136">Fly</name>
+			<label kind="invariant" x="297" y="161">height' == velocity &amp;&amp;
+velocity' == -GRAVITY</label>
+		</location>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="501" y="102">height &lt;= FLOOR &amp;&amp;
+velocity &lt;= 0 &amp;&amp;
+velocity &gt; -1e-5</label>
+			<label kind="synchronisation" x="501" y="161">ASAP!</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="297" y="17">height &lt;= FLOOR &amp;&amp; 
+velocity &lt;= 0</label>
+			<label kind="synchronisation" x="297" y="59">ASAP!</label>
+			<label kind="assignment" x="297" y="76">velocity = -EFFICIENCY * velocity</label>
+			<nail x="323" y="102"/>
+			<nail x="374" y="102"/>
+		</transition>
+	</template>
+	<system>system Ball;</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=15]{ Ball.height, Ball.velocity }
+</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
