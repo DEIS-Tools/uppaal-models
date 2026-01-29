@@ -1,6 +1,8 @@
 # Analysis and Verification of Quantum Communication Protocols in UPPAAL
 This folder contains artifacts for "Analysis and Verification of Quantum Communication Protocols in UPPAAL" paper for CAV'26.
 
+Download the entire artifact: [artifact.zip](artifact.zip)
+
 ## Overview
 
 The folder contains the following artifacts:
