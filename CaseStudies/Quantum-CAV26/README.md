@@ -14,21 +14,21 @@ Below are instructions on how to reproduce the figures from the paper and also a
 ## Instructions
 
 1. Download and install UPPAAL:
- * Either version 5.0 or 5.1 from [UPPAAL.org](https://uppaal.org/downloads/)
- * UPPAAL graphical interface requires Java Runtime Environment (JRE or JDK) installed, we recommend OpenJDK 25 from:
-   - Linux distribution
-   - [Adoptium](https://adoptium.net/) (may require administrative rights)
-   - [Microsoft](https://www.microsoft.com/openjdk) (possible to install for local user environment)
- * Obtain an academic license key:
-   - Register at [veriaal.dk](https://uppaal.veriaal.dk/academic.html)
-   - Or use our key: dd5bd740-8262-4fce-b6ee-5b2549c8a3c0
+  * Either version 5.0 or 5.1 from [UPPAAL.org](https://uppaal.org/downloads/)
+  * UPPAAL graphical interface requires Java Runtime Environment (JRE or JDK) installed, we recommend OpenJDK 25 from:
+    - Linux distribution
+    - [Adoptium](https://adoptium.net/) (may require administrative rights)
+    - [Microsoft](https://www.microsoft.com/openjdk) (possible to install for local user environment)
+  * Obtain an academic license key:
+    - Register at [veriaal.dk](https://uppaal.veriaal.dk/academic.html)
+    - Or use our key: dd5bd740-8262-4fce-b6ee-5b2549c8a3c0
 
-2. Reproduce snippets in Fig.3 by opening bsdc-enumerated.xml in UPPAAL:
+2. Reproduce snippets in Fig.3 by opening `bsdc-enumerated.xml` in UPPAAL:
   * In Editor:
-    - select Quantum2 and inspect the path shown in Quantum of Fig.3.
-    - select SenderTimeslotted and observe the beginning matching in Sender of Fig.3.
-    - select ReceiverTimeslotted and observe the beginning matching in Receiver of Fig.3.
-    - select Monitor and check that is equal to Monitor of Fig.3.
+    - select `Quantum2` and inspect the path shown in Quantum of Fig.3.
+    - select `SenderTimeslotted` and observe the beginning matching in Sender of Fig.3.
+    - select `ReceiverTimeslotted` and observe the beginning matching in Receiver of Fig.3.
+    - select `Monitor` and check that is equal to Monitor of Fig.3.
   * In Verifier, check that the two properties are satisfied:
     - `A[] not deadlock`
     - `A[] not monitor.Error`
@@ -37,7 +37,7 @@ Below are instructions on how to reproduce the figures from the paper and also a
   verifyta bsdc-enumerated.xml
   ```
 
-3. Reproduce snippets in Fig.4 by openning bsdc-density-matrix.xml in UPPAAL:
+3. Reproduce snippets in Fig.4 by openning `bsdc-density-matrix.xml` in UPPAAL:
 
 ...
 
@@ -54,18 +54,23 @@ Below are instructions on how to reproduce the figures from the paper and also a
 ### [bsdc-enumerated](bsdc-enumerated.xml)
 
 2-bit quantum process:
+
 ![Quantum](Quantum2.svg)
 
 Sender:
+
 ![Sender](SenderTimeslotted.svg)
 
 Receiver:
+
 ![Receiver](ReceiverTimeslotted.svg)
 
 Monitor with two buffers:
+
 ![Monitor](Monitor.svg)
 
 Monitor with sliding-window buffer:
+
 ![MonitorOld](MonitorOld.svg)
 
 ### [bsdc-density-matrix.xml](bsdc-density-matrix.xml)
