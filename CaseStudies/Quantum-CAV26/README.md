@@ -1,45 +1,47 @@
 # Analysis and Verification of Quantum Communication Protocols in UPPAAL
 This folder contains artifacts for "Analysis and Verification of Quantum Communication Protocols in UPPAAL" paper for CAV'26.
 
-Download the entire artifact: [artifact.zip](artifact.zip)
+Download the entire artifact with instructions in `README.md`: [artifact.zip](artifact.zip)
 
 ## Model Previews
 
-### [bsdc-enumerated](bsdc-enumerated.xml)
+### bsdc-enumerated.xml
 
-2-bit quantum process:
+2-bit quantum process `Quantum2`:
 
 ![Quantum](Quantum2.svg)
 
-Sender:
+Sender process `SenderTimeslotted`:
 
 ![Sender](SenderTimeslotted.svg)
 
-Receiver:
+Receiver `ReceiverTimeslotted`:
 
 ![Receiver](ReceiverTimeslotted.svg)
 
-Monitor with two buffers:
+`Monitor` with two buffers:
 
 ![Monitor](Monitor.svg)
 
-Monitor with sliding-window buffer:
+Monitor with sliding-window buffer (`MonitorOld`):
 
 ![MonitorOld](MonitorOld.svg)
 
-### [bsdc-density-matrix.xml](bsdc-density-matrix.xml)
+### bsdc-density-matrix.xml
 
-Quantum process with density matrix operations:
+Quantum process with density matrix operations `Qstate2` for 2 qubits:
 
-![Qstate](Qstate.svg)
+![Qstate2](Qstate2.svg)
 
-Distiller:
+Quantum process with density matrix operations `Qstate4` for 4 qubits:
+
+![Qstate4](Qstate4.svg)
+
+`Distiller`:
 
 ![Distiller](Distiller.svg)
 
-Sender with distillation:
+Sender with distillation `SenderShifting`:
 
 ![SenderShifting](SenderShifting.svg)
 
-
-### [bsdc-experiments.xml](bsdc-experiments.xml)
