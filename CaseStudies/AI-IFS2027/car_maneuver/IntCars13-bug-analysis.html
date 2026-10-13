@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IntCars13 Bug Analysis</title>
+<style>
+:root {
+  --bg: #fbfaf7; --fg: #1d1d1f; --muted: #5f6368; --card: #ffffff; --border: #e3e1db;
+  --accent: #2f6db5; --user: #eef4fb; --code: #f3f2ee; --ok: #1e7b3a; --bad: #b3261e; --hl: #fff4cc;
+  --tool: #6b3fa0; --toolbg: #f4eefb; --toolborder: #d9c9ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17181a; --fg: #e8e8e6; --muted: #a0a3a8; --card: #202124; --border: #34363a;
+    --accent: #7fb0ec; --user: #1d2a3a; --code: #26282c; --ok: #6fcf8a; --bad: #f28b82; --hl: #3d3519;
+    --tool: #c9a8f0; --toolbg: #261f31; --toolborder: #44365a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17181a; --fg: #e8e8e6; --muted: #a0a3a8; --card: #202124; --border: #34363a;
+  --accent: #7fb0ec; --user: #1d2a3a; --code: #26282c; --ok: #6fcf8a; --bad: #f28b82; --hl: #3d3519;
+  --tool: #c9a8f0; --toolbg: #261f31; --toolborder: #44365a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+main { max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 1.9rem; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 28px; }
+h2 { font-size: 1.35rem; margin: 44px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
+h3 { font-size: 1.1rem; margin: 26px 0 8px; }
+.turn { border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin: 18px 0; background: var(--card); }
+.turn.user { background: var(--user); }
+.who { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+.tool { border: 1px solid var(--toolborder); background: var(--toolbg); border-radius: 10px; padding: 10px 14px; margin: 14px 0; font-size: .93rem; }
+.tool .name { font-family: Consolas, "SF Mono", Menlo, monospace; font-weight: 600; color: var(--tool); }
+.tool .tag { display: inline-block; font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--tool); border: 1px solid var(--toolborder); border-radius: 999px; padding: 0 8px; margin-right: 8px; }
+.tool p { margin: 6px 0 0; }
+.uses { display: inline-block; font-size: .78rem; color: var(--tool); background: var(--toolbg); border: 1px solid var(--toolborder);
+  border-radius: 6px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; white-space: nowrap; }
+.uses.none { color: var(--muted); background: var(--code); border-color: var(--border); }
+code { font-family: Consolas, "SF Mono", Menlo, monospace; font-size: .9em; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: .86rem; line-height: 1.45; }
+pre code { background: none; padding: 0; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: .93rem; }
+th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+th { background: var(--code); }
+tr.hl td { background: var(--hl); }
+.ok { color: var(--ok); font-weight: 600; }
+.bad { color: var(--bad); font-weight: 600; }
+blockquote { margin: 12px 0; padding: 8px 14px; border-left: 4px solid var(--accent); background: var(--code); border-radius: 0 8px 8px 0; }
+ol.flow li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+<h1>IntCars13 Bug Analysis</h1>
+<p class="sub">How the <code>IntCars13</code> UPPAAL model was explained and why its <code>Monitor</code> can reach <code>ERROR</code>. The boxes in purple show which tool was used at each step. Session date: 7 October 2026.</p>
+
+<h2>Tools used, in order</h2>
+<div class="tbl"><table>
+<tr><th>#</th><th>Tool</th><th>Purpose</th><th>Outcome</th></tr>
+<tr><td>1</td><td><code>mcp__uppaal__getModel</code></td><td>Read the full XML of the model open in the UPPAAL editor</td><td>Declarations, the templates <code>Decisions</code>, <code>Car</code>, <code>Monitor</code>, and the existing queries</td></tr>
+<tr><td>2</td><td><code>ToolSearch</code></td><td>Load the schema of the deferred tool <code>getQueryTrace</code></td><td>Tool became callable</td></tr>
+<tr><td>3</td><td><code>mcp__uppaal__verifyQueries</code> <code>[1]</code></td><td>Model-check query 1, <code>E&lt;&gt; Monitor.ERROR</code> (shortest diagnostic trace option already set)</td><td><span class="bad">satisfied</span>, 0.026 s, symbolic trace of 21 transitions</td></tr>
+<tr><td>4</td><td><code>mcp__uppaal__getQueryTrace</code> <code>(1)</code></td><td>Retrieve that counterexample trace step by step</td><td>The collision run summarised below</td></tr>
+<tr><td>—</td><td>none</td><td>Explanation of the model, root cause, and proposed fix</td><td>Done by reasoning over the model text and the trace; the fix was <strong>not</strong> run in UPPAAL</td></tr>
+</table></div>
+<p>Afterwards, <code>Write</code> created this HTML file. The earlier HTML of the whole session was created with <code>Write</code> and shown with <code>SendUserFile</code>.</p>
+
+<h2>The conversation</h2>
+
+<div class="turn user"><div class="who">User</div>
+I have just uploaded a new model: IntCars13. Please explain the model. Also explain why the Monitor can enter the ERROR location.</div>
+
+<div class="tool"><span class="tag">Tool</span><span class="name">mcp__uppaal__getModel</span>
+<p>Read the current model from the UPPAAL editor. Everything in “What the model represents” below comes from this XML.</p></div>
+
+<div class="turn"><div class="who">Claude</div>
+<h3>What the model represents <span class="uses">source: getModel</span></h3>
+<p>The model describes <strong>two cars on a one-lane road</strong> (<code>CARS = 2</code>, <code>LANES = 1</code>) driving towards a finish line at <code>Finish = 700</code>. Time runs in discrete steps of 1 second. At each step every car picks an acceleration, and then all positions and speeds are updated together.</p>
+
+<h3>Global state</h3>
+<ul>
+<li><code>pos[i]</code>, <code>vel[i]</code>, <code>acc[i]</code>, <code>lane[i]</code> hold each car's position, speed, acceleration and lane. Car 1 starts at position 0 and car 2 at position 10, both standing still.</li>
+<li><code>acc</code> is one of −2, 0 or +2. The car picks <code>a ∈ {-1,0,1}</code> and stores <code>acc = 2*a</code>. Speeds start at 0 and change by ±2, so they are always even.</li>
+<li><code>brk_dist(v, 2) = v²/4</code> is the distance a car needs to stop from speed <code>v</code> when braking at −2. With the integer update rule this is exact: braking from <code>v = 2k</code> covers <code>1 + 3 + … + (2k−1) = k²</code> units. <span class="uses none">own calculation</span></li>
+<li><code>updateDiscrete()</code> applies one second of motion to every car: <code>pos += vel + acc/2</code>, <code>vel += acc</code>, and it recomputes <code>bd</code>.</li>
+</ul>
+<pre><code>int brk_dist(int v, int a) { return (v*v)/(2*a); }
+
+void updateDiscrete() {
+  for (i : car_t) {
+    pos[i] = pos[i] + vel[i] + acc[i]/2;
+    vel[i] = vel[i] + acc[i];
+    bd[i]  = brk_dist(vel[i],2);
+  }
+}</code></pre>
+
+<h3><code>Decisions</code> (the scheduler)</h3>
+<ol class="flow">
+<li>In its urgent location it sends <code>go[1]</code>, then <code>go[2]</code>, all at the same moment.</li>
+<li>It waits exactly 1 time unit in <code>Wait</code>.</li>
+<li>It calls <code>updateDiscrete()</code> and starts the next round.</li>
+</ol>
+<p>So the cars decide one after the other within the same instant, both using the same positions and speeds. Then the physics update moves everything at once.</p>
+
+<h3><code>Car(id)</code></h3>
+<p>When a car receives <code>go[id]</code> it enters the urgent location <code>Choose</code> and either:</p>
+<ul>
+<li><strong>finishes:</strong> if <code>pos ≥ Finish</code>, it moves to <code>Fin</code> and sets <code>vel = acc = 0</code>; or</li>
+<li><strong>picks an action:</strong> it non-deterministically selects <code>a</code> and a lane <code>l</code>, subject to this guard:
+  <ul>
+  <li>the new speed <code>vel + 2a</code> must lie in <code>[0, MaxVel)</code>;</li>
+  <li>the lane change is only allowed if no car overlaps in front of it or behind it in the target lane (with one lane, <code>l == lane[id]</code> always holds, so this part does nothing);</li>
+  <li><strong>the safety rule:</strong> <code>a ≥ 0 imply !exists front: overlap_forward(front, l)</code>. This means the car may keep its speed or speed up only if no car ahead is within its <strong>current</strong> braking distance <code>brk_dist(vel[id])</code>.</li>
+  </ul>
+</li>
+</ul>
+<pre><code>bool overlap_forward(car_t front, lane_t l) {
+  return front!=id &amp;&amp; lane[front]==l
+      &amp;&amp; (pos[front]-pos[id]) &gt;= 0
+      &amp;&amp; (pos[front]-pos[id]) &lt;= brk_dist(vel[id],2);
+}</code></pre>
+
+<h3><code>Monitor</code></h3>
+<p>The monitor moves to <code>ERROR</code> as soon as <code>pos[1] == pos[2]</code> and the cars are in the same lane, which counts as a collision. The urgent broadcast <code>ASAP!</code> makes it take that transition immediately, without letting time pass.</p>
+</div>
+
+<div class="tool"><span class="tag">Tool</span><span class="name">ToolSearch</span> <code>select:mcp__uppaal__getQueryTrace</code>
+<p>Loaded the trace-retrieval tool so the counterexample could be read.</p></div>
+
+<div class="tool"><span class="tag">Tool</span><span class="name">mcp__uppaal__verifyQueries</span> <code>[1]</code>, timeout 120 s
+<p>Model-checked query 1:</p>
+<pre><code>`E&lt;&gt; Monitor.ERROR` : satisfied
+resources: 0.026 s, engine memory peak 26 MB
+symbolic trace: 21 transitions -&gt; getQueryTrace(1)</code></pre></div>
+
+<div class="tool"><span class="tag">Tool</span><span class="name">mcp__uppaal__getQueryTrace</span> <code>(1, 0, 30)</code>
+<p>Retrieved all 22 states (21 transitions) of the shortest trace. The table below condenses it to the state after each <code>updateDiscrete()</code> step.</p></div>
+
+<div class="turn"><div class="who">Claude</div>
+<h3>Why the Monitor can reach ERROR <span class="uses">source: verifyQueries + getQueryTrace</span></h3>
+<p><code>E&lt;&gt; Monitor.ERROR</code> is <span class="bad">satisfied</span>. This is the shortest trace UPPAAL produced:</p>
+<div class="tbl"><table>
+<tr><th>time</th><th>car 1 (pos, vel)</th><th>car 2 (pos, vel)</th><th>gap</th><th><code>bd(vel[1])</code></th><th>car 1 chooses</th><th>trace steps</th></tr>
+<tr><td>0</td><td>0, 0</td><td>10, 0</td><td>10</td><td>0</td><td>accelerate (+2)</td><td>[0]–[4]</td></tr>
+<tr><td>1</td><td>1, 2</td><td>10, 0</td><td>9</td><td>1</td><td>accelerate (+2)</td><td>[5]–[9]</td></tr>
+<tr><td>2</td><td>4, 4</td><td>10, 0</td><td>6</td><td>4</td><td>brake (−2)</td><td>[10]–[14]</td></tr>
+<tr class="hl"><td>3</td><td><strong>7, 2</strong></td><td>10, 0</td><td><strong>3</strong></td><td><strong>1</strong></td><td><strong>accelerate (+2)</strong>, allowed because 3 &gt; 1</td><td>[15]–[19]</td></tr>
+<tr class="hl"><td>4</td><td><strong>10, 4</strong></td><td><strong>10, 0</strong></td><td><strong>0</strong></td><td></td><td class="bad">ERROR</td><td>[20]–[21]</td></tr>
+</table></div>
+<p>Car 2 never moves; it picks <code>a = 0</code> every time. At time 3, car 1 is 3 units behind it at speed 2. Its braking distance is only 1, so <code>overlap_forward</code> is false and the guard allows it to accelerate. In the following second car 1 moves <code>vel + acc/2 = 2 + 1 = 3</code> units and lands exactly on car 2. In trace step [21] the <code>Monitor</code> takes <code>ASAP!</code> into <code>ERROR</code>.</p>
+
+<h3>The root cause <span class="uses none">reasoning, no tool</span></h3>
+<p>The safety check looks at the wrong moment. It compares the gap with the braking distance at the current speed, <code>bd(v)</code>. Because a decision is held for a full second, the condition that actually matters is this:</p>
+<blockquote>gap &gt; (distance moved this step) + (braking distance after this step) = <code>(v + acc/2) + bd(v + acc)</code></blockquote>
+<p>The guard ignores two things:</p>
+<ol>
+<li><strong>The distance travelled during the step</strong> before the car can react again.</li>
+<li><strong>The higher braking distance</strong> after accelerating.</li>
+</ol>
+<p>At time 3 the correct condition would have required <code>3 &gt; 3 + bd(4) = 7</code>, so accelerating would have been forbidden.</p>
+<p>The leader's behaviour is irrelevant here. Car 2 just stands still, so the bug shows up even against a parked car. A moving leader cannot help either: its speed is never negative, so it never moves backwards towards the follower.</p>
+
+<h3>A fix <span class="uses none">proposed, not verified</span></h3>
+<p>Replace the forward check with one that looks one step ahead:</p>
+<pre><code>bool safe_forward(car_t front, lane_t l, int a2) {   // a2 = 2*a
+    int step = vel[id] + a2/2;
+    return !(front!=id &amp;&amp; lane[front]==l
+             &amp;&amp; pos[front]-pos[id] &gt;= 0
+             &amp;&amp; pos[front]-pos[id] &lt;= step + brk_dist(vel[id]+a2, 2));
+}</code></pre>
+<p>The guard then uses <code>forall (i:car_t) safe_forward(i, l, 2*a)</code> for every value of <code>a</code>, including braking, instead of the current <code>a&gt;=0 imply …</code>. This should guarantee no collisions, for the following reason:</p>
+<ul>
+<li>The check keeps <code>gap &gt; bd(v)</code> true at every decision.</li>
+<li>Braking always preserves that property, because <code>(v−1) + (v−2)²/4 = v²/4</code>.</li>
+<li>Holding still at <code>v = 0</code> is always safe.</li>
+</ul>
+<p>So a safe choice always exists and the gap can never close to 0. This fix has <strong>not</strong> been run in UPPAAL. Checking it would take <code>setLocalDeclarations</code> / <code>modifyEdge</code> on the <code>Car</code> template followed by <code>verifyQueries [1]</code>.</p>
+
+<h3>A side note on the Monitor <span class="uses none">reasoning, no tool</span></h3>
+<p><code>ERROR</code> checks only <code>pos[1] == pos[2]</code>. Positions change in jumps, so a car can skip over the other without ever being at the same position. For example, a car at 9 with speed 6 that is forced to brake moves to 14, passing a car at 10, and the monitor never sees it. Because car 1 starts behind car 2 on a single lane, <code>pos[1] &gt;= pos[2]</code> would be a more reliable collision condition.</p>
+</div>
+</main>
+</body>
+</html>
