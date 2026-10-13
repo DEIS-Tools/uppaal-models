@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// ===== ATM network: N ATMs sharing one bank authorization server =====
+const int N = 2;                 // number of ATMs in the network
+typedef int[0,N-1] id_t;
+
+// ---- Timing constraints (seconds) ----
+const int PIN_TIMEOUT    = 30;   // customer must enter PIN within this time
+const int AMOUNT_TIMEOUT = 30;   // customer must choose amount within this time
+const int NET_TIMEOUT    = 10;   // ATM gives up waiting for the bank after this
+const int BANK_MIN       = 1;    // bank processing time per request: [BANK_MIN, BANK_MAX]
+const int BANK_MAX       = 4;
+const int EJECT_MIN      = 1;    // card ejection mechanics take at least this long
+const int CARD_TIMEOUT   = 20;   // card retained if not taken within this time
+const int DISPENSE_MIN   = 2;    // cash dispensing takes [DISPENSE_MIN, DISPENSE_MAX]
+const int DISPENSE_MAX   = 5;
+const int CASH_TIMEOUT   = 20;   // cash retracted if not taken within this time
+const int MAX_TRIES      = 3;    // wrong PIN attempts before card is retained
+const int MAX_SESSION    = 200;  // required upper bound on a whole customer session
+
+// ---- Customer &lt;-&gt; ATM ----
+chan insertCard[N], enterPin[N], selectAmount[N], cancel[N], takeCard[N], takeCash[N];
+
+// ---- ATM &lt;-&gt; Bank ----
+const int AUTH = 0, WITHDRAW = 1, REVERSAL = 2;
+chan req[N];                     // ATM sends a request to the bank
+broadcast chan ok[N], fail[N];   // bank reply (broadcast: bank never blocks on a gone ATM)
+int[0,2] reqType[N];             // kind of pending request per ATM
+bool pinOk[N];                   // whether the PIN the customer typed is correct
+
+// ---- Bank ledger ----
+bool debited[N];                 // account debited by the bank, but cash not yet handed out
+
+// ---- Bank FIFO request queue ----
+id_t list[N];
+int[0,N] len = 0;
+void enqueue(id_t e) { list[len++] = e; }
+void dequeue() {
+    int i = 0;
+    len -= 1;
+    while (i &lt; len) { list[i] = list[i+1]; i++; }
+    list[i] = 0;
+}
+id_t front() { return list[0]; }
+</declaration>
+	<template>
+		<name x="5" y="5">ATM</name>
+		<parameter>const id_t id</parameter>
+		<declaration>clock t;                 // step timer
+clock s;                 // whole-session timer (observer)
+int[0,MAX_TRIES] attempts;
+bool cashPending;        // withdrawal approved, cash not yet dispensed
+bool authed;             // PIN verified in this session
+</declaration>
+		<location id="id0" x="0" y="0">
+			<name x="-40" y="-34">Idle</name>
+		</location>
+		<location id="id1" x="250" y="0">
+			<name x="220" y="-50">WaitPin</name>
+			<label kind="invariant" x="200" y="-34">t&lt;=PIN_TIMEOUT</label>
+		</location>
+		<location id="id2" x="450" y="0">
+			<name x="430" y="-34">AuthReq</name>
+			<committed/>
+		</location>
+		<location id="id3" x="650" y="0">
+			<name x="620" y="-50">WaitAuth</name>
+			<label kind="invariant" x="600" y="-34">t&lt;=NET_TIMEOUT</label>
+		</location>
+		<location id="id4" x="650" y="-180">
+			<name x="620" y="-214">AuthFailed</name>
+			<committed/>
+		</location>
+		<location id="id5" x="900" y="0">
+			<name x="870" y="-50">WaitAmount</name>
+			<label kind="invariant" x="850" y="-34">t&lt;=AMOUNT_TIMEOUT</label>
+		</location>
+		<location id="id6" x="1150" y="0">
+			<name x="1130" y="-34">WdReq</name>
+			<committed/>
+		</location>
+		<location id="id7" x="1150" y="200">
+			<name x="1170" y="180">WaitWd</name>
+			<label kind="invariant" x="1170" y="200">t&lt;=NET_TIMEOUT</label>
+		</location>
+		<location id="id8" x="800" y="200">
+			<name x="780" y="215">NetError</name>
+			<committed/>
+		</location>
+		<location id="id9" x="450" y="380">
+			<name x="420" y="395">Eject</name>
+			<label kind="invariant" x="400" y="412">t&lt;=CARD_TIMEOUT</label>
+		</location>
+		<location id="id10" x="800" y="380">
+			<name x="770" y="395">Dispensing</name>
+			<label kind="invariant" x="750" y="412">t&lt;=DISPENSE_MAX</label>
+		</location>
+		<location id="id11" x="1150" y="380">
+			<name x="1130" y="395">CashOut</name>
+			<label kind="invariant" x="1100" y="412">t&lt;=CASH_TIMEOUT</label>
+		</location>
+		<location id="id12" x="1150" y="550">
+			<name x="1110" y="565">CashRetracted</name>
+			<committed/>
+		</location>
+		<location id="id13" x="100" y="380">
+			<name x="60" y="395">CardRetained</name>
+			<committed/>
+		</location>
+		<location id="id14" x="450" y="650">
+			<name x="445" y="665">RevReq</name>
+			<committed/>
+		</location>
+		<location id="id15" x="100" y="650">
+			<name x="95" y="665">WaitRev</name>
+			<label kind="invariant" x="95" y="680">t&lt;=NET_TIMEOUT</label>
+		</location>
+		<init ref="id0"/>
+		<transition id="id16">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="60" y="-20">insertCard[id]?</label>
+			<label kind="assignment" x="40" y="5">t=0, s=0, attempts=0,
+cashPending=false, authed=false</label>
+		</transition>
+		<transition id="id17">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="290" y="-20">enterPin[id]?</label>
+			<label kind="assignment" x="280" y="5">reqType[id]=AUTH</label>
+		</transition>
+		<transition id="id18">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="510" y="-20">req[id]!</label>
+			<label kind="assignment" x="510" y="5">t=0</label>
+		</transition>
+		<transition id="id19">
+			<source ref="id3"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="720" y="-20">ok[id]?</label>
+			<label kind="assignment" x="700" y="5">t=0, authed=true</label>
+		</transition>
+		<transition id="id20">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="660" y="-110">fail[id]?</label>
+			<label kind="assignment" x="660" y="-90">attempts++</label>
+		</transition>
+		<transition id="id21">
+			<source ref="id4"/>
+			<target ref="id1"/>
+			<label kind="guard" x="380" y="-200">attempts&lt;MAX_TRIES</label>
+			<label kind="assignment" x="380" y="-180">t=0</label>
+			<nail x="250" y="-180"/>
+		</transition>
+		<transition id="id22">
+			<source ref="id4"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-140" y="-200">attempts&gt;=MAX_TRIES</label>
+			<nail x="650" y="-260"/>
+			<nail x="-100" y="-260"/>
+			<nail x="-100" y="380"/>
+		</transition>
+		<transition id="id23">
+			<source ref="id1"/>
+			<target ref="id9"/>
+			<label kind="guard" x="160" y="120">t&gt;=PIN_TIMEOUT</label>
+			<label kind="assignment" x="160" y="140">t=0</label>
+		</transition>
+		<transition id="id24">
+			<source ref="id1"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="330" y="120">cancel[id]?</label>
+			<label kind="assignment" x="330" y="140">t=0</label>
+			<nail x="320" y="150"/>
+		</transition>
+		<transition id="id25">
+			<source ref="id3"/>
+			<target ref="id8"/>
+			<label kind="guard" x="700" y="90">t&gt;=NET_TIMEOUT</label>
+		</transition>
+		<transition id="id26">
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="assignment" x="620" y="270">t=0</label>
+		</transition>
+		<transition id="id27">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="980" y="-20">selectAmount[id]?</label>
+			<label kind="assignment" x="960" y="5">reqType[id]=WITHDRAW</label>
+		</transition>
+		<transition id="id28">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="1160" y="80">req[id]!</label>
+			<label kind="assignment" x="1160" y="100">t=0</label>
+		</transition>
+		<transition id="id29">
+			<source ref="id5"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="820" y="100">cancel[id]?</label>
+			<label kind="assignment" x="820" y="120">t=0</label>
+			<nail x="900" y="120"/>
+			<nail x="560" y="300"/>
+		</transition>
+		<transition id="id30">
+			<source ref="id5"/>
+			<target ref="id9"/>
+			<label kind="guard" x="940" y="120">t&gt;=AMOUNT_TIMEOUT</label>
+			<label kind="assignment" x="940" y="140">t=0</label>
+			<nail x="960" y="150"/>
+			<nail x="600" y="320"/>
+		</transition>
+		<transition id="id31">
+			<source ref="id7"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="900" y="280">ok[id]?</label>
+			<label kind="assignment" x="880" y="300">t=0, cashPending=true</label>
+			<nail x="1050" y="300"/>
+		</transition>
+		<transition id="id32">
+			<source ref="id7"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="620" y="330">fail[id]?</label>
+			<label kind="assignment" x="620" y="350">t=0</label>
+			<nail x="1100" y="330"/>
+		</transition>
+		<transition id="id33">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="900" y="180">t&gt;=NET_TIMEOUT</label>
+		</transition>
+		<transition id="id34">
+			<source ref="id9"/>
+			<target ref="id0"/>
+			<label kind="guard" x="180" y="210">t&gt;=EJECT_MIN &amp;&amp; !cashPending</label>
+			<label kind="synchronisation" x="180" y="230">takeCard[id]?</label>
+			<nail x="300" y="250"/>
+		</transition>
+		<transition id="id35">
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="guard" x="500" y="390">t&gt;=EJECT_MIN &amp;&amp; cashPending</label>
+			<label kind="synchronisation" x="540" y="410">takeCard[id]?</label>
+			<label kind="assignment" x="560" y="430">t=0</label>
+		</transition>
+		<transition id="id36">
+			<source ref="id9"/>
+			<target ref="id13"/>
+			<label kind="guard" x="200" y="390">t&gt;=CARD_TIMEOUT</label>
+		</transition>
+		<transition id="id37">
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="guard" x="900" y="360">t&gt;=DISPENSE_MIN</label>
+			<label kind="assignment" x="950" y="385">t=0</label>
+		</transition>
+		<transition id="id38">
+			<source ref="id11"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="600" y="490">takeCash[id]?</label>
+			<label kind="assignment" x="600" y="510">cashPending=false, debited[id]=false</label>
+			<nail x="1150" y="480"/>
+			<nail x="0" y="480"/>
+		</transition>
+		<transition id="id39">
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="guard" x="1160" y="450">t&gt;=CASH_TIMEOUT</label>
+		</transition>
+		<transition id="id40">
+			<source ref="id13"/>
+			<target ref="id0"/>
+			<label kind="guard" x="0" y="0">!cashPending</label>
+			<label kind="assignment" x="20" y="250">cashPending=false</label>
+		</transition>
+		<transition id="id41">
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="0" y="0">req[id]!</label>
+			<label kind="assignment" x="0" y="0">t=0</label>
+		</transition>
+		<transition id="id42">
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="0" y="0">t&gt;=NET_TIMEOUT</label>
+		</transition>
+		<transition id="id43">
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="guard" x="0" y="0">cashPending</label>
+			<label kind="assignment" x="0" y="0">reqType[id]=REVERSAL</label>
+		</transition>
+		<transition id="id44">
+			<source ref="id12"/>
+			<target ref="id14"/>
+			<label kind="assignment" x="0" y="0">reqType[id]=REVERSAL</label>
+		</transition>
+		<transition id="id45">
+			<source ref="id15"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="0" y="0">ok[id]?</label>
+			<label kind="assignment" x="0" y="0">cashPending=false</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Bank</name>
+		<declaration>clock b;   // processing time of the request at the head of the queue
+</declaration>
+		<location id="id46" x="0" y="0">
+			<name x="-40" y="-34">Idle</name>
+		</location>
+		<location id="id47" x="350" y="0">
+			<name x="340" y="-50">Busy</name>
+			<label kind="invariant" x="330" y="-34">b&lt;=BANK_MAX</label>
+		</location>
+		<location id="id48" x="350" y="300">
+			<name x="370" y="290">Done</name>
+			<committed/>
+		</location>
+		<init ref="id46"/>
+		<transition id="id49">
+			<source ref="id46"/>
+			<target ref="id47"/>
+			<label kind="select" x="120" y="-60">e : id_t</label>
+			<label kind="synchronisation" x="120" y="-40">req[e]?</label>
+			<label kind="assignment" x="120" y="-20">enqueue(e), b=0</label>
+		</transition>
+		<transition id="id50">
+			<source ref="id47"/>
+			<target ref="id47"/>
+			<label kind="select" x="420" y="-120">e : id_t</label>
+			<label kind="synchronisation" x="420" y="-100">req[e]?</label>
+			<label kind="assignment" x="420" y="-80">enqueue(e)</label>
+			<nail x="400" y="-90"/>
+			<nail x="460" y="-30"/>
+		</transition>
+		<transition id="id51">
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="guard" x="-60" y="80">b&gt;=BANK_MIN &amp;&amp; reqType[front()]==AUTH
+&amp;&amp; pinOk[front()]</label>
+			<label kind="synchronisation" x="-60" y="120">ok[front()]!</label>
+			<label kind="assignment" x="-60" y="140">dequeue()</label>
+			<nail x="200" y="150"/>
+		</transition>
+		<transition id="id52">
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="guard" x="160" y="200">b&gt;=BANK_MIN &amp;&amp; reqType[front()]==AUTH
+&amp;&amp; !pinOk[front()]</label>
+			<label kind="synchronisation" x="160" y="240">fail[front()]!</label>
+			<label kind="assignment" x="160" y="260">dequeue()</label>
+			<nail x="300" y="150"/>
+		</transition>
+		<transition id="id53">
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="guard" x="400" y="80">b&gt;=BANK_MIN &amp;&amp; reqType[front()]==WITHDRAW</label>
+			<label kind="synchronisation" x="400" y="100">ok[front()]!</label>
+			<label kind="assignment" x="400" y="120">debited[front()]=true, dequeue()</label>
+			<nail x="400" y="150"/>
+		</transition>
+		<transition id="id54">
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="guard" x="520" y="160">b&gt;=BANK_MIN &amp;&amp; reqType[front()]==WITHDRAW</label>
+			<label kind="synchronisation" x="520" y="180">fail[front()]!</label>
+			<label kind="assignment" x="520" y="200">dequeue()</label>
+			<nail x="500" y="150"/>
+		</transition>
+		<transition id="id55">
+			<source ref="id48"/>
+			<target ref="id47"/>
+			<label kind="guard" x="620" y="240">len&gt;0</label>
+			<label kind="assignment" x="620" y="260">b=0</label>
+			<nail x="600" y="300"/>
+			<nail x="600" y="0"/>
+		</transition>
+		<transition id="id56">
+			<source ref="id48"/>
+			<target ref="id46"/>
+			<label kind="guard" x="80" y="280">len==0</label>
+			<nail x="0" y="300"/>
+		</transition>
+		<transition id="id57">
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="guard" x="365" y="-170">b&gt;=BANK_MIN &amp;&amp; reqType[front()]==REVERSAL</label>
+			<label kind="synchronisation" x="415" y="-255">ok[front()]!</label>
+			<label kind="assignment" x="415" y="-213">debited[front()]=false, dequeue()</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Customer</name>
+		<parameter>const id_t id</parameter>
+		<location id="id58" x="0" y="0">
+			<name x="-20" y="20">Ready</name>
+		</location>
+		<init ref="id58"/>
+		<transition id="id59">
+			<source ref="id58"/>
+			<target ref="id58"/>
+			<label kind="synchronisation" x="-200" y="-130">insertCard[id]!</label>
+			<nail x="-120" y="-60"/>
+			<nail x="-60" y="-120"/>
+		</transition>
+		<transition id="id60">
+			<source ref="id58"/>
+			<target ref="id58"/>
+			<label kind="select" x="60" y="-170">p : int[0,1]</label>
+			<label kind="synchronisation" x="60" y="-150">enterPin[id]!</label>
+			<label kind="assignment" x="60" y="-130">pinOk[id] = (p==1)</label>
+			<nail x="60" y="-120"/>
+			<nail x="120" y="-60"/>
+		</transition>
+		<transition id="id61">
+			<source ref="id58"/>
+			<target ref="id58"/>
+			<label kind="synchronisation" x="140" y="-10">selectAmount[id]!</label>
+			<nail x="130" y="-30"/>
+			<nail x="130" y="30"/>
+		</transition>
+		<transition id="id62">
+			<source ref="id58"/>
+			<target ref="id58"/>
+			<label kind="synchronisation" x="80" y="110">cancel[id]!</label>
+			<nail x="120" y="60"/>
+			<nail x="60" y="120"/>
+		</transition>
+		<transition id="id63">
+			<source ref="id58"/>
+			<target ref="id58"/>
+			<label kind="synchronisation" x="-200" y="110">takeCard[id]!</label>
+			<nail x="-60" y="120"/>
+			<nail x="-120" y="60"/>
+		</transition>
+		<transition id="id64">
+			<source ref="id58"/>
+			<target ref="id58"/>
+			<label kind="synchronisation" x="-260" y="-10">takeCash[id]!</label>
+			<nail x="-130" y="30"/>
+			<nail x="-130" y="-30"/>
+		</transition>
+	</template>
+	<system>// One ATM and one (arbitrarily behaving) customer per id, one shared bank server.
+system ATM, Customer, Bank;
+</system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>The network never deadlocks.</comment>
+		</query>
+		<query>
+			<formula>A[] forall(i:id_t) (ATM(i).WaitAuth || ATM(i).WaitWd || ATM(i).WaitRev) imply ATM(i).t &lt;= N*BANK_MAX</formula>
+			<comment>Bank always answers an ATM (auth, withdrawal or reversal) within N*BANK_MAX seconds, so the reversal retry never fires.</comment>
+		</query>
+		<query>
+			<formula>A[] forall(i:id_t) not ATM(i).NetError</formula>
+			<comment>No ATM ever hits the network timeout (NET_TIMEOUT is large enough for N ATMs).</comment>
+		</query>
+		<query>
+			<formula>sup{!ATM(0).Idle}: ATM(0).s</formula>
+			<comment>Worst-case duration of a customer session.</comment>
+		</query>
+		<query>
+			<formula>A[] forall(i:id_t) !ATM(i).Idle imply ATM(i).s &lt;= MAX_SESSION</formula>
+			<comment>Every customer session finishes within MAX_SESSION seconds.</comment>
+		</query>
+		<query>
+			<formula>!ATM(0).Idle --&gt; ATM(0).Idle</formula>
+			<comment>Liveness: every started session eventually ends.</comment>
+		</query>
+		<query>
+			<formula>A[] forall(i:id_t) ATM(i).Dispensing imply ATM(i).authed</formula>
+			<comment>Safety: cash is only dispensed after successful PIN authorization.</comment>
+		</query>
+		<query>
+			<formula>A[] forall(i:id_t) (ATM(i).Dispensing || ATM(i).CashOut) imply ATM(i).cashPending</formula>
+			<comment>Safety: cash is only dispensed for a bank-approved withdrawal.</comment>
+		</query>
+		<query>
+			<formula>A[] forall(i:id_t) ATM(i).Idle imply !debited[i]</formula>
+			<comment>Money safety: when a session ends, every bank debit has either been paid out as cash or reversed.</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; ATM(0).CashOut and ATM(1).CashOut</formula>
+			<comment>Both ATMs can hand out cash concurrently.</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; ATM(0).CardRetained</formula>
+			<comment>Card retention (3 wrong PINs or card not taken) is possible.</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; ATM(0).CashRetracted</formula>
+			<comment>Cash retraction (cash not taken) is possible.</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; ATM(0).WaitRev</formula>
+			<comment>The debit-reversal path is reachable (approved withdrawal, card not taken).</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; ATM(0).CashRetracted &amp;&amp; debited[0]</formula>
+			<comment>Retracted cash is still debited at retraction time (so the reversal is really needed there).</comment>
+		</query>
+		<query>
+			<formula>sup{ATM(0).WaitAuth}: ATM(0).t</formula>
+			<comment>Timing: worst-case wait for the bank to check the PIN.</comment>
+		</query>
+		<query>
+			<formula>sup{ATM(0).WaitWd}: ATM(0).t</formula>
+			<comment>Timing: worst-case wait for withdrawal approval.</comment>
+		</query>
+		<query>
+			<formula>sup{ATM(0).WaitRev}: ATM(0).t</formula>
+			<comment>Timing: worst-case wait for reversal confirmation.</comment>
+		</query>
+		<query>
+			<formula>sup{Bank.Busy}: Bank.b</formula>
+			<comment>Timing: worst-case bank processing time for a single request.</comment>
+		</query>
+		<query>
+			<formula>inf{ATM(0).CashOut}: ATM(0).s</formula>
+			<comment>Timing: fastest possible time from card insertion to cash presented.</comment>
+		</query>
+		<query>
+			<formula>sup{ATM(0).Dispensing}: ATM(0).s</formula>
+			<comment>Timing: slowest possible time from card insertion until cash is presented.</comment>
+		</query>
+		<query>
+			<formula>inf{ATM(0).CardRetained}: ATM(0).s</formula>
+			<comment>Timing: fastest possible card retention (e.g. three quick wrong PINs).</comment>
+		</query>
+		<query>
+			<formula>sup{ATM(0).Eject}: ATM(0).s</formula>
+			<comment>Timing: latest time after insertion at which the card can still be in the slot.</comment>
+		</query>
+	</queries>
+</nta>
