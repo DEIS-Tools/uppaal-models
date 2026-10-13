@@ -1,0 +1,423 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+<declaration>// =====================================================================
+//  IEEE 802.1Qbv time-aware shaper: robustness of window-based GCL schedules
+//  Constraints follow Craciunas, Serna Oliver, Steiner,
+//  "Formal Scheduling Constraints for Time-Sensitive Networks" (arXiv:1712.02246)
+//
+//  Bounded topology:   T1 --P0--&gt; SW --P2--&gt; L        (stream s0)
+//                      T2 --P1--&gt; SW                   (stream s1)
+//  One scheduled (ST) queue per egress port, plus a best-effort (BE) queue
+//  on P2. All streams share the period HP (paper, Section 3). 1 tick = 1 time unit.
+// =====================================================================
+
+// ---------------- analysis knobs (vary these) ------------------------
+const int  CFG     = 0;     // GCL: 0 shared SW window | 1 two SW windows, NO isolation | 2 two SW windows, time isolation
+const int  DELTA   = 2;     // ACTUAL bound on pairwise clock offset between nodes
+const int  DRIFT   = 0;     // max change of a node offset per cycle (0 = constant offset in a run)
+const int  RJ      = 0;     // release jitter of talker applications
+const bool LOSS    = false; // frame loss on links
+const int  MAXCONS = 1;     // max number of consecutive lost instances of a stream
+const bool BE      = false; // best-effort interference at SW egress P2
+const int  BE_MINL = 4;     // BE frame transmission time range
+const int  BE_MAXL = 8;
+const int  BE_MIA  = 20;    // BE minimum inter-arrival time
+const int  GB      = 0;     // guard band: BE gate closes GB before each ST window
+const bool LA      = true;  // length-aware selection: start only if frame ends before gate closes
+const int  EVJ     = 0;     // NAIVE alternative clock model: each gate event independently late by up to EVJ (0 = off)
+
+// ---------------- fixed design data ---------------------------------
+const int HP     = 100;     // cycle = hyperperiod
+const int PD     = 2;       // propagation + store-and-forward delay per hop
+const int DSCHED = 2;       // precision delta assumed when the GCL was synthesised
+const int BIG    = 1000;
+
+const int S = 2;  typedef int[0,S-1] sid_t;   // streams s0: T1-&gt;L, s1: T2-&gt;L
+const int P = 3;  typedef int[0,P-1] pid_t;   // egress ports P0=[T1,SW] P1=[T2,SW] P2=[SW,L]
+const int N = 3;  typedef int[0,N-1] nid_t;   // clocked nodes 0=T1 1=T2 2=SW
+const int NWMAX = 2;
+const int NCFG  = 3;
+
+const int   LEN[S]    = {10, 10};               // max frame size -&gt; transmission time
+const nid_t PNODE[P]  = {0, 1, 2};              // node owning the egress port
+const pid_t NXT[P]    = {2, 2, 0};              // downstream egress port (if !TOL)
+const bool  TOL[P]    = {false, false, true};   // port leads to the listener
+const pid_t FIRSTP[S] = {0, 1};
+const nid_t SNODE[S]  = {0, 1};
+
+// Gate control lists: scheduled windows [open,close) per port, local cycle time
+const int NWIN[NCFG][P]          = { {1,1,1}, {1,1,2}, {1,1,2} };
+const int WOPEN[NCFG][P][NWMAX]  = { {{10,0},{10,0},{24,0}},
+                                     {{10,0},{10,0},{24,34}},
+                                     {{10,0},{34,0},{24,48}} };
+const int WCLOSE[NCFG][P][NWMAX] = { {{20,0},{20,0},{44,0}},
+                                     {{20,0},{20,0},{34,44}},
+                                     {{20,0},{44,0},{34,58}} };
+// frame-to-window assignment w_k.phi(f_i): window index, -1 = stream not on port
+const int ASSIGN[NCFG][P][S]     = { {{0,-1},{-1,0},{0,0}},
+                                     {{0,-1},{-1,0},{0,1}},
+                                     {{0,-1},{-1,0},{0,1}} };
+const int REL[NCFG][S] = { {0,0}, {0,0}, {0,24} };      // nominal release (talker local time)
+const int E2E[NCFG][S] = { {48,48}, {38,48}, {38,38} }; // end-to-end deadline
+
+// ---------------- node clocks ---------------------------------------
+clock lt[N];                 // local time since the node's current cycle start
+int   off[N];                // node offset w.r.t. the ideal cycle start
+int   nxt[N];                // SMC variant: offset change chosen at the start of the cycle (applied at its end)
+broadcast chan cycle[N];
+
+int dmax(nid_t n) { return DRIFT &lt; DELTA - off[n] ? DRIFT : DELTA - off[n]; }
+
+// ---------------- queues (FIFO data structures) ---------------------
+const int QCAP = 3;
+int q[P][QCAP];              // ST frame ids: f = 2*s + seq
+int[0,QCAP] qlen[P];
+bool qOverflow = false;
+int beLen[P];                // waiting BE frame (length, 0 = none); capacity 1, tail drop
+
+void enqueue(pid_t p, int f) {
+    if (qlen[p] == QCAP) { qOverflow = true; }
+    else { q[p][qlen[p]] = f; qlen[p]++; }
+}
+int dequeue(pid_t p) {
+    int f = q[p][0], i;
+    for (i = 0; i &lt; QCAP - 1; i++) q[p][i] = q[p][i+1];
+    q[p][QCAP-1] = 0;
+    qlen[p]--;
+    return f;
+}
+
+// ---------------- gates (driven by the GCL) -------------------------
+bool stOpen[P], beOpen[P];
+int  curWin[P] = {-1, -1, -1};   // index of the open ST window, -1 = closed
+int  stClose[P], beClose[P];     // local time at which the current open phase ends
+
+// event ph of a cycle: per window w three events (BE close, ST open, ST close/BE open)
+int evT(pid_t p, int ph) {
+    int w = ph / 3, k = ph % 3, t;
+    if (ph &gt;= 3 * NWIN[CFG][p]) return BIG;
+    if (k == 0) {
+        t = WOPEN[CFG][p][w] - GB;
+        if (w &gt; 0 &amp;&amp; t &lt; WCLOSE[CFG][p][w-1]) t = WCLOSE[CFG][p][w-1];
+        if (t &lt; 0) t = 0;
+        return t;
+    }
+    if (k == 1) return WOPEN[CFG][p][w];
+    return WCLOSE[CFG][p][w];
+}
+void gateEvent(pid_t p, int ph) {
+    int w = ph / 3, k = ph % 3;
+    if (k == 0) { beOpen[p] = false; }
+    else if (k == 1) { stOpen[p] = true; curWin[p] = w; stClose[p] = WCLOSE[CFG][p][w]; }
+    else {
+        stOpen[p] = false; curWin[p] = -1;
+        beClose[p] = (w + 1 &lt; NWIN[CFG][p]) ? evT(p, 3 * (w + 1)) : HP;
+        beOpen[p] = beClose[p] &gt; WCLOSE[CFG][p][w];
+    }
+}
+void gateCycleStart(pid_t p) {
+    stOpen[p] = false; curWin[p] = -1;
+    beClose[p] = evT(p, 0); beOpen[p] = beClose[p] &gt; 0;
+}
+
+// ---------------- transmission selection ----------------------------
+bool stReady(pid_t p) { return stOpen[p] &amp;&amp; qlen[p] &gt; 0; }
+bool beReady(pid_t p) { return beOpen[p] &amp;&amp; beLen[p] &gt; 0; }
+int  stLatest(pid_t p) { return LA ? stClose[p] - LEN[q[p][0] / 2] : BIG; }  // latest start of head ST frame
+int  beLatest(pid_t p) { return LA ? beClose[p] - beLen[p] : BIG; }
+
+broadcast chan poke[P];      // "re-evaluate selection" (gate opened, frame arrived)
+broadcast chan txStart[P], txEnd[P], hand[P], drop[P], rx;   // SMC variant: broadcast (receivers are always ready; LOSS must stay false)
+int  txFrame[P], txLen[P], wireFrame[P], rxFrame;   // value passing (-1 = BE frame)
+int  cons[S];                // consecutive losses per stream
+
+// ---------------- observer bookkeeping ------------------------------
+clock age[S][2];             // per frame instance (stream, seq): time since release
+bool  pending[S][2];
+bool  dlMiss[S], wrongWin[P][S], overrun[P][S], obsOverflow = false;
+broadcast chan rel[S][2], dlv[S][2], lost[S][2], txObs[P][S];
+</declaration>
+<template>
+<name>NodeClock</name>
+<parameter>const nid_t n</parameter>
+<location id='nc0' x='0' y='0'><name x='-20' y='-30'>Init</name><committed/></location>
+<location id='nc1' x='200' y='0'><name x='190' y='-30'>Start</name><label kind='invariant' x='190' y='10'>lt[n] &lt;= off[n]</label></location>
+<location id='nc2' x='450' y='0'><name x='440' y='-30'>Run</name><label kind='invariant' x='440' y='10'>lt[n] &lt;= HP + nxt[n]</label></location>
+<init ref='nc0'/>
+<transition><source ref='nc0'/><target ref='nc1'/>
+<label kind='select' x='30' y='-40'>o : int[0,DELTA]</label>
+<label kind='assignment' x='30' y='-20'>off[n] = o</label></transition>
+<transition><source ref='nc1'/><target ref='nc2'/>
+<label kind='select' x='230' y='-70'>d : int[-DRIFT,DRIFT]</label>
+<label kind='guard' x='230' y='-55'>lt[n] &gt;= off[n] &amp;&amp; off[n]+d &gt;= 0 &amp;&amp; off[n]+d &lt;= DELTA</label>
+<label kind='synchronisation' x='230' y='-25'>cycle[n]!</label>
+<label kind='assignment' x='230' y='-10'>lt[n] = 0, nxt[n] = d</label></transition>
+<transition><source ref='nc2'/><target ref='nc2'/>
+<label kind='select' x='480' y='-100'>d : int[-DRIFT,DRIFT]</label>
+<label kind='guard' x='480' y='-85'>lt[n] &gt;= HP + nxt[n] &amp;&amp;
+off[n]+nxt[n]+d &gt;= 0 &amp;&amp; off[n]+nxt[n]+d &lt;= DELTA</label>
+<label kind='synchronisation' x='480' y='-55'>cycle[n]!</label>
+<label kind='assignment' x='480' y='-40'>off[n] = off[n] + nxt[n], nxt[n] = d, lt[n] = 0</label>
+<nail x='420' y='-60'/><nail x='480' y='-60'/></transition>
+</template>
+<template>
+<name>Source</name>
+<parameter>const sid_t s</parameter>
+<declaration>int[0,1] k;   // sequence number (packet identity) of the next instance</declaration>
+<location id='so0' x='0' y='0'><name x='-20' y='-30'>Init</name></location>
+<location id='so1' x='200' y='0'><name x='190' y='-30'>Wait</name><label kind='invariant' x='150' y='10'>lt[SNODE[s]] &lt;= REL[CFG][s] + RJ</label></location>
+<location id='so2' x='400' y='0'><name x='390' y='-30'>Rel</name><committed/></location>
+<location id='so3' x='400' y='150'><name x='410' y='160'>Done</name></location>
+<init ref='so0'/>
+<transition><source ref='so0'/><target ref='so1'/>
+<label kind='synchronisation' x='30' y='-25'>cycle[SNODE[s]]?</label></transition>
+<transition><source ref='so1'/><target ref='so2'/>
+<label kind='guard' x='220' y='-70'>lt[SNODE[s]] &gt;= REL[CFG][s]</label>
+<label kind='synchronisation' x='220' y='-55'>rel[s][k]!</label>
+<label kind='assignment' x='220' y='-40'>enqueue(FIRSTP[s], 2*s + k)</label></transition>
+<transition><source ref='so2'/><target ref='so3'/>
+<label kind='synchronisation' x='410' y='60'>poke[FIRSTP[s]]!</label>
+<label kind='assignment' x='410' y='75'>k = 1 - k</label></transition>
+<transition><source ref='so3'/><target ref='so1'/>
+<label kind='synchronisation' x='200' y='100'>cycle[SNODE[s]]?</label></transition>
+</template>
+<template>
+<name>Gate</name>
+<parameter>const pid_t p</parameter>
+<declaration>int[0,3*NWMAX] ph;   // index of the next GCL event in this cycle</declaration>
+<location id='ga0' x='0' y='0'><name x='-20' y='-30'>Init</name></location>
+<location id='ga1' x='200' y='0'><name x='190' y='-30'>CycleStart</name><committed/></location>
+<location id='ga2' x='450' y='0'><name x='440' y='-30'>Run</name><label kind='invariant' x='420' y='10'>lt[PNODE[p]] &lt;= evT(p, ph) + EVJ</label></location>
+<init ref='ga0'/>
+<transition><source ref='ga0'/><target ref='ga1'/>
+<label kind='synchronisation' x='20' y='-40'>cycle[PNODE[p]]?</label>
+<label kind='assignment' x='20' y='-25'>gateCycleStart(p), ph = 0</label></transition>
+<transition><source ref='ga1'/><target ref='ga2'/>
+<label kind='synchronisation' x='300' y='-25'>poke[p]!</label></transition>
+<transition><source ref='ga2'/><target ref='ga2'/>
+<label kind='guard' x='480' y='-100'>ph &lt; 3*NWIN[CFG][p] &amp;&amp;
+lt[PNODE[p]] &gt;= evT(p, ph)</label>
+<label kind='synchronisation' x='480' y='-70'>poke[p]!</label>
+<label kind='assignment' x='480' y='-55'>gateEvent(p, ph), ph++</label>
+<nail x='420' y='-60'/><nail x='480' y='-60'/></transition>
+<transition><source ref='ga2'/><target ref='ga1'/>
+<label kind='synchronisation' x='250' y='70'>cycle[PNODE[p]]?</label>
+<label kind='assignment' x='250' y='85'>gateCycleStart(p), ph = 0</label>
+<nail x='450' y='70'/><nail x='200' y='70'/></transition>
+</template>
+<template>
+<name>Scheduler</name>
+<parameter>const pid_t p</parameter>
+<declaration>int cur;   // frame selected for transmission</declaration>
+<location id='sc0' x='0' y='0'><name x='-20' y='-30'>Idle</name></location>
+<location id='sc1' x='300' y='0'><name x='290' y='-30'>Decide</name><urgent/></location>
+<location id='sc2' x='600' y='0'><name x='590' y='-30'>NotifyST</name><committed/></location>
+<location id='sc3' x='600' y='300'><name x='610' y='310'>Tx</name></location>
+<init ref='sc0'/>
+<transition><source ref='sc0'/><target ref='sc1'/>
+<label kind='synchronisation' x='120' y='-25'>poke[p]?</label></transition>
+<transition><source ref='sc1'/><target ref='sc2'/>
+<label kind='guard' x='320' y='-90'>stReady(p) &amp;&amp; lt[PNODE[p]] &lt;= stLatest(p)</label>
+<label kind='synchronisation' x='320' y='-75'>txStart[p]!</label>
+<label kind='assignment' x='320' y='-60'>cur = dequeue(p), txFrame[p] = cur,
+txLen[p] = LEN[cur / 2]</label></transition>
+<transition><source ref='sc2'/><target ref='sc3'/>
+<label kind='synchronisation' x='610' y='130'>txObs[p][cur / 2]!</label>
+<label kind='assignment' x='610' y='145'>cur = 0</label></transition>
+<transition><source ref='sc1'/><target ref='sc3'/>
+<label kind='guard' x='330' y='90'>beReady(p) &amp;&amp; !stReady(p) &amp;&amp;
+lt[PNODE[p]] &lt;= beLatest(p)</label>
+<label kind='synchronisation' x='330' y='120'>txStart[p]!</label>
+<label kind='assignment' x='330' y='135'>txFrame[p] = -1, txLen[p] = beLen[p], beLen[p] = 0</label>
+<nail x='320' y='150'/></transition>
+<transition><source ref='sc1'/><target ref='sc3'/>
+<label kind='guard' x='200' y='220'>beReady(p) &amp;&amp; stReady(p) &amp;&amp;
+lt[PNODE[p]] &gt; stLatest(p) &amp;&amp; lt[PNODE[p]] &lt;= beLatest(p)</label>
+<label kind='synchronisation' x='200' y='250'>txStart[p]!</label>
+<label kind='assignment' x='200' y='265'>txFrame[p] = -1, txLen[p] = beLen[p], beLen[p] = 0</label>
+<nail x='300' y='300'/></transition>
+<transition><source ref='sc3'/><target ref='sc1'/>
+<label kind='synchronisation' x='460' y='200'>txEnd[p]?</label>
+<nail x='450' y='200'/></transition>
+<transition><source ref='sc1'/><target ref='sc0'/>
+<label kind='guard' x='-50' y='60'>!stReady(p) &amp;&amp; !beReady(p)</label>
+<nail x='150' y='60'/></transition>
+<transition><source ref='sc1'/><target ref='sc0'/>
+<label kind='guard' x='-50' y='100'>!stReady(p) &amp;&amp; beReady(p) &amp;&amp; lt[PNODE[p]] &gt; beLatest(p)</label>
+<nail x='150' y='100'/></transition>
+<transition><source ref='sc1'/><target ref='sc0'/>
+<label kind='guard' x='-50' y='140'>stReady(p) &amp;&amp; lt[PNODE[p]] &gt; stLatest(p) &amp;&amp; !beReady(p)</label>
+<nail x='150' y='140'/></transition>
+<transition><source ref='sc1'/><target ref='sc0'/>
+<label kind='guard' x='-50' y='180'>stReady(p) &amp;&amp; lt[PNODE[p]] &gt; stLatest(p) &amp;&amp;
+beReady(p) &amp;&amp; lt[PNODE[p]] &gt; beLatest(p)</label>
+<nail x='150' y='180'/></transition>
+</template>
+<template>
+<name>Medium</name>
+<parameter>const pid_t p</parameter>
+<declaration>clock x;     // occupancy of the medium by the frame being transmitted
+int fr, len;</declaration>
+<location id='me0' x='0' y='0'><name x='-20' y='-30'>Idle</name></location>
+<location id='me1' x='250' y='0'><name x='240' y='-30'>Busy</name><label kind='invariant' x='240' y='10'>x &lt;= len</label></location>
+<location id='me2' x='250' y='150'><name x='260' y='160'>Handover</name><committed/></location>
+<init ref='me0'/>
+<transition><source ref='me0'/><target ref='me1'/>
+<label kind='synchronisation' x='40' y='-45'>txStart[p]?</label>
+<label kind='assignment' x='40' y='-30'>fr = txFrame[p], len = txLen[p], x = 0</label></transition>
+<transition><source ref='me1'/><target ref='me2'/>
+<label kind='guard' x='260' y='50'>x &gt;= len</label>
+<label kind='synchronisation' x='260' y='65'>txEnd[p]!</label>
+<label kind='assignment' x='260' y='80'>wireFrame[p] = fr</label></transition>
+<transition><source ref='me2'/><target ref='me0'/>
+<label kind='synchronisation' x='40' y='90'>hand[p]!</label>
+<label kind='assignment' x='40' y='105'>fr = 0, len = 0</label></transition>
+</template>
+<template>
+<name>Wire</name>
+<parameter>const pid_t p</parameter>
+<declaration>clock y;     // propagation / forwarding delay
+int fr;</declaration>
+<location id='wi0' x='0' y='0'><name x='-20' y='-30'>Idle</name></location>
+<location id='wi1' x='300' y='0'><name x='290' y='-30'>Prop</name><label kind='invariant' x='290' y='10'>y &lt;= PD</label></location>
+<location id='wi2' x='300' y='250'><name x='310' y='260'>Lost</name><committed/></location>
+<init ref='wi0'/>
+<transition><source ref='wi0'/><target ref='wi1'/>
+<label kind='synchronisation' x='60' y='-60'>hand[p]?</label>
+<label kind='assignment' x='60' y='-45'>fr = wireFrame[p], y = 0</label>
+<nail x='150' y='-40'/></transition>
+<transition><source ref='wi1'/><target ref='wi0'/>
+<label kind='guard' x='60' y='10'>y &gt;= PD &amp;&amp; fr &lt; 0</label>
+<label kind='assignment' x='60' y='25'>fr = 0</label></transition>
+<transition><source ref='wi1'/><target ref='wi0'/>
+<label kind='guard' x='20' y='60'>y &gt;= PD &amp;&amp; fr &gt;= 0 &amp;&amp; !TOL[p]</label>
+<label kind='synchronisation' x='20' y='75'>poke[NXT[p]]!</label>
+<label kind='assignment' x='20' y='90'>enqueue(NXT[p], fr), fr = 0</label>
+<nail x='150' y='80'/></transition>
+<transition><source ref='wi1'/><target ref='wi0'/>
+<label kind='guard' x='20' y='130'>y &gt;= PD &amp;&amp; fr &gt;= 0 &amp;&amp; TOL[p]</label>
+<label kind='synchronisation' x='20' y='145'>rx!</label>
+<label kind='assignment' x='20' y='160'>rxFrame = fr, fr = 0</label>
+<nail x='150' y='150'/></transition>
+<transition><source ref='wi1'/><target ref='wi2'/>
+<label kind='guard' x='310' y='100'>y &gt;= PD &amp;&amp; fr &gt;= 0</label>
+<label kind='synchronisation' x='310' y='115'>drop[p]?</label></transition>
+<transition><source ref='wi2'/><target ref='wi0'/>
+<label kind='synchronisation' x='20' y='230'>lost[fr / 2][fr % 2]!</label>
+<label kind='assignment' x='20' y='245'>fr = 0</label>
+<nail x='0' y='250'/></transition>
+</template>
+<template>
+<name>Receiver</name>
+<declaration>int fr;</declaration>
+<location id='re0' x='0' y='0'><name x='-20' y='-30'>Idle</name></location>
+<location id='re1' x='250' y='0'><name x='240' y='-30'>Got</name><committed/></location>
+<init ref='re0'/>
+<transition><source ref='re0'/><target ref='re1'/>
+<label kind='synchronisation' x='60' y='-45'>rx?</label>
+<label kind='assignment' x='60' y='-30'>fr = rxFrame</label>
+<nail x='125' y='-30'/></transition>
+<transition><source ref='re1'/><target ref='re0'/>
+<label kind='synchronisation' x='60' y='35'>dlv[fr / 2][fr % 2]!</label>
+<label kind='assignment' x='60' y='50'>cons[fr / 2] = 0, fr = 0</label>
+<nail x='125' y='30'/></transition>
+</template>
+<template>
+<name>BESource</name>
+<declaration>clock x;   // SMC variant: wait BE_MIA, then exponential delay (same timed behaviours as the exhaustive model)</declaration>
+<location id='bs0' x='0' y='0'><name x='-20' y='-30'>Gap</name><label kind='invariant' x='-20' y='10'>x &lt;= BE_MIA</label></location>
+<location id='bs1' x='250' y='0'><name x='240' y='-30'>Ready</name><label kind='exponentialrate' x='240' y='10'>1:10</label></location>
+<init ref='bs0'/>
+<transition><source ref='bs0'/><target ref='bs1'/>
+<label kind='guard' x='60' y='-30'>x &gt;= BE_MIA</label></transition>
+<transition><source ref='bs1'/><target ref='bs0'/>
+<label kind='select' x='60' y='40'>l : int[BE_MINL, BE_MAXL]</label>
+<label kind='guard' x='60' y='25'>BE</label>
+<label kind='synchronisation' x='60' y='55'>poke[2]!</label>
+<label kind='assignment' x='60' y='70'>beLen[2] = (beLen[2] == 0 ? l : beLen[2]), x = 0</label>
+<nail x='125' y='60'/></transition>
+</template>
+<template>
+<name>FaultEnvironment</name>
+<location id='fe0' x='0' y='0'><name x='-20' y='-30'>Idle</name><label kind='exponentialrate' x='-20' y='10'>1</label></location>
+<init ref='fe0'/>
+<transition><source ref='fe0'/><target ref='fe0'/>
+<label kind='select' x='60' y='-90'>p : pid_t</label>
+<label kind='guard' x='60' y='-75'>LOSS &amp;&amp; wireFrame[p] &gt;= 0 &amp;&amp;
+cons[wireFrame[p] / 2] &lt; MAXCONS</label>
+<label kind='synchronisation' x='60' y='-45'>drop[p]!</label>
+<label kind='assignment' x='60' y='-30'>cons[wireFrame[p] / 2]++</label>
+<nail x='40' y='-50'/><nail x='40' y='50'/></transition>
+</template>
+<template>
+<name>Observer</name>
+<declaration>int cs, ck, cp;</declaration>
+<location id='ob0' x='0' y='0'><name x='-40' y='-30'>Idle</name><label kind='exponentialrate' x='-40' y='10'>10</label></location>
+<location id='ob1' x='350' y='0'><name x='360' y='-30'>CheckDelivery</name><committed/></location>
+<location id='ob2' x='-350' y='0'><name x='-420' y='-30'>CheckTx</name><committed/></location>
+<init ref='ob0'/>
+<transition><source ref='ob0'/><target ref='ob0'/>
+<label kind='select' x='-120' y='-200'>i : sid_t, j : int[0,1]</label>
+<label kind='synchronisation' x='-120' y='-185'>rel[i][j]?</label>
+<label kind='assignment' x='-120' y='-170'>obsOverflow = obsOverflow || pending[i][j],
+pending[i][j] = true, age[i][j] = 0</label>
+<nail x='-30' y='-130'/><nail x='30' y='-130'/></transition>
+<transition><source ref='ob0'/><target ref='ob0'/>
+<label kind='select' x='-120' y='150'>i : sid_t, j : int[0,1]</label>
+<label kind='synchronisation' x='-120' y='165'>lost[i][j]?</label>
+<label kind='assignment' x='-120' y='180'>pending[i][j] = false</label>
+<nail x='-30' y='130'/><nail x='30' y='130'/></transition>
+<transition><source ref='ob0'/><target ref='ob0'/>
+<label kind='select' x='60' y='-130'>i : sid_t, j : int[0,1]</label>
+<label kind='guard' x='60' y='-115'>pending[i][j] &amp;&amp; !dlMiss[i] &amp;&amp;
+age[i][j] &gt; E2E[CFG][i]</label>
+<label kind='assignment' x='60' y='-85'>dlMiss[i] = true</label>
+<nail x='60' y='-60'/><nail x='100' y='-30'/></transition>
+<transition><source ref='ob0'/><target ref='ob1'/>
+<label kind='select' x='100' y='-15'>i : sid_t, j : int[0,1]</label>
+<label kind='synchronisation' x='100' y='0'>dlv[i][j]?</label>
+<label kind='assignment' x='100' y='15'>cs = i, ck = j</label></transition>
+<transition><source ref='ob1'/><target ref='ob0'/>
+<label kind='guard' x='100' y='50'>age[cs][ck] &lt;= E2E[CFG][cs]</label>
+<label kind='assignment' x='100' y='65'>pending[cs][ck] = false, cs = 0, ck = 0</label>
+<nail x='175' y='60'/></transition>
+<transition><source ref='ob1'/><target ref='ob0'/>
+<label kind='guard' x='100' y='95'>age[cs][ck] &gt; E2E[CFG][cs]</label>
+<label kind='assignment' x='100' y='110'>dlMiss[cs] = true, pending[cs][ck] = false, cs = 0, ck = 0</label>
+<nail x='175' y='100'/></transition>
+<transition><source ref='ob0'/><target ref='ob2'/>
+<label kind='select' x='-300' y='-15'>pp : pid_t, i : sid_t</label>
+<label kind='synchronisation' x='-300' y='0'>txObs[pp][i]?</label>
+<label kind='assignment' x='-300' y='15'>cp = pp, cs = i</label></transition>
+<transition><source ref='ob2'/><target ref='ob0'/>
+<label kind='guard' x='-330' y='50'>!(stOpen[cp] &amp;&amp; curWin[cp] == ASSIGN[CFG][cp][cs])</label>
+<label kind='assignment' x='-330' y='65'>wrongWin[cp][cs] = true, cp = 0, cs = 0</label>
+<nail x='-175' y='60'/></transition>
+<transition><source ref='ob2'/><target ref='ob0'/>
+<label kind='guard' x='-330' y='95'>stOpen[cp] &amp;&amp; curWin[cp] == ASSIGN[CFG][cp][cs] &amp;&amp;
+lt[PNODE[cp]] &lt;= stClose[cp] - LEN[cs]</label>
+<label kind='assignment' x='-330' y='125'>cp = 0, cs = 0</label>
+<nail x='-175' y='100'/></transition>
+<transition><source ref='ob2'/><target ref='ob0'/>
+<label kind='guard' x='-330' y='150'>stOpen[cp] &amp;&amp; curWin[cp] == ASSIGN[CFG][cp][cs] &amp;&amp;
+lt[PNODE[cp]] &gt; stClose[cp] - LEN[cs]</label>
+<label kind='assignment' x='-330' y='180'>overrun[cp][cs] = true, cp = 0, cs = 0</label>
+<nail x='-175' y='150'/></transition>
+</template>
+<system>// One process per template parameter value (3 node clocks, 2 talkers, 3 ports).
+system NodeClock, Source, Gate, Scheduler, Medium, Wire, Receiver, BESource, FaultEnvironment, Observer;
+</system>
+<queries>
+<query><formula>A[] not deadlock</formula><comment>No deadlock / timelock (also checks that a wire is always free when a frame is handed over).</comment></query>
+<query><formula>A[] !dlMiss[0] &amp;&amp; !dlMiss[1]</formula><comment>Every released, non-lost frame is delivered within its end-to-end deadline.</comment></query>
+<query><formula>A[] forall(p : pid_t) forall(s : sid_t) !wrongWin[p][s]</formula><comment>Every ST frame is transmitted in the window it is assigned to (determinism of window assignment / isolation).</comment></query>
+<query><formula>A[] forall(p : pid_t) forall(s : sid_t) !overrun[p][s]</formula><comment>No ST frame transmission overruns the close of its window.</comment></query>
+<query><formula>A[] !qOverflow &amp;&amp; !obsOverflow</formula><comment>Queues never overflow; at most two instances of a stream are in flight (observer slots sufficient).</comment></query>
+<query><formula>sup{pending[0][0]} : age[0][0]</formula><comment>Worst-case end-to-end latency of stream s0 (instance slot 0).</comment></query>
+<query><formula>sup{pending[0][1]} : age[0][1]</formula><comment>Worst-case end-to-end latency of stream s0 (instance slot 1).</comment></query>
+<query><formula>sup{pending[1][0]} : age[1][0]</formula><comment>Worst-case end-to-end latency of stream s1 (instance slot 0).</comment></query>
+<query><formula>sup{pending[1][1]} : age[1][1]</formula><comment>Worst-case end-to-end latency of stream s1 (instance slot 1).</comment></query>
+<query><formula>E&lt;&gt; Receiver.Got</formula><comment>Sanity: frames are delivered at all.</comment></query>
+</queries>
+</nta>
