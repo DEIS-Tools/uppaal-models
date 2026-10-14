@@ -64,22 +64,16 @@ id = pid</label>
 			</comment>
 		</query>
 		<query>
-			<formula>A[] forall (i:id_t) forall (j:id_t) P(i).cs &amp;&amp; P(j).cs imply i == j
-			</formula>
-			<comment>Mutex requirement.
-			</comment>
+			<formula>A[] forall (i:id_t) forall (j:id_t) P(i).cs &amp;&amp; P(j).cs imply i == j</formula>
+			<comment>Mutex requirement.</comment>
 		</query>
 		<query>
-			<formula>A[] not deadlock
-			</formula>
-			<comment>The system is deadlock free.
-			</comment>
+			<formula>A[] not deadlock</formula>
+			<comment>The system is deadlock free.</comment>
 		</query>
 		<query>
-			<formula>P(1).req --&gt; P(1).wait
-			</formula>
-			<comment>Whenever P(1) requests access to the critical section it will eventually enter the wait state.
-			</comment>
+			<formula>P(1).req --&gt; P(1).wait</formula>
+			<comment>Whenever P(1) requests access to the critical section it will eventually enter the wait state.</comment>
 		</query>
 	</queries>
 </nta>

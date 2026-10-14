@@ -728,39 +728,22 @@ lane[id]!=LANES-1</label>
 		</transition>
 	</template>
 	<template>
-		<name>Monitor</name>
-		<location id="id134" x="-306" y="0">
-		</location>
-		<location id="id135" x="-34" y="0">
-			<name x="-44" y="-34">ERROR</name>
-		</location>
-		<init ref="id134"/>
-		<transition id="id136">
-			<source ref="id134"/>
-			<target ref="id135"/>
-			<label kind="guard" x="-289" y="-76">(pos[1]-pos[2])&lt;=EPS &amp;&amp;
-(pos[2]-pos[1])&lt;=EPS &amp;&amp;
-lane[1]==lane[2]</label>
-			<label kind="synchronisation" x="-280" y="0">ASAP!</label>
-		</transition>
-	</template>
-	<template>
 		<name>DC</name>
 		<parameter>const car_t id</parameter>
-		<location id="id137" x="0" y="-76">
+		<location id="id134" x="0" y="-76">
 		</location>
-		<location id="id138" x="0" y="34">
+		<location id="id135" x="0" y="34">
 			<name x="-10" y="0">BRK</name>
 			<urgent/>
 		</location>
-		<init ref="id137"/>
-		<transition id="id139">
-			<source ref="id138"/>
-			<target ref="id137"/>
+		<init ref="id134"/>
+		<transition id="id136">
+			<source ref="id135"/>
+			<target ref="id134"/>
 		</transition>
-		<transition id="id140">
-			<source ref="id137"/>
-			<target ref="id138"/>
+		<transition id="id137">
+			<source ref="id134"/>
+			<target ref="id135"/>
 			<label kind="guard" x="-357" y="-153">acc[id] &gt; -2
 &amp;&amp; 
 exists(i:car_t)
@@ -771,6 +754,23 @@ exists(i:car_t)
 x=0</label>
 			<nail x="-85" y="-76"/>
 			<nail x="-85" y="34"/>
+		</transition>
+	</template>
+	<template>
+		<name>Monitor</name>
+		<location id="id138" x="-306" y="0">
+		</location>
+		<location id="id139" x="-34" y="0">
+			<name x="-44" y="-34">ERROR</name>
+		</location>
+		<init ref="id138"/>
+		<transition id="id140">
+			<source ref="id138"/>
+			<target ref="id139"/>
+			<label kind="guard" x="-289" y="-76">(pos[1]-pos[2])&lt;=EPS &amp;&amp;
+(pos[2]-pos[1])&lt;=EPS &amp;&amp;
+lane[1]==lane[2]</label>
+			<label kind="synchronisation" x="-280" y="0">ASAP!</label>
 		</transition>
 	</template>
 	<system>system CarCtr2, DC, Monitor;
