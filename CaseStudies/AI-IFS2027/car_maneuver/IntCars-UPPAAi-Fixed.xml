@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
 <nta>
-	<declaration>// Place global declarations here.
-
-const int MaxVel = 20;
+	<declaration>const int MaxVel = 20;
 const int CARS = 2;
 const int LANES = 1;
 typedef int[0,LANES-1] lane_t;
@@ -43,45 +41,6 @@ for  (i : car_t)
 }
 
 clock time;</declaration>
-	<template>
-		<name>Decisions</name>
-		<declaration>clock t;
-car_t i;</declaration>
-		<location id="id0" x="-102" y="-34">
-			<urgent/>
-		</location>
-		<location id="id1" x="-204" y="-34">
-			<name x="-221" y="-68">Wait</name>
-			<label kind="invariant" x="-229" y="-17">t&lt;=1</label>
-		</location>
-		<init ref="id0"/>
-		<transition id="id2">
-			<source ref="id1"/>
-			<target ref="id0"/>
-			<label kind="guard" x="-272" y="-59">t==1</label>
-			<label kind="assignment" x="-263" y="17">t=0,
-updateDiscrete()</label>
-			<nail x="-272" y="-34"/>
-			<nail x="-272" y="34"/>
-			<nail x="-102" y="34"/>
-		</transition>
-		<transition id="id3">
-			<source ref="id0"/>
-			<target ref="id1"/>
-			<label kind="guard" x="-178" y="-68">i==CARS</label>
-			<label kind="synchronisation" x="-170" y="-51">go[i]!</label>
-			<label kind="assignment" x="-187" y="-25">i=1, t=0</label>
-		</transition>
-		<transition id="id4">
-			<source ref="id0"/>
-			<target ref="id0"/>
-			<label kind="guard" x="-25" y="-59">i&lt;CARS</label>
-			<label kind="synchronisation" x="-25" y="-42">go[i]!</label>
-			<label kind="assignment" x="-25" y="-25">i++</label>
-			<nail x="-34" y="-68"/>
-			<nail x="-34" y="0"/>
-		</transition>
-	</template>
 	<template>
 		<name x="5" y="5">Car</name>
 		<parameter>const car_t id</parameter>
@@ -127,34 +86,34 @@ bool safe(lane_t l, int a) {
     return true;
 }
 </declaration>
-		<location id="id5" x="-34" y="0">
+		<location id="id0" x="-34" y="0">
 			<name x="-44" y="-34">Choose</name>
 			<urgent/>
 		</location>
-		<location id="id6" x="-408" y="0">
+		<location id="id1" x="-408" y="0">
 		</location>
-		<location id="id7" x="-34" y="153">
+		<location id="id2" x="-34" y="153">
 			<name x="-17" y="144">Fin</name>
 		</location>
-		<init ref="id5"/>
-		<transition id="id8">
-			<source ref="id5"/>
-			<target ref="id7"/>
+		<init ref="id0"/>
+		<transition id="id3">
+			<source ref="id0"/>
+			<target ref="id2"/>
 			<label kind="guard" x="-25" y="17">pos[id]&gt;=Finish</label>
 			<label kind="assignment" x="-25" y="51">acc[id]=0,
 vel[id]=0,
 done[id]=true</label>
 		</transition>
-		<transition id="id9">
-			<source ref="id6"/>
-			<target ref="id5"/>
+		<transition id="id4">
+			<source ref="id1"/>
+			<target ref="id0"/>
 			<label kind="synchronisation" x="-399" y="-93">go[id]?</label>
 			<nail x="-408" y="-102"/>
 			<nail x="-34" y="-102"/>
 		</transition>
-		<transition id="id10">
-			<source ref="id5"/>
-			<target ref="id6"/>
+		<transition id="id5">
+			<source ref="id0"/>
+			<target ref="id1"/>
 			<label kind="select" x="-127" y="-51">a:acc_c,
 l:lane_t</label>
 			<label kind="guard" x="-612" y="25">pos[id]&lt;Finish &amp;&amp;
@@ -164,6 +123,45 @@ safe(l, a)</label>
 			<label kind="assignment" x="-391" y="-42">acc[id]=2*a,
 lane[id]=l</label>
 			<nail x="-76" y="0"/>
+		</transition>
+	</template>
+	<template>
+		<name>Decisions</name>
+		<declaration>clock t;
+car_t i;</declaration>
+		<location id="id6" x="-102" y="-34">
+			<urgent/>
+		</location>
+		<location id="id7" x="-204" y="-34">
+			<name x="-221" y="-68">Wait</name>
+			<label kind="invariant" x="-229" y="-17">t&lt;=1</label>
+		</location>
+		<init ref="id6"/>
+		<transition id="id8">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-272" y="-59">t==1</label>
+			<label kind="assignment" x="-263" y="17">t=0,
+updateDiscrete()</label>
+			<nail x="-272" y="-34"/>
+			<nail x="-272" y="34"/>
+			<nail x="-102" y="34"/>
+		</transition>
+		<transition id="id9">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-178" y="-68">i==CARS</label>
+			<label kind="synchronisation" x="-170" y="-51">go[i]!</label>
+			<label kind="assignment" x="-187" y="-25">i=1, t=0</label>
+		</transition>
+		<transition id="id10">
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-25" y="-59">i&lt;CARS</label>
+			<label kind="synchronisation" x="-25" y="-42">go[i]!</label>
+			<label kind="assignment" x="-25" y="-25">i++</label>
+			<nail x="-34" y="-68"/>
+			<nail x="-34" y="0"/>
 		</transition>
 	</template>
 	<template>
