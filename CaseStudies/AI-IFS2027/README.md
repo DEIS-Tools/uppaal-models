@@ -8,4 +8,4 @@ This folder contains artefacts from modeling experiments using generative AI and
 * [Covid-19](covid19)
 * [Storm Water Detention Pond](storm_water)
 * [Automated Teller Machines (ATMs)](atm)
-* [Robustness of Time-Sensitive Networks](tsn)
+* [Time-Sensitive Networks (TSN)](tsn)
