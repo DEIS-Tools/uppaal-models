@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>/**
+Based on the original model presented by Kim G. Larsen at ARTES 2006 summer school in Uppsala.
+https://www.artes.uu.se/events/summer06/kimgl.shtml
+Buffer-overflow fixed by Claude.
+Contains state space explosion due to too many boxes on belt.
+*/
+const int ctime = 75;
+
+// Fix: one eject timer per black box that can be in transit between the
+// sensor and the piston (previously a single timer x was reset by every
+// detection, overwriting the pending eject of an earlier black box).
+// Boxes are placed &gt;= 10 apart and travel 75 from sensor to piston, so at
+// most 8 black boxes can be in transit at once: 8 timers always suffice.
+const int NT = 8;               // number of eject timers
+typedef int[0,NT-1] tid_t;
+
+bool  active[NT];               // timer i is counting down to an eject
+clock x[NT];                    // timer i: time since its black box was sensed
+clock time;
+
+chan   eject, ok;
+urgent chan blck, red, remove, go;
+
+// index of a free timer, or NT if all are busy
+int[0,NT] firstFree() {
+    for (i : tid_t)
+        if (!active[i]) return i;
+    return NT;
+}
+
+// start the first free timer for a newly sensed black box
+void startTimer() {
+    int i = firstFree();
+    x[i] = 0;
+    active[i] = true;
+}</declaration>
+	<template>
+		<name x="32" y="16">TaskMAIN</name>
+		<location id="id0" x="136" y="96">
+			<name x="126" y="66">S0</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id1">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="40" y="88">red?</label>
+			<nail x="88" y="80"/>
+			<nail x="88" y="112"/>
+		</transition>
+		<transition id="id2">
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="guard" x="200" y="56">firstFree() &lt; NT</label>
+			<label kind="synchronisation" x="200" y="72">blck?</label>
+			<label kind="assignment" x="200" y="96">startTimer()</label>
+			<nail x="184" y="80"/>
+			<nail x="184" y="112"/>
+		</transition>
+	</template>
+	<template>
+		<name x="32" y="16">TaskPUSH</name>
+		<parameter>const tid_t id</parameter>
+		<location id="id3" x="248" y="96">
+			<name x="240" y="112">passive</name>
+		</location>
+		<location id="id4" x="80" y="104">
+			<name x="40" y="112">wait</name>
+			<label kind="invariant" x="40" y="128">x[id]&lt;=ctime</label>
+		</location>
+		<init ref="id3"/>
+		<transition id="id5">
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="60" y="44">x[id]==ctime</label>
+			<label kind="synchronisation" x="140" y="44">eject!</label>
+			<label kind="assignment" x="204" y="44">active[id]=false</label>
+			<nail x="100" y="68"/>
+			<nail x="228" y="68"/>
+		</transition>
+		<transition id="id6">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="108" y="140">active[id]</label>
+			<label kind="synchronisation" x="212" y="140">go?</label>
+			<nail x="228" y="132"/>
+			<nail x="100" y="132"/>
+		</transition>
+	</template>
+	<template>
+		<name x="32" y="16">Piston</name>
+		<declaration>clock y;</declaration>
+		<location id="id7" x="96" y="208">
+			<name x="104" y="216">s2</name>
+			<label kind="invariant" x="104" y="232">y&lt;=1</label>
+		</location>
+		<location id="id8" x="96" y="64">
+			<name x="104" y="72">s1</name>
+		</location>
+		<init ref="id8"/>
+		<transition id="id9">
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="104" y="108">eject?</label>
+			<label kind="assignment" x="104" y="168">y=0</label>
+		</transition>
+		<transition id="id10">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="152" y="216">y==1</label>
+			<nail x="160" y="208"/>
+			<nail x="160" y="64"/>
+		</transition>
+		<transition id="id11">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="16" y="216">remove!</label>
+			<nail x="32" y="208"/>
+			<nail x="32" y="64"/>
+		</transition>
+	</template>
+	<template>
+		<name x="32" y="16">Dumb</name>
+		<location id="id12" x="64" y="64">
+			<name x="32" y="56">S0</name>
+		</location>
+		<init ref="id12"/>
+		<transition id="id13">
+			<source ref="id12"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="120" y="56">go!</label>
+			<nail x="112" y="48"/>
+			<nail x="112" y="80"/>
+		</transition>
+	</template>
+	<template>
+		<name x="32" y="16">RedBox</name>
+		<declaration>clock pos;</declaration>
+		<location id="id14" x="304" y="112">
+			<name x="312" y="120">on2</name>
+			<label kind="invariant" x="312" y="136">pos&lt;=81</label>
+		</location>
+		<location id="id15" x="560" y="112">
+			<name x="568" y="120">end</name>
+		</location>
+		<location id="id16" x="48" y="112">
+			<name x="56" y="120">on1</name>
+			<label kind="invariant" x="56" y="136">pos&lt;=9</label>
+		</location>
+		<location id="id17" x="176" y="112">
+			<name x="160" y="120">sensor</name>
+			<label kind="invariant" x="152" y="136">pos&lt;=18</label>
+		</location>
+		<location id="id18" x="432" y="240">
+			<name x="440" y="248">off</name>
+		</location>
+		<location id="id19" x="432" y="112">
+			<name x="440" y="120">piston</name>
+			<label kind="invariant" x="440" y="136">pos&lt;=90</label>
+		</location>
+		<location id="id20" x="48" y="240">
+			<name x="56" y="248">start</name>
+		</location>
+		<init ref="id20"/>
+		<transition id="id21">
+			<source ref="id17"/>
+			<target ref="id14"/>
+			<label kind="guard" x="200" y="88">pos==18</label>
+		</transition>
+		<transition id="id22">
+			<source ref="id14"/>
+			<target ref="id19"/>
+			<label kind="guard" x="344" y="88">pos==81</label>
+		</transition>
+		<transition id="id23">
+			<source ref="id19"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="440" y="176">remove?</label>
+		</transition>
+		<transition id="id24">
+			<source ref="id19"/>
+			<target ref="id15"/>
+			<label kind="guard" x="448" y="88">pos==90</label>
+		</transition>
+		<transition id="id25">
+			<source ref="id20"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="24" y="168">ok?</label>
+			<label kind="assignment" x="56" y="200">pos=0</label>
+		</transition>
+		<transition id="id26">
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="guard" x="96" y="88">pos==9</label>
+		</transition>
+		<transition id="id27">
+			<source ref="id17"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="232" y="48">red!</label>
+			<nail x="176" y="72"/>
+			<nail x="304" y="72"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Guard</name>
+		<declaration>clock z;</declaration>
+		<location id="id28" x="128" y="96">
+			<name x="118" y="66">S0</name>
+		</location>
+		<init ref="id28"/>
+		<transition id="id29">
+			<source ref="id28"/>
+			<target ref="id28"/>
+			<label kind="guard" x="80" y="104">z&gt;=10</label>
+			<label kind="synchronisation" x="120" y="160">ok!</label>
+			<label kind="assignment" x="152" y="104">z=0</label>
+			<nail x="96" y="160"/>
+			<nail x="160" y="160"/>
+		</transition>
+	</template>
+	<template>
+		<name x="32" y="16">BlackBox</name>
+		<declaration>clock pos;</declaration>
+		<location id="id30" x="304" y="112">
+			<name x="312" y="120">on2</name>
+			<label kind="invariant" x="312" y="136">pos&lt;=81</label>
+		</location>
+		<location id="id31" x="560" y="112">
+			<name x="568" y="120">end</name>
+		</location>
+		<location id="id32" x="48" y="112">
+			<name x="56" y="120">on1</name>
+			<label kind="invariant" x="56" y="136">pos&lt;=9</label>
+		</location>
+		<location id="id33" x="176" y="112">
+			<name x="160" y="120">sensor</name>
+			<label kind="invariant" x="152" y="136">pos&lt;=18</label>
+		</location>
+		<location id="id34" x="432" y="240">
+			<name x="440" y="248">off</name>
+		</location>
+		<location id="id35" x="432" y="112">
+			<name x="440" y="120">piston</name>
+			<label kind="invariant" x="440" y="136">pos&lt;=90</label>
+		</location>
+		<location id="id36" x="48" y="240">
+			<name x="56" y="248">start</name>
+		</location>
+		<init ref="id36"/>
+		<transition id="id37">
+			<source ref="id33"/>
+			<target ref="id30"/>
+			<label kind="guard" x="200" y="88">pos==18</label>
+		</transition>
+		<transition id="id38">
+			<source ref="id30"/>
+			<target ref="id35"/>
+			<label kind="guard" x="344" y="88">pos==81</label>
+		</transition>
+		<transition id="id39">
+			<source ref="id35"/>
+			<target ref="id34"/>
+			<label kind="synchronisation" x="440" y="176">remove?</label>
+		</transition>
+		<transition id="id40">
+			<source ref="id35"/>
+			<target ref="id31"/>
+			<label kind="guard" x="448" y="88">pos==90</label>
+		</transition>
+		<transition id="id41">
+			<source ref="id36"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="24" y="168">ok?</label>
+			<label kind="assignment" x="56" y="200">pos=0</label>
+		</transition>
+		<transition id="id42">
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="guard" x="96" y="88">pos==9</label>
+		</transition>
+		<transition id="id43">
+			<source ref="id33"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="232" y="48">blck!</label>
+			<nail x="176" y="72"/>
+			<nail x="304" y="72"/>
+		</transition>
+	</template>
+	<system>R1=RedBox();
+R2=RedBox();
+R3=RedBox();
+B1=BlackBox();
+B2=BlackBox();
+B3=BlackBox();
+B4=BlackBox();
+B5=BlackBox();
+system 
+     TaskMAIN, TaskPUSH,   // TaskPUSH(id) is instantiated once per timer id
+     Piston,
+     B1, B2, B3, B4, B5,
+     R1, R2, R3, Dumb, Guard;</system>
+	<queries>
+		<query>
+			<formula>A[] not (B1.end || B2.end || B3.end || B4.end || B5.end)</formula>
+			<comment>No black box ever reaches the end of the belt.</comment>
+		</query>
+		<query>
+			<formula>A[] not (R1.off || R2.off || R3.off)</formula>
+			<comment>No red box is ever removed from the belt.</comment>
+		</query>
+		<query>
+			<formula>A[] deadlock imply (B1.off &amp;&amp; B2.off &amp;&amp; B3.off &amp;&amp; B4.off &amp;&amp; B5.off &amp;&amp; R1.end &amp;&amp; R2.end &amp;&amp; R3.end)</formula>
+			<comment>Whenever the system has come to rest, every black box is off and every red box is at the end.</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; B1.off &amp;&amp; B2.off &amp;&amp; B3.off &amp;&amp; B4.off &amp;&amp; B5.off &amp;&amp; R1.end &amp;&amp; R2.end &amp;&amp; R3.end</formula>
+			<comment>The intended final outcome is reachable.</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; B1.on2 &amp;&amp; B2.on2 &amp;&amp; B3.on2 &amp;&amp; B4.on2 &amp;&amp; B5.on2</formula>
+			<comment>Stress check: all five black boxes can be between sensor and piston at the same time.</comment>
+		</query>
+		<query>
+			<formula>A[] TaskMAIN.S0 imply (forall (i : tid_t) (active[i] imply x[i] &lt;= ctime))</formula>
+			<comment>Sanity: every pending eject timer stays within its deadline.</comment>
+			<result outcome="success" type="quality" timestamp="2026-10-01 19:45:56 +0200">
+			</result>
+		</query>
+	</queries>
+</nta>
