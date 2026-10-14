@@ -1,7 +1,7 @@
 # Box Sorting Conveyor Belt
 
 * [Claude Session Report](claude_report.pdf)
-* [boxesARTES06.xml](boxesARTES06.xml) original model with one box at a time as presented at [ARTES 2006 summer school](https://www.artes.uu.se/events/summer06/kimgl.shtml). Contains buffer-overflow vulnerability triggered by too many boxes on belt. The fix has not been published before.
+* [boxesARTES06.xml](boxesARTES06.xml) original model contains buffer-overflow vulnerability triggered by too many boxes on belt. The fix has not been published before.
 * [FixedBoxesBig.xml](FixedBoxesBig.xml) fixed buffer-overflow by Claude (contains state space explosion due to 8 boxes).
 * [BigBoxesSymmetric.xml](BigBoxesSymmetric.xml) state space reduced by symmetry reduction applied by Claude.
 
@@ -24,6 +24,18 @@ clock x, time;
 
 chan   eject, ok;
 urgent chan blck, red, remove, go;
+```
+
+## Original Queries
+```cpp
+E<> R2.end
+E<> R1.end
+E<> R1.off
+E<> R2.off
+E<> B2.off
+E<> B1.off
+E<> B2.end
+E<> B1.end
 ```
 
 ### Fixed Global Declarations
@@ -61,7 +73,29 @@ void startTimer() {
 }
 ```
 
-## Reduced Symmetries Global Declarations
+## Fixed Model Queries
+
+```cpp
+// No black box ever reaches the end of the belt.
+A[] not (B1.end || B2.end || B3.end || B4.end || B5.end)
+
+// No red box is ever removed from the belt.
+A[] not (R1.off || R2.off || R3.off)
+
+// Whenever the system has come to rest, every black box is off and every red box is at the end.
+A[] deadlock imply (B1.off && B2.off && B3.off && B4.off && B5.off && R1.end && R2.end && R3.end)
+
+// The intended final outcome is reachable.
+E<> B1.off && B2.off && B3.off && B4.off && B5.off && R1.end && R2.end && R3.end
+
+// Stress check: all five black boxes can be between sensor and piston at the same time.
+E<> B1.on2 && B2.on2 && B3.on2 && B4.on2 && B5.on2
+
+// Sanity: every pending eject timer stays within its deadline.
+A[] TaskMAIN.S0 imply (forall (i : tid_t) (active[i] imply x…
+```
+
+## Symmetry Reduction: Global Declarations
 
 ```cpp
 const int ctime = 75;
@@ -86,4 +120,25 @@ clock x[tid_t];                 // timer i: time since its black box was sensed
 
 chan   eject, ok;
 urgent chan blck, red, remove, go;
+```
+
+## Symmetry Reduction: Queries
+```cpp
+// No black box ever reaches the end of the belt.
+A[] forall (i : bid_t) not BlackBox(i).end
+
+// No red box is ever removed from the belt.
+A[] forall (j : rid_t) not RedBox(j).off
+
+// Whenever the system has come to rest, every black box is off and every red box is at the end.
+A[] deadlock imply ((forall (i : bid_t) BlackBox(i).off) && (forall (j : rid_t) RedBox(j).end))
+
+// The intended final outcome is reachable.
+E<> (forall (i : bid_t) BlackBox(i).off) && (forall (j : rid_t) RedBox(j).end)
+
+// Stress check: all black boxes can be between sensor and piston at the same time.
+E<> forall (i : bid_t) BlackBox(i).on2
+
+// Sanity: every pending eject timer stays within its deadline.
+A[] forall (i : tid_t) (active[i] imply x[i] <= ctime)
 ```

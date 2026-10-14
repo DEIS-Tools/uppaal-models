@@ -325,8 +325,6 @@ system
 		<query>
 			<formula>A[] TaskMAIN.S0 imply (forall (i : tid_t) (active[i] imply x[i] &lt;= ctime))</formula>
 			<comment>Sanity: every pending eject timer stays within its deadline.</comment>
-			<result outcome="success" type="quality" timestamp="2026-10-01 19:45:56 +0200">
-			</result>
 		</query>
 	</queries>
 </nta>
