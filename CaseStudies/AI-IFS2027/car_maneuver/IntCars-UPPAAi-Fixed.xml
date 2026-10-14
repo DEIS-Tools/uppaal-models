@@ -181,11 +181,7 @@ lane[1]==lane[2]</label>
 			<label kind="synchronisation" x="-246" y="0">ASAP!</label>
 		</transition>
 	</template>
-	<system>// Place template instantiations here.
-// List one or more processes to be composed into a system.
-
-system Car, Decisions, Monitor;
-
+	<system>system Car, Decisions, Monitor;
 </system>
 	<queries>
 		<option key="--diagnostic" value="1"/>

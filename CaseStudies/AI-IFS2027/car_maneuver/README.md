@@ -40,6 +40,10 @@ double brk_dist(double v,  int a)
 ```
 
 ### Car
+Parameters:
+```cpp
+const car_t id
+```
 Local declarations:
 ```cpp
 lane_t tmp_lane;
@@ -58,6 +62,23 @@ acc_t tmp_acc;
 ### System Declarations
 ```cpp
 system CarCtr2, DC, Monitor;
+```
+
+### Queries
+```cpp
+simulate[<=200]{pos[1],pos[2]}
+simulate[<=1000]{vel[1],vel[2],pos[1],pos[2]}
+simulate[<=100]{lane[1],lane[2]}
+simulate[<=100;100]{200*lane[1],200*lane[2], pos[1], pos[2]} : 1 : (lane[1]==lane[2])
+simulate[<=LANE_WIDTH/10]{LANE_WIDTH/2, 3*LANE_WIDTH/2, 5*LANE_WIDTH/2, pos[1]+lane[1]*LANE_WIDTH,pos[2]+lane[2]*LANE_WIDTH}
+simulate[<=LANE_WIDTH/10]{LANE_WIDTH/2, 3*LANE_WIDTH/2, 5*LANE_WIDTH/2, pos[1]+lane[1]*LANE_WIDTH, pos[2]+lane[2]*LANE_WIDTH}
+simulate[<=LANE_WIDTH/10]{LANE_WIDTH/2, 3*LANE_WIDTH/2, 5*LANE_WIDTH/2, pos[1]+lane[1]*LANE_WIDTH, pos[2]+lane[2]*LANE_WIDTH, pos[1]+3*LANE_WIDTH, pos[2]+3*LANE_WIDTH}
+simulate[<=2000;100]{LANE_WIDTH/2, 3*LANE_WIDTH/2, 5*LANE_WIDTH/2, pos[1]+lane[1]*LANE_WIDTH, pos[2]+lane[2]*LANE_WIDTH,  100*RL[0], 200*RL[1], 300*RL[2]} : 1 : (Monitor.ERROR and  !CarCtr2(1).F and !CarCtr2(2).F and time>=10)
+Pr[<=2000](<> Monitor.ERROR and !CarCtr2(1).F and !CarCtr2(2).F and time>=10)
+Pr[<=2000;100](<> Monitor.ERROR and !CarCtr2(1).F and !CarCtr2(2).F and time>=10)
+Pr[<=200](<> Monitor.ERROR and time>=10)
+simulate[<=100]{brk_dist(vel[1],2), brk_dist(vel[2],2),vel[1],vel[2],20*DC(1).BRK,20*DC(2).BRK}
+simulate[<=LANE_WIDTH/10]{vel[1], vel[2]}
 ```
 
 ## Fixed Model
@@ -108,6 +129,10 @@ clock time;
 ```
 
 ### Car
+Parameters:
+```cpp
+const car_t id
+```
 Local declarations:
 ```cpp
 // Safety invariant between a follower f and a leader l on the same lane:
@@ -165,3 +190,24 @@ car_t i;
 ### Safety Monitor
 ![Monitor](fixed/Monitor.svg)
 
+### System Declarations
+```cpp
+system Car, Decisions, Monitor;
+```
+
+### Queries
+```cpp
+Pr[<=100;1000](<> Monitor.ERROR)
+E<> Monitor.ERROR
+simulate[<=100]{pos[1],pos[2],vel[1],vel[2],bd[1],bd[2]}
+simulate[<=100]{pos[1],pos[2],200*lane[1], 200*lane[2]}
+simulate[<=100]{vel[1],vel[2],bd[1],bd[2]}
+Pr[<=100](<> vel[1]==0 and time >20)
+Pr[<=100](<> lane[1]==lane[2])
+
+// Safety: cars never collide
+A[] !Monitor.ERROR
+
+// A safe choice always exists
+A[] not deadlock
+```
