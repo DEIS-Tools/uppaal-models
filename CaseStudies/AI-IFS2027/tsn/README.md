@@ -22,9 +22,10 @@
 
 ## Symbolic Model Checking
 
-Model file: [tsn_qbv.xml](tsn_qbv.xml) 
+Model file: [tsn_qbv.xml](tsn_qbv.xml)
 
 ### Global Declarations
+{% raw %}
 ```cpp
 // =====================================================================
 //  IEEE 802.1Qbv time-aware shaper: robustness of window-based GCL schedules
@@ -162,6 +163,7 @@ bool  pending[S][2];
 bool  dlMiss[S], wrongWin[P][S], overrun[P][S], obsOverflow = false;
 broadcast chan rel[S][2], dlv[S][2], lost[S][2], txObs[P][S];
 ```
+{% endraw %}
 
 ### NodeClock
 Parameters:
@@ -295,6 +297,7 @@ E<> Receiver.Got
 Model file: [tsn_qbv_smc.xml](tsn_qbv_smc.xml)
 
 ### Global Declarations
+{% raw %}
 ```cpp
 // =====================================================================
 //  IEEE 802.1Qbv time-aware shaper: robustness of window-based GCL schedules
@@ -433,6 +436,7 @@ bool  pending[S][2];
 bool  dlMiss[S], wrongWin[P][S], overrun[P][S], obsOverflow = false;
 broadcast chan rel[S][2], dlv[S][2], lost[S][2], txObs[P][S];
 ```
+{% endraw %}
 
 ### NodeClock
 Parameters:
