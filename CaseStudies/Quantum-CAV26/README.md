@@ -1,5 +1,6 @@
 # Analysis and Verification of Quantum Communication Protocols in UPPAAL
-This folder contains artifacts for "Analysis and Verification of Quantum Communication Protocols in UPPAAL" paper for CAV'26.
+
+_**[Analysis and Verification of Quantum Communication Protocols in UPPAAL](Quantum-CAV26)**_, René Bødker Christensen, Nikolaj Rossander Kristensen, Kim Guldstrand Larsen, Marius Mikučionis, Jiří Srba and Loke Walsted. In: Computer Aided Verification (CAV 2026). [doi:10.1007/978-3-032-32537-2_18](https://doi.org/10.1007/978-3-032-32537-2_18)
 
 Download the entire artifact with instructions in `README.md`: [artifact.zip](artifact.zip)
 
