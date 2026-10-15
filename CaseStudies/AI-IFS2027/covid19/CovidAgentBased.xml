@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// Stochastic agent-based SEIRD model of COVID-19 spreading in a closed,
+// well-mixed population. One Person process per individual. Time unit: days.
+// Analyse with UPPAAL SMC (statistical model checking).
+
+// ---------------- Population ----------------
+const int N  = 100;             // population size (change freely)
+const int I0 = 1;               // initially infectious individuals
+typedef int[0, N-1] id_t;
+
+// ---------------- Epidemiological parameters ----------------
+const double R0      = 2.5;           // basic reproduction number
+const double gamma   = 1.0 / 7.0;     // recovery rate   (mean infectious period 7 days)
+const double sigma   = 1.0 / 5.2;     // incubation rate (mean latent period 5.2 days)
+const double beta    = R0 * gamma;    // transmission rate per infectious contact-day
+const int    IFR     = 1;             // infection fatality: IFR out of 100 (1%)
+
+// ---------------- Compartment counters ----------------
+int Sus  = N - I0;              // susceptible
+int Exp  = 0;                   // exposed (infected, not yet infectious)
+int Inf  = I0;                  // infectious
+int Rec  = 0;                   // recovered (immune)
+int Dead = 0;                   // deceased
+
+// Force of infection on a single susceptible: beta * I / N
+double foi() { return beta * Inf / N; }</declaration>
+	<template>
+		<name x="5" y="5">Person</name>
+		<parameter>const id_t id</parameter>
+		<location id="id0" x="-340" y="0">
+			<name x="-370" y="-34">Init</name>
+			<committed/>
+		</location>
+		<location id="id1" x="-170" y="0">
+			<name x="-212" y="-42">Susceptible</name>
+			<label kind="exponentialrate" x="-196" y="17">foi()</label>
+		</location>
+		<location id="id2" x="0" y="0">
+			<name x="-25" y="-42">Exposed</name>
+			<label kind="exponentialrate" x="-17" y="17">sigma</label>
+		</location>
+		<location id="id3" x="170" y="0">
+			<name x="144" y="-42">Infectious</name>
+			<label kind="exponentialrate" x="153" y="17">gamma</label>
+		</location>
+		<location id="id4" x="374" y="-85">
+			<name x="391" y="-93">Recovered</name>
+		</location>
+		<location id="id5" x="374" y="85">
+			<name x="391" y="76">Deceased</name>
+		</location>
+		<branchpoint id="id6" x="272" y="0"/>
+		<init ref="id0"/>
+		<transition id="id7">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-314" y="-25">id &gt;= I0</label>
+		</transition>
+		<transition id="id8">
+			<source ref="id0"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-306" y="119">id &lt; I0</label>
+			<nail x="-340" y="119"/>
+			<nail x="170" y="119"/>
+		</transition>
+		<transition id="id9">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-144" y="-25">Inf &gt; 0</label>
+			<label kind="assignment" x="-152" y="25">Sus--, Exp++</label>
+		</transition>
+		<transition id="id10">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="assignment" x="25" y="25">Exp--, Inf++</label>
+		</transition>
+		<transition id="id11">
+			<source ref="id3"/>
+			<target ref="id6"/>
+		</transition>
+		<transition id="id12">
+			<source ref="id6"/>
+			<target ref="id4"/>
+			<label kind="assignment" x="246" y="-110">Inf--, Rec++</label>
+			<label kind="probability" x="263" y="-68">100 - IFR</label>
+		</transition>
+		<transition id="id13">
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="assignment" x="246" y="93">Inf--, Dead++</label>
+			<label kind="probability" x="289" y="51">IFR</label>
+		</transition>
+	</template>
+	<system>// One Person process per individual id in [0, N-1].
+system Person;</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=180; 1] { Sus, Exp, Inf, Rec, Dead }</formula>
+			<comment>One simulated epidemic trajectory over 180 days (plot all compartments).</comment>
+		</query>
+		<query>
+			<formula>simulate [&lt;=180; 10] { Inf }</formula>
+			<comment>Ten trajectories of the number of infectious people: shows the run-to-run variability.</comment>
+		</query>
+		<query>
+			<formula>E [&lt;=365; 500] (max: Inf)</formula>
+			<comment>Expected peak number of simultaneously infectious people.</comment>
+		</query>
+		<query>
+			<formula>E [&lt;=365; 500] (max: Dead)</formula>
+			<comment>Expected number of deaths within one year.</comment>
+		</query>
+		<query>
+			<formula>Pr [&lt;=365] (&lt;&gt; Rec + Dead &gt;= N / 2)</formula>
+			<comment>Probability that at least half the population is infected within a year (a major outbreak).</comment>
+		</query>
+		<query>
+			<formula>Pr [&lt;=365] (&lt;&gt; Inf &gt;= N / 5)</formula>
+			<comment>Probability that 20% of the population is infectious at the same time (e.g. exceeding healthcare capacity).</comment>
+		</query>
+		<query>
+			<formula>Pr [&lt;=365] (&lt;&gt; Exp + Inf == 0 &amp;&amp; Rec + Dead &lt; N / 10)</formula>
+			<comment>Probability of early stochastic extinction: the epidemic dies out before infecting 10% of the population.</comment>
+		</query>
+		<query>
+			<formula>Pr [&lt;=365] ([] Sus + Exp + Inf + Rec + Dead == N)</formula>
+			<comment>Sanity check: the compartments always sum to the population size (should be ~1).</comment>
+		</query>
+	</queries>
+</nta>

@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// Deterministic SEIRD model of COVID-19 spreading as a system of ODEs:
+//   dS/dt = -beta * S * I / N
+//   dE/dt =  beta * S * I / N - sigma * E
+//   dI/dt =  sigma * E - gamma * I
+//   dR/dt =  gamma * (1 - ifr) * I
+//   dD/dt =  gamma * ifr * I
+// The compartments are clocks whose derivatives are given in the invariant
+// of the Running location; UPPAAL SMC integrates them numerically.
+// Time unit: days.
+
+// ---------------- Population ----------------
+const int N  = 100;             // population size (change freely)
+const int I0 = 1;               // initially infectious individuals
+
+// ---------------- Epidemiological parameters ----------------
+const double R0    = 2.5;             // basic reproduction number
+const double gamma = 1.0 / 7.0;       // recovery rate   (mean infectious period 7 days)
+const double sigma = 1.0 / 5.2;       // incubation rate (mean latent period 5.2 days)
+const double beta  = R0 * gamma;      // transmission rate
+const double ifr   = 0.01;            // infection fatality ratio (1%)
+
+// ---------------- Continuous state (real-valued compartments) ----------------
+clock Sus, Exp, Inf, Rec, Dead;</declaration>
+	<template>
+		<name x="5" y="5">SEIRD</name>
+		<location id="id0" x="-204" y="0">
+			<name x="-221" y="-34">Init</name>
+			<committed/>
+		</location>
+		<location id="id1" x="0" y="0">
+			<name x="-25" y="-34">Running</name>
+			<label kind="invariant" x="-17" y="17">Sus'  == -beta * Sus * Inf / N &amp;&amp;
+Exp'  ==  beta * Sus * Inf / N - sigma * Exp &amp;&amp;
+Inf'  ==  sigma * Exp - gamma * Inf &amp;&amp;
+Rec'  ==  gamma * (1.0 - ifr) * Inf &amp;&amp;
+Dead' ==  gamma * ifr * Inf</label>
+		</location>
+		<init ref="id0"/>
+		<transition id="id2">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-187" y="-51">Sus = N - I0, Exp = 0, Inf = I0,
+Rec = 0, Dead = 0</label>
+		</transition>
+	</template>
+	<system>system SEIRD;</system>
+	<queries>
+		<query>
+			<formula>simulate [&lt;=180] { Sus, Exp, Inf, Rec, Dead }</formula>
+			<comment>The (deterministic) epidemic curves over 180 days.</comment>
+		</query>
+		<query>
+			<formula>E [&lt;=365; 2] (max: Inf)</formula>
+			<comment>Peak number of simultaneously infectious people (deterministic: the CI should have width 0).</comment>
+		</query>
+		<query>
+			<formula>E [&lt;=365; 2] (max: Dead)</formula>
+			<comment>Deaths within one year.</comment>
+		</query>
+		<query>
+			<formula>E [&lt;=365; 2] (max: Rec + Dead)</formula>
+			<comment>Final epidemic size: total number ever infected within one year.</comment>
+		</query>
+		<query>
+			<formula>Pr [&lt;=365] (&lt;&gt; Inf &gt;= N / 5)</formula>
+			<comment>Does the number of infectious people reach 20% of the population? (0 or 1, the model is deterministic.)</comment>
+		</query>
+		<query>
+			<formula>E [&lt;=365; 2] (max: Sus + Exp + Inf + Rec + Dead)</formula>
+			<comment>Sanity check: total population is conserved (should be N up to integration error).</comment>
+		</query>
+	</queries>
+</nta>
